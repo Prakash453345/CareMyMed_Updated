@@ -25,7 +25,9 @@ class BodyCompositionService {
     }
 
     const moment = require('moment-timezone');
-    const patientObj = await Patient.findById(patientId).select('timezone').lean();
+    const patientObj = await Patient.findById(patientId)
+      .select('timezone')
+      .lean();
     const timezone = patientObj?.timezone || 'Asia/Kolkata';
 
     // Normalize date to UTC midnight relative to the patient's local timezone.

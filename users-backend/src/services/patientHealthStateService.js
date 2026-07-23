@@ -22,9 +22,12 @@ function getMedicinesHelpers() {
           : () => 0,
     };
   } catch (err) {
-    logger.warn('[PatientHealthStateService] Failed to load medicines helpers dynamically', {
-      error: err.message,
-    });
+    logger.warn(
+      '[PatientHealthStateService] Failed to load medicines helpers dynamically',
+      {
+        error: err.message,
+      }
+    );
     return {
       buildMergedMeds: async () => [],
       computeCurrentStreak: () => 0,

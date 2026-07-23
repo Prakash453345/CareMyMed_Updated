@@ -422,11 +422,10 @@ async function registerPatient(body, req) {
       // Overwrite Guard: if supabaseUid is already set, verify they match!
       const isPlaceholder =
         !existingPatient.passwordHash ||
-        (existingPatient.supabase_uid && (
-          existingPatient.supabase_uid.startsWith('local-') ||
-          existingPatient.supabase_uid.startsWith('original-local') ||
-          existingPatient.supabase_uid === 'original-local-uuid'
-        ));
+        (existingPatient.supabase_uid &&
+          (existingPatient.supabase_uid.startsWith('local-') ||
+            existingPatient.supabase_uid.startsWith('original-local') ||
+            existingPatient.supabase_uid === 'original-local-uuid'));
       if (
         existingPatient.supabase_uid &&
         existingPatient.supabase_uid !== supabaseUid &&

@@ -473,7 +473,11 @@ router.put('/mark', authenticateSession, async (req, res) => {
                   {
                     title: '⚠️ Low Medication Supply',
                     body: `You are running low on ${medicine_name}. Only ${patientMed.refillInfo.remainingDoses} doses left!`,
-                    data: { screen: 'Medications', type: 'low_medication_supply', medicationName: medicine_name },
+                    data: {
+                      screen: 'Medications',
+                      type: 'low_medication_supply',
+                      medicationName: medicine_name,
+                    },
                   }
                 );
               }
@@ -534,7 +538,11 @@ router.put('/mark', authenticateSession, async (req, res) => {
                     {
                       title: '⚠️ Low Medication Supply',
                       body: `You are running low on ${medicine_name}. Only ${extMed.refillInfo.remainingDoses} doses left!`,
-                      data: { screen: 'Medications', type: 'low_medication_supply', medicationName: medicine_name },
+                      data: {
+                        screen: 'Medications',
+                        type: 'low_medication_supply',
+                        medicationName: medicine_name,
+                      },
                     }
                   );
                 }
@@ -700,7 +708,11 @@ router.put('/mark-slot', authenticateSession, async (req, res) => {
                     {
                       title: '⚠️ Low Medication Supply',
                       body: `You are running low on ${m.medicine_name}. Only ${patientMed.refillInfo.remainingDoses} doses left!`,
-                      data: { screen: 'Medications', type: 'low_medication_supply', medicationName: m.medicine_name },
+                      data: {
+                        screen: 'Medications',
+                        type: 'low_medication_supply',
+                        medicationName: m.medicine_name,
+                      },
                     }
                   );
                 }
@@ -758,7 +770,11 @@ router.put('/mark-slot', authenticateSession, async (req, res) => {
                       {
                         title: '⚠️ Low Medication Supply',
                         body: `You are running low on ${m.medicine_name}. Only ${extMed.refillInfo.remainingDoses} doses left!`,
-                        data: { screen: 'Medications', type: 'low_medication_supply', medicationName: m.medicine_name },
+                        data: {
+                          screen: 'Medications',
+                          type: 'low_medication_supply',
+                          medicationName: m.medicine_name,
+                        },
                       }
                     );
                   }

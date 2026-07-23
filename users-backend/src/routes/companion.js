@@ -746,7 +746,8 @@ router.get('/patient-status', authenticate, async (req, res) => {
       for (const call of recentCalls) {
         activity_logs.push({
           id: `call-${call._id}`,
-          title: call.status === 'completed' ? 'Call Completed' : 'Call Attempted',
+          title:
+            call.status === 'completed' ? 'Call Completed' : 'Call Attempted',
           desc: call.notes || 'Companion called patient.',
           date: call.scheduledTime || call.createdAt || new Date(),
           category: 'call',
@@ -901,7 +902,9 @@ router.get('/patient-health-history', authenticate, async (req, res) => {
     }
 
     const timezone = patient.timezone || 'Asia/Kolkata';
-    const { getHealthHistory } = require('../services/patientHealthStateService');
+    const {
+      getHealthHistory,
+    } = require('../services/patientHealthStateService');
     const historyData = await getHealthHistory(patient._id, timezone);
 
     res.json(historyData);
@@ -1038,7 +1041,9 @@ router.post('/relationships', authenticate, async (req, res) => {
     });
     if (access) {
       if (access.is_active && access.status === 'accepted') {
-        return res.status(400).json({ error: 'You are already linked to this patient.' });
+        return res
+          .status(400)
+          .json({ error: 'You are already linked to this patient.' });
       }
       access.is_active = true;
       access.status = 'accepted';
@@ -1059,7 +1064,7 @@ router.post('/relationships', authenticate, async (req, res) => {
         created_by: req.profile._id,
       });
     }
-    
+
     // Add companion to trusted contacts for backwards compatibility
     const hasContact = patient.trusted_contacts.some(
       (c) => c.email.toLowerCase() === req.profile.email.toLowerCase()
@@ -1140,7 +1145,7 @@ router.delete('/relationships/:id', authenticate, async (req, res) => {
     access.revoked_at = new Date();
     access.revoked_by = req.profile._id;
     await access.save();
-    
+
     // Also remove companion from patient's trusted contacts for backwards compatibility
     const patient = await Patient.findById(access.patient_id);
     if (patient) {
@@ -1150,7 +1155,10 @@ router.delete('/relationships/:id', authenticate, async (req, res) => {
       await patient.save();
     }
 
-    res.json({ success: true, message: 'Successfully removed from Care Circle.' });
+    res.json({
+      success: true,
+      message: 'Successfully removed from Care Circle.',
+    });
   } catch (err) {
     logger.error('Delete relationship error', { error: err.message });
     res.status(500).json({ error: 'Failed to delete relationship.' });

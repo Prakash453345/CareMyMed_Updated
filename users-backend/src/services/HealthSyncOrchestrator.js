@@ -75,12 +75,13 @@ class HealthSyncOrchestrator {
           last_sync: new Date(),
           platform,
           health_provider: effectiveSource,
-        }
+        },
       };
 
       if (metadata) {
         if (metadata.device_id) syncUpdate.$set.device_id = metadata.device_id;
-        if (metadata.device_name) syncUpdate.$set.device_name = metadata.device_name;
+        if (metadata.device_name)
+          syncUpdate.$set.device_name = metadata.device_name;
         if (
           metadata.permissions_granted &&
           Array.isArray(metadata.permissions_granted)

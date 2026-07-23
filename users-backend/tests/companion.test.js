@@ -996,12 +996,12 @@ describe('Companion Routes', () => {
           relationship_type: 'Mother',
           joined_at: new Date(),
           is_active: true,
-          status: 'accepted'
-        }
+          status: 'accepted',
+        },
       ];
 
       CompanionAccess.find = jest.fn().mockReturnValue({
-        populate: jest.fn().mockResolvedValue(mockRelationships)
+        populate: jest.fn().mockResolvedValue(mockRelationships),
       });
 
       const res = await request(app).get('/api/companion/relationships');
@@ -1019,7 +1019,7 @@ describe('Companion Routes', () => {
         trusted_contacts: [],
         save: jest.fn().mockResolvedValue({}),
       };
-      
+
       Patient.findOne = jest.fn().mockResolvedValue(mockPatientObj);
       CompanionAccess.findOne = jest.fn().mockResolvedValue(null);
       CompanionAccess.create = jest.fn().mockResolvedValue({
@@ -1028,7 +1028,7 @@ describe('Companion Routes', () => {
         patient_id: mockPatientObj._id,
         relationship_type: 'Sibling',
         status: 'accepted',
-        is_active: true
+        is_active: true,
       });
 
       const res = await request(app)
@@ -1078,7 +1078,9 @@ describe('Companion Routes', () => {
         save: jest.fn().mockResolvedValue({}),
       });
 
-      const res = await request(app).delete('/api/companion/relationships/rel-1');
+      const res = await request(app).delete(
+        '/api/companion/relationships/rel-1'
+      );
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -1088,4 +1090,3 @@ describe('Companion Routes', () => {
     });
   });
 });
-

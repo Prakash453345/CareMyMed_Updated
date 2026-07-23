@@ -100,8 +100,6 @@ async function refreshHealthScoreCache(patientId, targetDate = null) {
 
 // ─── Subscription & Onboarding ────────────────────────────────────────────────
 
-
-
 // ─── Public endpoints ─────────────────────────────────────────────────────────
 
 router.get('/cities', async (req, res) => {
@@ -286,7 +284,10 @@ router.post('/subscribe', authenticateSession, async (req, res) => {
     // We no longer block active users from subscribing.
     // If they are already active, we just stack their days in `subscribeAndSeedDemoData`.
 
-    patient = await SubscriptionService.activateSubscription(patient, resolvedPlanId);
+    patient = await SubscriptionService.activateSubscription(
+      patient,
+      resolvedPlanId
+    );
 
     res.json({
       success: true,
@@ -765,7 +766,10 @@ router.post('/me/prescriptions', authenticateSession, async (req, res) => {
 
     // In development mode, automatically simulate a caretaker review after 8 seconds
     if (process.env.NODE_ENV === 'development') {
-      const savedRxId = patient.uploaded_prescriptions[patient.uploaded_prescriptions.length - 1]._id;
+      const savedRxId =
+        patient.uploaded_prescriptions[
+          patient.uploaded_prescriptions.length - 1
+        ]._id;
       setTimeout(async () => {
         try {
           const freshPatient = await Patient.findById(patient._id);
@@ -775,15 +779,22 @@ router.post('/me/prescriptions', authenticateSession, async (req, res) => {
               rx.status = 'reviewed';
               rx.reviewed_by = 'Care AI Assistant';
               rx.reviewed_at = new Date();
-              rx.reviewer_notes = 'Prescription verified. Added prescribed medications to care plan.';
+              rx.reviewer_notes =
+                'Prescription verified. Added prescribed medications to care plan.';
               await freshPatient.save();
-              logger.info('Simulated prescription auto-review completed in development', {
-                patientId: freshPatient._id,
-                prescriptionId: savedRxId,
-              });
+              logger.info(
+                'Simulated prescription auto-review completed in development',
+                {
+                  patientId: freshPatient._id,
+                  prescriptionId: savedRxId,
+                }
+              );
 
               // Send push notification if token is available
-              if (freshPatient.expo_push_token && freshPatient.push_notifications_enabled !== false) {
+              if (
+                freshPatient.expo_push_token &&
+                freshPatient.push_notifications_enabled !== false
+              ) {
                 const PushNotificationService = require('../../utils/pushNotifications');
                 await PushNotificationService.sendPush(
                   freshPatient.expo_push_token,
@@ -794,9 +805,12 @@ router.post('/me/prescriptions', authenticateSession, async (req, res) => {
             }
           }
         } catch (simErr) {
-          logger.error('Failed to run development simulated prescription auto-review', {
-            error: simErr.message,
-          });
+          logger.error(
+            'Failed to run development simulated prescription auto-review',
+            {
+              error: simErr.message,
+            }
+          );
         }
       }, 8000);
     }
@@ -1398,25 +1412,33 @@ router.get('/me/caller', authenticateSession, async (req, res) => {
       if (caller) {
         // Sync caller onto the patient record; only set manager if patient doesn't already have one
         const syncUpdate = { assigned_caller_id: caller._id };
-        if (caller.manager_id && !patient.assigned_manager_id && !patient.care_manager_id) {
+        if (
+          caller.manager_id &&
+          !patient.assigned_manager_id &&
+          !patient.care_manager_id
+        ) {
           syncUpdate.assigned_manager_id = caller.manager_id;
           syncUpdate.care_manager_id = caller.manager_id;
         }
-        await Patient.updateOne(
-          { _id: patient._id },
-          { $set: syncUpdate }
-        );
+        await Patient.updateOne({ _id: patient._id }, { $set: syncUpdate });
         req.patient = await Patient.findById(patient._id);
-        logger.info('Synced assigned_caller_id (manager preserved if existing)', {
-          patientId: patient._id,
-          callerId: caller._id,
-          existingManagerId: patient.assigned_manager_id || patient.care_manager_id || null,
-          callerManagerId: caller.manager_id || null,
-        });
+        logger.info(
+          'Synced assigned_caller_id (manager preserved if existing)',
+          {
+            patientId: patient._id,
+            callerId: caller._id,
+            existingManagerId:
+              patient.assigned_manager_id || patient.care_manager_id || null,
+            callerManagerId: caller.manager_id || null,
+          }
+        );
 
         // Populate manager: use patient's existing manager, or fall back to caller's
         if (!manager) {
-          const mgrIdToUse = patient.assigned_manager_id || patient.care_manager_id || caller.manager_id;
+          const mgrIdToUse =
+            patient.assigned_manager_id ||
+            patient.care_manager_id ||
+            caller.manager_id;
           if (mgrIdToUse) {
             manager = await Profile.findById(mgrIdToUse).select(
               'fullName phone email profile_photo_url languages_spoken experience_years last_active_at'
@@ -1429,16 +1451,28 @@ router.get('/me/caller', authenticateSession, async (req, res) => {
     // Backfill: Only if patient has NO manager at all, resolve from caller.manager_id
     if (caller && !manager) {
       // Use patient's existing manager first, then fall back to caller's manager
-      const backfillMgrId = patient.assigned_manager_id || patient.care_manager_id || caller.manager_id;
+      const backfillMgrId =
+        patient.assigned_manager_id ||
+        patient.care_manager_id ||
+        caller.manager_id;
       if (backfillMgrId) {
         manager = await Profile.findById(backfillMgrId).select(
           'fullName phone email profile_photo_url languages_spoken experience_years last_active_at'
         );
         // Only write to DB if patient had no manager at all (don't overwrite existing)
-        if (manager && !patient.assigned_manager_id && !patient.care_manager_id) {
+        if (
+          manager &&
+          !patient.assigned_manager_id &&
+          !patient.care_manager_id
+        ) {
           await Patient.updateOne(
             { _id: patient._id },
-            { $set: { assigned_manager_id: backfillMgrId, care_manager_id: backfillMgrId } }
+            {
+              $set: {
+                assigned_manager_id: backfillMgrId,
+                care_manager_id: backfillMgrId,
+              },
+            }
           );
           logger.info('Backfilled assigned_manager_id (no existing manager)', {
             patientId: patient._id,

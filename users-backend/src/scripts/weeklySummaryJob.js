@@ -175,7 +175,6 @@ async function runWeeklySummaries() {
         );
       }
 
-
       console.log(
         `[WeeklySummaryJob] Successfully generated summary for ${patient.name}`
       );

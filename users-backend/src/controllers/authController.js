@@ -142,10 +142,17 @@ async function deleteMe(req, res) {
       await Patient.findByIdAndDelete(userId);
 
       // Attempt Supabase auth user deletion if configured
-      if (subject && process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      if (
+        subject &&
+        process.env.SUPABASE_URL &&
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      ) {
         try {
           const { createClient } = require('@supabase/supabase-js');
-          const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+          const supabaseAdmin = createClient(
+            process.env.SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_ROLE_KEY
+          );
           if (supabaseAdmin?.auth?.admin?.deleteUser) {
             await supabaseAdmin.auth.admin.deleteUser(subject);
           }
@@ -159,14 +166,9 @@ async function deleteMe(req, res) {
       // For Family Companions
       const Companion = require('../models/Companion');
       await Companion.findByIdAndDelete(userId);
-      logEvent(
-        subject,
-        'account_hard_deleted',
-        'companion',
-        userId,
-        req,
-        { permanent: true }
-      ).catch(() => {});
+      logEvent(subject, 'account_hard_deleted', 'companion', userId, req, {
+        permanent: true,
+      }).catch(() => {});
     } else {
       // For Staff/Admin profiles
       if (req.profile.organizationId) {

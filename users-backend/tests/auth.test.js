@@ -683,7 +683,9 @@ describe('Auth Routes', () => {
       const Caller = require('../src/models/Caller');
       const RefreshToken = require('../src/models/RefreshToken');
       Caller.updateMany = jest.fn().mockResolvedValue({ acknowledged: true });
-      RefreshToken.deleteMany = jest.fn().mockResolvedValue({ acknowledged: true });
+      RefreshToken.deleteMany = jest
+        .fn()
+        .mockResolvedValue({ acknowledged: true });
       Patient.findByIdAndDelete = jest.fn().mockResolvedValue(patient);
       Organization.findByIdAndUpdate = jest.fn().mockResolvedValue({});
 

@@ -55,16 +55,29 @@ class PushNotificationService {
 
       if (ticket?.status === 'error') {
         console.error(`❌ Push notification failed:`, ticket.message);
-        if (ticket.details?.error === 'DeviceNotRegistered' || ticket.message?.includes('DeviceNotRegistered')) {
+        if (
+          ticket.details?.error === 'DeviceNotRegistered' ||
+          ticket.message?.includes('DeviceNotRegistered')
+        ) {
           try {
             const Patient = require('../models/Patient');
             await Patient.updateOne(
               { expo_push_token: expoPushToken },
-              { $set: { expo_push_token: '', push_notifications_enabled: false } }
+              {
+                $set: {
+                  expo_push_token: '',
+                  push_notifications_enabled: false,
+                },
+              }
             );
-            console.log(`🧹 Cleaned up unregistered token ${expoPushToken.substring(0, 20)}...`);
+            console.log(
+              `🧹 Cleaned up unregistered token ${expoPushToken.substring(0, 20)}...`
+            );
           } catch (cleanErr) {
-            console.error('Failed to cleanup unregistered push token:', cleanErr.message);
+            console.error(
+              'Failed to cleanup unregistered push token:',
+              cleanErr.message
+            );
           }
         }
         return {
@@ -92,7 +105,6 @@ class PushNotificationService {
   static async sendPushNotification(expoPushToken, { title, body, data = {} }) {
     return this.sendPush(expoPushToken, title, body, data);
   }
-
 
   /**
    * Send a critical vital alert push notification to a patient.
