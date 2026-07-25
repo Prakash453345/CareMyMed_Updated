@@ -127,7 +127,7 @@ export async function registerForPushNotificationsAsync() {
         const projectId =
             Constants.expoConfig?.extra?.eas?.projectId ??
             Constants.easConfig?.projectId ??
-            '3eeed402-2786-427b-b122-e73d681dcc56'; // fallback from app.json
+            '55eb530a-473e-4d2a-ada3-b95294730ba2'; // fallback from app.json
 
         console.log('Using projectId for push token:', projectId);
 
