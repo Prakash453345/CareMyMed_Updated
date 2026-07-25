@@ -8,6 +8,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { RefreshCw, AlertTriangle } from 'lucide-react-native';
+import * as SplashScreen from 'expo-splash-screen';
 
 export default class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -16,13 +17,15 @@ export default class ErrorBoundary extends React.Component {
     }
 
     static getDerivedStateFromError(error) {
+        SplashScreen.hideAsync().catch(() => { });
         return { hasError: true, error };
     }
 
     componentDidCatch(error, errorInfo) {
+        SplashScreen.hideAsync().catch(() => { });
         // Production: send to Sentry/Crashlytics
         // Sentry.captureException(error, { extra: errorInfo });
-        console.error('[ErrorBoundary] Caught:', error.message);
+        console.error('[ErrorBoundary] Caught:', error?.message);
         // Never log full stack or user data
     }
 

@@ -1,5 +1,4 @@
-import React from 'react';
-import { StyleSheet, Pressable, View } from 'react-native';
+import { StyleSheet, Pressable, View, Platform } from 'react-native';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -103,7 +102,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.04,
         shadowRadius: 24,
-        elevation: 3,
+        elevation: Platform.OS === 'android' ? 0 : 3,
         borderRadius: 20,
         backgroundColor: 'transparent',
     },
@@ -116,7 +115,8 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
         shadowRadius: 3,
-        elevation: 2,
+        elevation: 3,
         width: '100%',
+        overflow: 'hidden',
     },
 });

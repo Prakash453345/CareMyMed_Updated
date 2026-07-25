@@ -6,7 +6,7 @@ import {
 import Reanimated, { 
     FadeIn, FadeInDown, FadeOut, 
     useSharedValue, useAnimatedStyle, 
-    withRepeat, withSequence, withTiming, withDelay, Easing,
+    withRepeat, withSequence, withTiming, withDelay, withSpring, Easing,
     Layout
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -1145,7 +1145,7 @@ export default function ChatbotScreen({ navigation, route }) {
                     formData.append('query', finalQuery);
                 }
 
-                const baseUrl = process.env.EXPO_PUBLIC_CHATBOT_URL || process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3001/api';
+                const baseUrl = process.env.EXPO_PUBLIC_CHATBOT_URL || api.defaults.baseURL || process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
                 const url = `${baseUrl}/chatbot/chat`;
 
                 // Use XMLHttpRequest for streaming in React Native

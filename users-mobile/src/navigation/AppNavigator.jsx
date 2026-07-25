@@ -296,12 +296,12 @@ export default function AppNavigator({ fontsLoaded }) {
     // This is the ONLY place SplashScreen.hideAsync() should be called
     // (App.js has a 12s failsafe but this is the primary controller).
     useEffect(() => {
-        if (!isBootstrapping && fontsLoaded) {
+        if (!isBootstrapping) {
             setTimeout(() => {
                 SplashScreen.hideAsync().catch(() => { });
             }, 100);
         }
-    }, [isBootstrapping, fontsLoaded]);
+    }, [isBootstrapping]);
 
     useEffect(() => {
         let isMounted = true;

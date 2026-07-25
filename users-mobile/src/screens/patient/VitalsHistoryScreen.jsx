@@ -60,7 +60,7 @@ const PulsingDot = ({ latestX, latestY, hasLatestPoint, color }) => {
     }, [scale, opacity]);
 
     const pulseStyle = useAnimatedStyle(() => {
-        if (!hasLatestPoint.value) {
+        if (!hasLatestPoint.value || (latestX.value === 0 && latestY.value === 0)) {
             return { opacity: 0 };
         }
         return {
@@ -74,7 +74,7 @@ const PulsingDot = ({ latestX, latestY, hasLatestPoint, color }) => {
     });
 
     const centerStyle = useAnimatedStyle(() => {
-        if (!hasLatestPoint.value) {
+        if (!hasLatestPoint.value || (latestX.value === 0 && latestY.value === 0)) {
             return { opacity: 0 };
         }
         return {
@@ -86,7 +86,7 @@ const PulsingDot = ({ latestX, latestY, hasLatestPoint, color }) => {
     });
 
     const glowStyle = useAnimatedStyle(() => {
-        if (!hasLatestPoint.value) {
+        if (!hasLatestPoint.value || (latestX.value === 0 && latestY.value === 0)) {
             return { opacity: 0 };
         }
         return {
@@ -725,7 +725,7 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                     pressScale={0.98} 
                     hapticType="selection"
                     sharedTransitionTag={`vitals_card_${def.id}`}
-                    style={[styles.heroCard, { minHeight: 130, borderWidth: 0 }]}
+                    style={styles.heroCardContainer}
                 >
                     <View style={styles.heroTop}>
                         <View style={styles.heroLeft}>
@@ -1001,8 +1001,9 @@ export default function VitalsHistoryScreen({ navigation, route }) {
         return (
             <Animated.View style={[
                 styles.chartCard,
-                { borderTopColor: def.accent, opacity: getCombinedOpacity(staggerAnims[2]) }
+                { opacity: getCombinedOpacity(staggerAnims[2]) }
             ]}>
+                <View style={[styles.cardTopAccent, { backgroundColor: def.accent }]} />
                 <View style={styles.chartTitleRow}>
                     <View style={{ flex: 1 }}>
                         <Text style={styles.chartTitle}>{def.title} Trend</Text>
@@ -1337,7 +1338,8 @@ export default function VitalsHistoryScreen({ navigation, route }) {
     );
 
     const renderChartCardSkeleton = () => (
-        <View style={[styles.chartCard, { borderTopColor: '#E2E8F0', height: 260, justifyContent: 'center' }]}>
+        <View style={[styles.chartCard, { height: 260, justifyContent: 'center' }]}>
+            <View style={[styles.cardTopAccent, { backgroundColor: '#E2E8F0' }]} />
             <ActivityIndicator color="#6366F1" size="small" />
         </View>
     );
@@ -1447,7 +1449,8 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                             )}
 
                             {/* 5. Collapsible Log Form Drawer */}
-                            <Animated.View style={[styles.chartCard, { borderTopColor: '#6366F1', marginTop: 12 }]}>
+                            <Animated.View style={[styles.chartCard, { marginTop: 12 }]}>
+                                <View style={[styles.cardTopAccent, { backgroundColor: '#6366F1' }]} />
                                 <Pressable 
                                     style={styles.logToggleRow} 
                                     onPress={() => { setIsLoggingExpanded(!isLoggingExpanded); setFormError(null); }}
@@ -1599,21 +1602,23 @@ const styles = StyleSheet.create({
     headerBorderLine: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, backgroundColor: '#E2E8F0' },
 
     /* Metric Selector Tabs */
-    metricSelectorContainer: { marginBottom: 16, zIndex: 1 },
+    metricSelectorContainer: { marginBottom: 16, zIndex: 10 },
     metricTabsContent: { paddingHorizontal: 2, gap: 10, paddingBottom: 4 },
     metricTab: {
         flexDirection: 'row', alignItems: 'center', gap: 6,
         paddingHorizontal: 16, paddingVertical: 10, borderRadius: 30,
-        backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#E2E8F0',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 1
+        backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 1,
+        overflow: 'hidden',
     },
     metricTabText: { fontSize: 13, fontWeight: '800', color: '#475569' },
     metricTabTextActive: { color: '#FFFFFF' },
 
     /* Hero Card */
+    heroCardContainer: { marginBottom: 20 },
     heroCard: {
         backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, marginBottom: 20,
-        borderWidth: 1, borderColor: '#F1F5F9',
+        borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden',
         shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2
     },
     emptyHeroContent: { paddingVertical: 30, alignItems: 'center', gap: 10 },
@@ -1633,13 +1638,13 @@ const styles = StyleSheet.create({
 
     /* Time Range Chips */
     timeRangeContainer: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-    rangeBtn: { flex: 1, paddingVertical: 9, borderRadius: 20, backgroundColor: '#FFFFFF', borderHeight: 1.5, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
+    rangeBtn: { flex: 1, paddingVertical: 9, borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
     rangeBtnActive: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
     rangeTxt: { fontSize: 12, fontWeight: '800', color: '#64748B' },
     rangeTxtActive: { color: '#FFFFFF' },
 
     /* Custom Date Pickers */
-    datePickerContainer: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9' },
+    datePickerContainer: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden' },
     datePickerRow: { flexDirection: 'row', alignItems: 'center' },
     dateArrow: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
     dateBox: { flex: 1, marginHorizontal: 8, backgroundColor: '#F9FAFB', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center' },
@@ -1650,11 +1655,11 @@ const styles = StyleSheet.create({
     statsCardContainer: { marginBottom: 20 },
     statsUnifiedCard: {
         backgroundColor: '#FFFFFF', borderRadius: 20, paddingVertical: 16, paddingHorizontal: 12,
-        flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9',
+        flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden',
         shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.02, shadowRadius: 8, elevation: 2
     },
     statColumn: { flex: 1, alignItems: 'center' },
-    statDivider: { width: 1, height: 32, backgroundColor: '#E2E8F0' },
+    statDivider: { width: 1, height: 32, backgroundColor: '#F1F5F9' },
     statsScroll: { gap: 10, paddingBottom: 4 },
     statHeader: { flexDirection: 'row', gap: 4, alignItems: 'center', marginBottom: 6 },
     statLabel: { fontSize: 10, fontWeight: '800', color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.5 },
@@ -1665,13 +1670,14 @@ const styles = StyleSheet.create({
     /* Chart Card */
     chartCard: {
         backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, marginBottom: 20,
-        borderWidth: 1, borderColor: '#F1F5F9', borderTopWidth: 3,
+        borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden', position: 'relative',
         shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2
     },
-    chartTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+    cardTopAccent: { position: 'absolute', top: 0, left: 0, right: 0, height: 3.5, borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+    chartTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12, paddingTop: 4 },
     chartTitle: { fontSize: 15, fontWeight: '900', color: '#0F172A' },
     chartSubtitle: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginTop: 1 },
-    chart: { borderRadius: 16, marginLeft: -10 },
+    chart: { borderRadius: 16, alignSelf: 'center' },
     expandBtn: { padding: 6, backgroundColor: '#F8FAFC', borderRadius: 8, borderWidth: 1, borderColor: '#F1F5F9' },
     trendSummaryRow: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F8FAFC', paddingTop: 12, marginTop: 10 },
     trendSummaryText: { fontSize: 12, fontWeight: '800' },
@@ -1685,7 +1691,7 @@ const styles = StyleSheet.create({
     /* AI Coach Card */
     coachCard: {
         backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, marginBottom: 20,
-        borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000',
+        borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden', shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2
     },
     coachHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
@@ -1707,7 +1713,7 @@ const styles = StyleSheet.create({
     timelineDotInner: { width: 5, height: 5, borderRadius: 2.5 },
     timelineContent: {
         flex: 1, backgroundColor: '#FFFFFF', borderRadius: 16, padding: 12,
-        borderWidth: 1, borderColor: '#F1F5F9',
+        borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden',
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.01, shadowRadius: 4, elevation: 1
     },
     timelineHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
