@@ -40,6 +40,7 @@ import MFAVerifyScreen from "../screens/auth/MFAVerifyScreen";
 import MFASetupScreen from "../screens/settings/MFASetupScreen";
 import DeveloperObservabilityScreen from "../screens/settings/DeveloperObservabilityScreen";
 import PatientDiagnosticsScreen from "../screens/settings/PatientDiagnosticsScreen";
+import SettingsScreen from "../screens/settings/SettingsScreen";
 import CompanionSignupScreen from '../screens/onboarding/CompanionSignupScreen';
 
 import CompanionHomeScreen from '../screens/app/CompanionHomeScreen';
@@ -218,6 +219,7 @@ const MainAppStack = () => (
         <Stack.Screen name="DeveloperObservability" component={DeveloperObservabilityScreen} options={{ presentation: "modal", animation: "slide_from_bottom" }} />
         <Stack.Screen name="PatientDiagnostics" component={PatientDiagnosticsScreen} options={{ presentation: "modal", animation: "slide_from_bottom" }} />
         <Stack.Screen name="HealthCopilot" component={HealthCopilotScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} options={{ animation: "slide_from_right" }} />
     </Stack.Navigator>
 );
 

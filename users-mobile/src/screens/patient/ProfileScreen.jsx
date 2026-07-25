@@ -802,10 +802,15 @@ export default function PatientProfileScreen({ navigation }) {
                             <Text style={s.heroLabel}>{t('profile.care_record_label', { defaultValue: 'CARE RECORD' })}</Text>
                             <Text style={s.headerTitle}>{t('profile.my_profile', { defaultValue: 'My Profile' })}</Text>
                         </View>
-                        <Pressable style={s.headerBtn} onPress={() => navigation.navigate('Notifications')}>
-                            <Bell size={20} color="#475569" strokeWidth={2.5} />
-                            {unreadCount > 0 && <View style={s.bellDot} />}
-                        </Pressable>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Pressable style={s.headerBtn} onPress={() => navigation.navigate('Settings')}>
+                                <Settings size={20} color="#475569" strokeWidth={2.5} />
+                            </Pressable>
+                            <Pressable style={s.headerBtn} onPress={() => navigation.navigate('Notifications')}>
+                                <Bell size={20} color="#475569" strokeWidth={2.5} />
+                                {unreadCount > 0 && <View style={s.bellDot} />}
+                            </Pressable>
+                        </View>
                     </View>
                 </Animated.View>
             </View>
@@ -907,6 +912,7 @@ export default function PatientProfileScreen({ navigation }) {
                 <Animated.View style={anim(7)}>
                     <Text style={s.sectionTitle}>{t('profile.notifications', { defaultValue: 'NOTIFICATIONS & PREFERENCES' })}</Text>
                     <View style={s.card}>
+                        <InfoRow icon={Settings} iconBg="#EEF2FF" iconColor="#6366F1" label="Settings & Preferences" value="Security, alarms & health sync" placeholder="" onPress={() => navigation.navigate('Settings')} />
                         <View style={[s.infoRow]}>
                             <View style={[s.iconBox, { backgroundColor: '#F5F3FF' }]}>
                                 <BellRing size={20} color="#8B5CF6" strokeWidth={2} />
