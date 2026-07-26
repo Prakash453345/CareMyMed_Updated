@@ -80,7 +80,7 @@ users-backend/migrate-patient-profiles.js
 users-ai-vitals/output.txt
 
 # ── Firebase Configs (Usually safe, but better ignored for private repos) ──
-google-services.json
+!users-mobile/google-services.json
 GoogleService-Info.plist
 *firebase-adminsdk*
 *.json.bak
