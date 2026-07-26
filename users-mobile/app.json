@@ -91,7 +91,6 @@
         "expo-build-properties",
         {
           "android": {
-            "newArchEnabled": true,
             "usesCleartextTraffic": true,
             "minSdkVersion": 26,
             "packagingOptions": {
