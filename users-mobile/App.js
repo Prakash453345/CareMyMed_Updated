@@ -18,7 +18,7 @@ import './src/i18n'; // Initialize i18n
 import sentry from './src/utils/monitoring/sentry';
 sentry.init();
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 LogBox.ignoreLogs([
     'Invalid DOM property `transform-origin`',

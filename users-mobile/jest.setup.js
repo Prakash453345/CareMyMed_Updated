@@ -87,14 +87,6 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 
-// @shopify/react-native-skia
-jest.mock('@shopify/react-native-skia', () => ({
-  Canvas: ({ children }) => children,
-  Circle: () => null,
-  Blur: () => null,
-  RadialGradient: () => null,
-  vec: (x, y) => ({ x, y }),
-}));
 
 // @gorhom/bottom-sheet
 jest.mock('@gorhom/bottom-sheet', () => {
