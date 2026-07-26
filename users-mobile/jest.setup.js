@@ -20,6 +20,24 @@ jest.mock('expo-notifications', () => ({
 
 
 
+// react-native-worklets
+jest.mock('react-native-worklets', () => ({
+  createWorklet: jest.fn(fn => fn),
+  createSerializable: jest.fn(fn => fn),
+  isWorkletFunction: jest.fn(() => true),
+  runOnJS: jest.fn(fn => fn),
+  runOnUI: jest.fn(fn => fn),
+  registerWorkletStackData: jest.fn(),
+  serializableMappingCache: new Map(),
+  RuntimeKind: { ReactNative: 1, UI: 2 },
+  Worklets: {
+    createWorklet: jest.fn(fn => fn),
+    createSerializable: jest.fn(fn => fn),
+    runOnJS: jest.fn(fn => fn),
+    runOnUI: jest.fn(fn => fn),
+  },
+}));
+
 // react-native-reanimated
 jest.mock('react-native-reanimated', () => {
   const Reanimated = require('react-native-reanimated/mock');
