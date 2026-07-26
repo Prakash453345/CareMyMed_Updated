@@ -22,12 +22,7 @@ import SmartInput from '../../components/ui/SmartInput';
 import TabScreenTransition from '../../components/ui/TabScreenTransition';
 import AnimatedCard from '../../components/ui/AnimatedCard';
 
-let LocalAuthentication = null;
-try {
-    LocalAuthentication = require('expo-local-authentication');
-} catch (e) {
-    LocalAuthentication = null;
-}
+import * as LocalAuthentication from 'expo-local-authentication';
 
 const LANGUAGES = [
     { code: 'en_IN', label: 'English (India)' },
