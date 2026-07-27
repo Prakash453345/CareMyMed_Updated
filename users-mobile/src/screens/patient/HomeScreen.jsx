@@ -478,6 +478,7 @@ export default function PatientHomeScreen({ navigation }) {
   const adherenceDetails = usePatientStore((s) => s.adherenceDetails);
   const healthHistory = usePatientStore((s) => s.healthHistory);
   const isCached = usePatientStore((s) => s.isCached);
+  const storeLoading = usePatientStore((s) => s.loading);
   const storeFetchDashboard = usePatientStore((s) => s.fetchDashboard);
   const storeFetchMedications = usePatientStore((s) => s.fetchMedications);
   const setPatient = usePatientStore((s) => s.setPatient);
