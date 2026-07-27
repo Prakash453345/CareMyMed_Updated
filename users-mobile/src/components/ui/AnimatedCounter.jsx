@@ -1,14 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, TextInput } from 'react-native';
-import Animated, {
-    useSharedValue,
-    useAnimatedProps,
-    withSpring,
-    runOnJS,
-} from 'react-native-reanimated';
-import { reanimatedMotion } from '../../theme/reanimatedMotion';
-
-const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+import React, { useEffect, useState, useRef } from 'react';
+import { StyleSheet, TextInput, Animated } from 'react-native';
 
 export default function AnimatedCounter({
     value = 0,
@@ -20,43 +11,43 @@ export default function AnimatedCounter({
     style,
     ...props
 }) {
-    const animatedValue = useSharedValue(fromValue !== undefined ? fromValue : value);
+    const [displayValue, setDisplayValue] = useState(fromValue !== undefined ? fromValue : value);
+    const animValue = useRef(new Animated.Value(fromValue !== undefined ? fromValue : value)).current;
 
     useEffect(() => {
-        if (fromValue !== undefined) {
-            animatedValue.value = fromValue;
-        }
-        animatedValue.value = withSpring(value, reanimatedMotion.springs.default);
-    }, [value, fromValue, animatedValue]);
+        animValue.setValue(fromValue !== undefined ? fromValue : displayValue);
+        const id = animValue.addListener(({ value: val }) => {
+            setDisplayValue(val);
+        });
+        Animated.spring(animValue, {
+            toValue: value,
+            speed: 12,
+            bounciness: 4,
+            useNativeDriver: false,
+        }).start();
 
-    const formatNumber = (num) => {
-        'worklet';
-        const rounded = num.toFixed(decimals);
-        if (!useGrouping) return rounded;
+        return () => {
+            animValue.removeListener(id);
+        };
+    }, [value, fromValue, animValue]);
 
+    const rounded = displayValue.toFixed(decimals);
+    let formatted = rounded;
+    if (useGrouping) {
         const parts = rounded.split('.');
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        return parts.join('.');
-    };
+        formatted = parts.join('.');
+    }
 
-    const animatedProps = useAnimatedProps(() => {
-        const formatted = `${prefix}${formatNumber(animatedValue.value)}${suffix}`;
-        return {
-            text: formatted,
-            value: formatted,
-        };
-    });
-
-    const startValue = fromValue !== undefined ? fromValue : value;
-    const initialFormatted = `${prefix}${startValue.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, useGrouping ? ',' : '')}${suffix}`;
+    const textValue = `${prefix}${formatted}${suffix}`;
 
     return (
-        <AnimatedTextInput
+        <TextInput
             editable={false}
             pointerEvents="none"
             style={[styles.textInput, style]}
-            animatedProps={animatedProps}
-            defaultValue={initialFormatted}
+            value={textValue}
+            defaultValue={textValue}
             {...props}
         />
     );

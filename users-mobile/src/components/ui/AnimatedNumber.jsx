@@ -1,27 +1,6 @@
-/**
- * CareMyMed — AnimatedNumber
- *
- * Counts up from 0 to the target value with spring physics.
- * Reduce-motion-aware: shows final value immediately when
- * accessibility setting is on.
- *
- * Usage:
- *   <AnimatedNumber value={85} suffix="%" style={styles.bigNumber} />
- *   <AnimatedNumber value={12} prefix="🔥 " suffix=" Day Streak" />
- */
-
-import React, { useEffect } from 'react';
-import { StyleSheet, TextInput } from 'react-native';
-import Animated, {
-    useSharedValue,
-    useAnimatedProps,
-    withSpring,
-    withTiming,
-} from 'react-native-reanimated';
-import { reanimatedMotion } from '../../theme/reanimatedMotion';
+import React, { useEffect, useState, useRef } from 'react';
+import { StyleSheet, TextInput, Animated } from 'react-native';
 import { useMotion } from '../../theme/MotionProvider';
-
-const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 export default function AnimatedNumber({
     value = 0,
@@ -34,49 +13,48 @@ export default function AnimatedNumber({
     ...props
 }) {
     const { reduceMotion } = useMotion();
-    const animatedValue = useSharedValue(reduceMotion ? value : 0);
+    const [displayValue, setDisplayValue] = useState(reduceMotion ? value : 0);
+    const animValue = useRef(new Animated.Value(reduceMotion ? value : 0)).current;
 
     useEffect(() => {
         if (reduceMotion) {
-            // Immediately jump to value — no animation
-            animatedValue.value = withTiming(value, { duration: 0 });
-        } else {
-            animatedValue.value = withSpring(
-                value,
-                reanimatedMotion.springs[springConfig] || reanimatedMotion.springs.default
-            );
+            setDisplayValue(value);
+            return;
         }
-    }, [value, reduceMotion, animatedValue, springConfig]);
 
-    const formatNumber = (num) => {
-        'worklet';
-        const rounded = num.toFixed(decimals);
-        if (!useGrouping) return rounded;
+        const id = animValue.addListener(({ value: val }) => {
+            setDisplayValue(val);
+        });
 
+        Animated.spring(animValue, {
+            toValue: value,
+            speed: 12,
+            bounciness: 4,
+            useNativeDriver: false,
+        }).start();
+
+        return () => {
+            animValue.removeListener(id);
+        };
+    }, [value, reduceMotion, animValue]);
+
+    const rounded = displayValue.toFixed(decimals);
+    let formatted = rounded;
+    if (useGrouping) {
         const parts = rounded.split('.');
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        return parts.join('.');
-    };
+        formatted = parts.join('.');
+    }
 
-    const animatedProps = useAnimatedProps(() => {
-        const formatted = `${prefix}${formatNumber(animatedValue.value)}${suffix}`;
-        return {
-            text: formatted,
-            value: formatted,
-        };
-    });
-
-    const initialFormatted = reduceMotion
-        ? `${prefix}${value.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, useGrouping ? ',' : '')}${suffix}`
-        : `${prefix}0${suffix}`;
+    const textValue = `${prefix}${formatted}${suffix}`;
 
     return (
-        <AnimatedTextInput
+        <TextInput
             editable={false}
             pointerEvents="none"
             style={[styles.textInput, style]}
-            animatedProps={animatedProps}
-            defaultValue={initialFormatted}
+            value={textValue}
+            defaultValue={textValue}
             {...props}
         />
     );
