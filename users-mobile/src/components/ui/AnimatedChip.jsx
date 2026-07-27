@@ -1,22 +1,12 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, Pressable } from 'react-native';
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withSpring,
-    withTiming,
-    interpolateColor,
-} from 'react-native-reanimated';
-import { reanimatedMotion } from '../../theme/reanimatedMotion';
+import React, { useEffect, useRef } from 'react';
+import { StyleSheet, Pressable, Animated } from 'react-native';
 import { HapticPatterns } from '../../utils/haptics';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function AnimatedChip({
     label,
     selected = false,
     onPress,
-    hapticType = 'selection', // 'selection' | 'none'
+    hapticType = 'selection',
     activeBg = '#FAF5FF',
     inactiveBg = '#FFFFFF',
     activeBorder = '#C084FC',
@@ -27,22 +17,33 @@ export default function AnimatedChip({
     textStyle,
     ...props
 }) {
-    const scale = useSharedValue(1);
-    const selectProgress = useSharedValue(selected ? 1 : 0);
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+    const selectAnim = useRef(new Animated.Value(selected ? 1 : 0)).current;
 
     useEffect(() => {
-        selectProgress.value = withTiming(
-            selected ? 1 : 0,
-            { duration: reanimatedMotion.durations.fast }
-        );
-    }, [selected, selectProgress]);
+        Animated.timing(selectAnim, {
+            toValue: selected ? 1 : 0,
+            duration: 150,
+            useNativeDriver: false,
+        }).start();
+    }, [selected, selectAnim]);
 
     const handlePressIn = () => {
-        scale.value = withSpring(0.96, reanimatedMotion.springs.snappy);
+        Animated.spring(scaleAnim, {
+            toValue: 0.96,
+            useNativeDriver: true,
+            speed: 20,
+            bounciness: 4,
+        }).start();
     };
 
     const handlePressOut = () => {
-        scale.value = withSpring(1, reanimatedMotion.springs.snappy);
+        Animated.spring(scaleAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+            speed: 20,
+            bounciness: 4,
+        }).start();
     };
 
     const handlePress = () => {
@@ -52,48 +53,44 @@ export default function AnimatedChip({
         if (onPress) onPress();
     };
 
-    const animatedStyle = useAnimatedStyle(() => {
-        const backgroundColor = interpolateColor(
-            selectProgress.value,
-            [0, 1],
-            [inactiveBg, activeBg]
-        );
-        const borderColor = interpolateColor(
-            selectProgress.value,
-            [0, 1],
-            [inactiveBorder, activeBorder]
-        );
-
-        return {
-            backgroundColor,
-            borderColor,
-            transform: [{ scale: scale.value }],
-        };
+    const backgroundColor = selectAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [inactiveBg, activeBg],
     });
 
-    const animatedTextStyle = useAnimatedStyle(() => {
-        const color = interpolateColor(
-            selectProgress.value,
-            [0, 1],
-            [inactiveText, activeText]
-        );
-        return {
-            color,
-        };
+    const borderColor = selectAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [inactiveBorder, activeBorder],
+    });
+
+    const textColor = selectAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [inactiveText, activeText],
     });
 
     return (
-        <AnimatedPressable
+        <Pressable
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
             onPress={handlePress}
-            style={[styles.chip, animatedStyle, style]}
             {...props}
         >
-            <Animated.Text style={[styles.labelText, animatedTextStyle, textStyle]}>
-                {label}
-            </Animated.Text>
-        </AnimatedPressable>
+            <Animated.View
+                style={[
+                    styles.chip,
+                    {
+                        backgroundColor,
+                        borderColor,
+                        transform: [{ scale: scaleAnim }],
+                    },
+                    style,
+                ]}
+            >
+                <Animated.Text style={[styles.labelText, { color: textColor }, textStyle]}>
+                    {label}
+                </Animated.Text>
+            </Animated.View>
+        </Pressable>
     );
 }
 

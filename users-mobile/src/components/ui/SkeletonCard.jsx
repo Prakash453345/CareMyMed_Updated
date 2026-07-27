@@ -1,51 +1,22 @@
-/**
- * CareMyMed — SkeletonCard
- *
- * Shimmer-based skeleton loader using Reanimated.
- * A horizontal gradient sweeps left-to-right continuously,
- * matching Apple's shimmer pattern.
- *
- * Usage:
- *   <SkeletonCard lines={3} hasCircle />
- *   <SkeletonCard hasChart />
- *   <SkeletonCard variant="briefing" />
- */
-
-import React, { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withRepeat,
-    withTiming,
-    interpolate,
-    Easing,
-} from 'react-native-reanimated';
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, Animated } from 'react-native';
 import { useMotion } from '../../theme/MotionProvider';
-
-const SHIMMER_DURATION = 1200;
 
 function ShimmerBlock({ width, height, borderRadius = 8, style }) {
     const { reduceMotion } = useMotion();
-    const shimmer = useSharedValue(0);
+    const animValue = useRef(new Animated.Value(0.3)).current;
 
     useEffect(() => {
-        if (reduceMotion) {
-            shimmer.value = 0;
-            return;
-        }
-        shimmer.value = withRepeat(
-            withTiming(1, { duration: SHIMMER_DURATION, easing: Easing.inOut(Easing.ease) }),
-            -1,
-            true
+        if (reduceMotion) return;
+        const loop = Animated.loop(
+            Animated.sequence([
+                Animated.timing(animValue, { toValue: 0.7, duration: 600, useNativeDriver: true }),
+                Animated.timing(animValue, { toValue: 0.3, duration: 600, useNativeDriver: true }),
+            ])
         );
-    }, [reduceMotion, shimmer]);
-
-    const animatedStyle = useAnimatedStyle(() => ({
-        opacity: reduceMotion
-            ? 0.5
-            : interpolate(shimmer.value, [0, 0.5, 1], [0.3, 0.7, 0.3]),
-    }));
+        loop.start();
+        return () => loop.stop();
+    }, [reduceMotion, animValue]);
 
     return (
         <Animated.View
@@ -55,8 +26,8 @@ function ShimmerBlock({ width, height, borderRadius = 8, style }) {
                     height,
                     borderRadius,
                     backgroundColor: '#E2E8F0',
+                    opacity: reduceMotion ? 0.5 : animValue,
                 },
-                animatedStyle,
                 style,
             ]}
         />

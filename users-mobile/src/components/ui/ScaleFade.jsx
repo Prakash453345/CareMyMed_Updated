@@ -1,39 +1,24 @@
-import React, { useEffect } from 'react';
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withSpring,
-} from 'react-native-reanimated';
-import { reanimatedMotion } from '../../theme/reanimatedMotion';
+import React, { useEffect, useRef } from 'react';
+import { Animated } from 'react-native';
 
-export default function ScaleFade({
-    children,
-    visible = true,
-    initialScale = 0.95,
-    style,
-}) {
-    const progress = useSharedValue(visible ? 1 : 0);
+export default function ScaleFade({ children, visible = true, initialScale = 0.92, duration = 200, style }) {
+    const animValue = useRef(new Animated.Value(visible ? 1 : 0)).current;
 
     useEffect(() => {
-        progress.value = withSpring(
-            visible ? 1 : 0,
-            reanimatedMotion.springs.default
-        );
-    }, [visible, progress]);
+        Animated.timing(animValue, {
+            toValue: visible ? 1 : 0,
+            duration,
+            useNativeDriver: true,
+        }).start();
+    }, [visible, duration, animValue]);
 
-    const animatedStyle = useAnimatedStyle(() => {
-        return {
-            opacity: progress.value,
-            transform: [
-                {
-                    scale: initialScale + (1 - initialScale) * progress.value,
-                },
-            ],
-        };
+    const scale = animValue.interpolate({
+        inputRange: [0, 1],
+        outputRange: [initialScale, 1],
     });
 
     return (
-        <Animated.View style={[style, animatedStyle]}>
+        <Animated.View style={[{ opacity: animValue, transform: [{ scale }] }, style]}>
             {children}
         </Animated.View>
     );

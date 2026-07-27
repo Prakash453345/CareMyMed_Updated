@@ -1,28 +1,8 @@
-/**
- * CareMyMed — ScalePressable
- *
- * Global wrapper that gives any touchable element spring-physics
- * tap feedback. Scales down to 0.96 on press, bounces back with
- * a snappy spring, and fires a selection haptic.
- *
- * Usage:
- *   <ScalePressable onPress={() => navigate('Details')}>
- *     <MyCard />
- *   </ScalePressable>
- */
-
-import React from 'react';
-import { Pressable } from 'react-native';
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withSpring,
-} from 'react-native-reanimated';
+import React, { useRef } from 'react';
+import { Pressable, Animated } from 'react-native';
 import { reanimatedMotion } from '../../theme/reanimatedMotion';
 import { useMotion } from '../../theme/MotionProvider';
 import { HapticPatterns } from '../../utils/haptics';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function ScalePressable({
     children,
@@ -36,20 +16,28 @@ export default function ScalePressable({
     ...props
 }) {
     const { reduceMotion } = useMotion();
-    const scale = useSharedValue(1);
+    const scaleAnim = useRef(new Animated.Value(1)).current;
 
-    const resolvedScale = pressScale ?? reanimatedMotion.scales.pressed;
+    const resolvedScale = pressScale ?? reanimatedMotion.scales?.pressed ?? 0.96;
 
     const handlePressIn = () => {
-        if (reduceMotion) {
-            scale.value = 1;
-            return;
-        }
-        scale.value = withSpring(resolvedScale, reanimatedMotion.springs.snappy);
+        if (reduceMotion) return;
+        Animated.spring(scaleAnim, {
+            toValue: resolvedScale,
+            useNativeDriver: true,
+            speed: 20,
+            bounciness: 4,
+        }).start();
     };
 
     const handlePressOut = () => {
-        scale.value = withSpring(1, reanimatedMotion.springs.snappy);
+        if (reduceMotion) return;
+        Animated.spring(scaleAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+            speed: 20,
+            bounciness: 4,
+        }).start();
     };
 
     const handlePress = () => {
@@ -60,21 +48,19 @@ export default function ScalePressable({
         if (onPress) onPress();
     };
 
-    const animatedStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: scale.value }],
-    }));
-
     return (
-        <AnimatedPressable
+        <Pressable
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
             onPress={handlePress}
             onLongPress={onLongPress}
             disabled={disabled}
-            style={[animatedStyle, style]}
+            style={style}
             {...props}
         >
-            {children}
-        </AnimatedPressable>
+            <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+                {children}
+            </Animated.View>
+        </Pressable>
     );
 }

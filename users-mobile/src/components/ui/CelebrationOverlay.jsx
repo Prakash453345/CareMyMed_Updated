@@ -1,13 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Dimensions } from 'react-native';
-import Reanimated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withDelay,
-  withSpring,
-  Easing,
-} from 'react-native-reanimated';
+import React, { useEffect, useState, useRef } from 'react';
+import { StyleSheet, View, Dimensions, Animated } from 'react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -15,32 +7,55 @@ const ConfettiParticle = ({ index }) => {
   const angle = (index * 10 + Math.random() * 8) * Math.PI / 180;
   const distance = 80 + Math.random() * 160;
   const destX = Math.cos(angle) * distance;
-  // Make particles travel upwards like a fireworks burst
   const destY = Math.sin(angle) * distance - (140 + Math.random() * 180);
-  
-  const scale = useSharedValue(0);
-  const tx = useSharedValue(0);
-  const ty = useSharedValue(0);
-  const rotation = useSharedValue(0);
-  const opacity = useSharedValue(1);
+
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const txAnim = useRef(new Animated.Value(0)).current;
+  const tyAnim = useRef(new Animated.Value(0)).current;
+  const rotationAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    scale.value = withTiming(1 + Math.random() * 0.6, { duration: 150 });
-    tx.value = withSpring(destX, { damping: 11, stiffness: 85 });
-    ty.value = withSpring(destY, { damping: 11, stiffness: 85 });
-    rotation.value = withTiming(360 + Math.random() * 720, { duration: 1600, easing: Easing.out(Easing.quad) });
-    opacity.value = withDelay(800, withTiming(0, { duration: 800 }));
+    Animated.timing(scaleAnim, {
+      toValue: 1 + Math.random() * 0.6,
+      duration: 150,
+      useNativeDriver: true,
+    }).start();
+
+    Animated.spring(txAnim, {
+      toValue: destX,
+      speed: 12,
+      bounciness: 6,
+      useNativeDriver: true,
+    }).start();
+
+    Animated.spring(tyAnim, {
+      toValue: destY,
+      speed: 12,
+      bounciness: 6,
+      useNativeDriver: true,
+    }).start();
+
+    Animated.timing(rotationAnim, {
+      toValue: 360 + Math.random() * 720,
+      duration: 1600,
+      useNativeDriver: true,
+    }).start();
+
+    Animated.sequence([
+      Animated.delay(800),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, [destX, destY]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: tx.value },
-      { translateY: ty.value },
-      { scale: scale.value },
-      { rotate: `${rotation.value}deg` },
-    ],
-    opacity: opacity.value,
-  }));
+  const rotate = rotationAnim.interpolate({
+    inputRange: [0, 1080],
+    outputRange: ['0deg', '1080deg'],
+  });
 
   const colors = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#8B5CF6', '#06B6D4'];
   const particleColor = colors[index % colors.length];
@@ -48,7 +63,7 @@ const ConfettiParticle = ({ index }) => {
   const isCircle = Math.random() > 0.5;
 
   return (
-    <Reanimated.View
+    <Animated.View
       style={[
         styles.particle,
         {
@@ -56,8 +71,14 @@ const ConfettiParticle = ({ index }) => {
           height: size,
           backgroundColor: particleColor,
           borderRadius: isCircle ? size / 2 : 2,
+          opacity: opacityAnim,
+          transform: [
+            { translateX: txAnim },
+            { translateY: tyAnim },
+            { scale: scaleAnim },
+            { rotate },
+          ],
         },
-        animatedStyle,
       ]}
     />
   );
@@ -83,7 +104,6 @@ export default function CelebrationOverlay({ active, onComplete }) {
 
   if (!show) return null;
 
-  // Generate 36 particles for a beautiful, full-circle fireworks burst
   const particles = Array.from({ length: 36 });
 
   return (
