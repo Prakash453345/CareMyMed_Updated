@@ -1,7 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import { Navigation, ChevronRight, CheckCircle2, Pill, Heart, AlertTriangle } from 'lucide-react-native';
-import { colors, radius, FONT } from '../../theme';
+import { colors, radius } from '../../theme';
+
+const FONT = {
+    medium: { fontFamily: 'Inter_500Medium' },
+    semibold: { fontFamily: 'Inter_600SemiBold' },
+    bold: { fontFamily: 'Inter_700Bold' },
+    heavy: { fontFamily: 'Inter_800ExtraBold' },
+};
 
 export default function TurnByTurnBanner({
     stepTitle = 'Next Step',
