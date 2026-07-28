@@ -257,7 +257,22 @@ export function AuthProvider({ children }) {
                         }
                     }
 
-                    const profileRes = await apiService.auth.getProfile().catch(() => ({ data: null }));
+                    let profileRes = null;
+                    let isUnauthorized = false;
+                    try {
+                        profileRes = await apiService.auth.getProfile();
+                    } catch (err) {
+                        if (err.response?.status === 401 || err.response?.status === 403) {
+                            isUnauthorized = true;
+                        }
+                    }
+
+                    if (isUnauthorized) {
+                        if (__DEV__) console.warn('[Auth] Background profile refresh returned 401/403. Session expired. Signing out...');
+                        await signOut();
+                        return;
+                    }
+
                     const resolvedRole = profileRes?.data?.profile?.role;
                     // Only fetch patient data for patient roles — companions get a 403 from /patients/me
                     if (resolvedRole !== 'companion') {
