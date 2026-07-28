@@ -1067,6 +1067,22 @@ export default function ChatbotScreen({ navigation, route }) {
         }
     }, [route.params, handleSend]);
 
+    // Helper to safely stop and unload audio recording without unhandled promise rejections
+    const safeStopAndUnload = async (rec) => {
+        if (!rec) return null;
+        try {
+            const status = await rec.getStatusAsync().catch(() => null);
+            let uri = null;
+            try { uri = rec.getURI(); } catch (e) {}
+            if (status && (status.isRecording || status.isLoaded)) {
+                await rec.stopAndUnloadAsync().catch(() => {});
+            }
+            return uri;
+        } catch (e) {
+            return null;
+        }
+    };
+
     // Cleanup audio and abort active stream on unmount
     useEffect(() => {
         const subscription = AppState.addEventListener('change', nextAppState => {
@@ -1078,7 +1094,7 @@ export default function ChatbotScreen({ navigation, route }) {
         return () => {
             subscription.remove();
             if (recording) {
-                recording.stopAndUnloadAsync();
+                safeStopAndUnload(recording);
             }
             // Abort any in-flight SSE stream when leaving screen
             if (xhrRef.current) {
@@ -1326,13 +1342,17 @@ export default function ChatbotScreen({ navigation, route }) {
         }
 
         const isAudioMsg = recordingModeRef.current !== 'idle' || !!audioUri;
-        const currentRecordingUri = isAudioMsg ? (audioUri || recording?.getURI()) : null;
+        let currentRecordingUri = isAudioMsg ? audioUri : null;
 
         if (recording) {
-            await recording.stopAndUnloadAsync();
+            const currentRec = recording;
             setRecording(null);
             setRecMode('idle');
             setCancelMode(false);
+            const uri = await safeStopAndUnload(currentRec);
+            if (!currentRecordingUri && uri) {
+                currentRecordingUri = uri;
+            }
         }
 
         const userMessage = { 
@@ -1571,32 +1591,30 @@ export default function ChatbotScreen({ navigation, route }) {
 
     const stopRecordingAndSend = async () => {
         if (!recording) return;
+        const currentRec = recording;
+        setRecording(null);
+        setRecMode('idle');
         try {
-            setRecMode('idle');
-            await recording.stopAndUnloadAsync();
-            const uri = recording.getURI();
-            setRecording(null);
-            
+            const uri = await safeStopAndUnload(currentRec);
             if (uri) {
                 handleSend('', null, uri);
             }
         } catch (err) {
             console.error('Failed to stop recording', err);
-            setRecording(null);
         }
     };
 
     const cancelRecording = async () => {
         if (!recording) return;
+        const currentRec = recording;
+        setRecording(null);
+        setRecMode('idle');
+        setCancelMode(false);
         try {
-            setRecMode('idle');
-            setCancelMode(false);
-            await recording.stopAndUnloadAsync();
-            setRecording(null);
+            await safeStopAndUnload(currentRec);
             Vibration.vibrate([0, 50, 50, 50]); // Quick buzz to indicate cancelled
         } catch (err) {
             console.error('Failed to cancel recording', err);
-            setRecording(null);
         }
     };
 
