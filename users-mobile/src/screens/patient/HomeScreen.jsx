@@ -2085,15 +2085,38 @@ export default function PatientHomeScreen({ navigation }) {
               </Text>
               <ChevronRight size={16} color="#C084FC" />
             </Pressable>
-            <TouchableOpacity
-              activeOpacity={0.85}
-              style={styles.stickyAvatarBtn}
-              onPress={() => navigation.navigate("Profile")}
-            >
-              <Text style={styles.avatarText}>
-                {displayName?.charAt(0) || "U"}
-              </Text>
-            </TouchableOpacity>
+
+            <View style={styles.stickyHeaderActions}>
+              <Pressable
+                style={styles.stickyHeaderIconBtn}
+                onPress={() => {
+                  triggerHapticSelection();
+                  scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+                  setShowVitalsTour(true);
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <HelpCircle size={18} color="#C084FC" strokeWidth={2.5} />
+              </Pressable>
+              <Pressable
+                style={styles.stickyHeaderIconBtn}
+                onPress={() => navigation.navigate("Notifications")}
+              >
+                <Bell size={18} color="#94A3B8" strokeWidth={2.5} />
+                {(unreadCount > 0 || hasContextualAlerts) && (
+                  <View style={styles.bellDot} />
+                )}
+              </Pressable>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={styles.stickyAvatarBtn}
+                onPress={() => navigation.navigate("Profile")}
+              >
+                <Text style={styles.avatarText}>
+                  {displayName?.charAt(0) || "U"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </Animated.View>
 
           {/* ── HEADER ── */}
@@ -5051,6 +5074,19 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: "#7C3AED",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stickyHeaderActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  stickyHeaderIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
     alignItems: "center",
     justifyContent: "center",
   },
