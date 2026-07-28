@@ -214,7 +214,13 @@ const PremiumFormModal = ({
             </TouchableWithoutFeedback>
 
             <View
-                style={[styles.sheetWrapper, centered ? { paddingHorizontal: 20 } : { paddingHorizontal: 0 }, centered && styles.sheetWrapperCentered]}
+                style={[
+                    styles.sheetWrapper,
+                    centered ? { paddingHorizontal: 20 } : { paddingHorizontal: 0 },
+                    centered && styles.sheetWrapperCentered,
+                    !centered && keyboardHeight > 0 && { paddingBottom: keyboardHeight },
+                    centered && keyboardHeight > 0 && { paddingBottom: keyboardHeight / 2 }
+                ]}
                 pointerEvents="box-none"
             >
               <Animated.View
@@ -242,12 +248,11 @@ const PremiumFormModal = ({
                 <View style={[
                     styles.sheetContainer,
                     centered && styles.sheetContainerCentered,
-                    androidKeyboardPad > 0 && { maxHeight: SCREEN_HEIGHT - androidKeyboardPad - 40 }
+                    keyboardHeight > 0 && { maxHeight: Math.max(280, SCREEN_HEIGHT - keyboardHeight - 50) }
                 ]}>
                     <KeyboardAvoidingView
                         style={{ flex: 1 }}
                         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
                     >
                         {/* Top drag handle indicator for bottom sheets */}
                         {!centered && (

@@ -1656,82 +1656,73 @@ export default function PatientProfileScreen({ navigation }) {
             </Modal>
 
             {/* ── Add Address ── */}
-            <Modal visible={addAddressModalVisible} animationType="slide" transparent onRequestClose={() => { setAddAddressModalVisible(false); setAddrErrors({}); }}>
-                <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-                    <View style={s.modalOverlay}>
-                        <View style={[s.modalContent, { padding: 0 }]}>
-                            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
-                                <View style={s.modalHeader}>
-                                    <Text style={s.modalTitle}>{t('profile.add_address', { defaultValue: 'Add Address' })}</Text>
-                                    <Pressable onPress={() => { setAddAddressModalVisible(false); setAddrErrors({}); }} hitSlop={10}><X size={24} color="#64748B" /></Pressable>
-                                </View>
+            <PremiumFormModal
+                visible={addAddressModalVisible}
+                title={t('profile.add_address', { defaultValue: 'Add Address' })}
+                subtitle="Add location for medicine deliveries & caregiver visits"
+                icon={<MapPin size={20} color="#3B82F6" strokeWidth={2.5} />}
+                onClose={() => { setAddAddressModalVisible(false); setAddrErrors({}); }}
+                onSave={handleAddAddress}
+                saveText={saving ? t('common.saving', { defaultValue: 'Saving...' }) : t('profile.save_address', { defaultValue: 'Save Address' })}
+                saving={saving}
+            >
+                {/* Label chips */}
+                <Text style={s.inputLabel}>{t('profile.label', { defaultValue: 'Label' })}</Text>
+                <View style={s.labelRow}>
+                    {[t('profile.home', { defaultValue: 'Home' }), t('profile.office', { defaultValue: 'Office' }), t('profile.family', { defaultValue: 'Family' }), t('profile.other', { defaultValue: 'Other' })].map((l, i) => {
+                        const actualLabels = ['Home', 'Office', 'Family', 'Other'];
+                        const key = actualLabels[i];
+                        return (
+                            <Pressable key={key} style={[s.labelChip, addrLabel === key && s.labelChipActive]} onPress={() => setAddrLabel(key)}>
+                                <Text style={[s.labelChipTxt, addrLabel === key && s.labelChipTxtActive]}>{l}</Text>
+                            </Pressable>
+                        );
+                    })}
+                </View>
 
-                                {/* Label chips */}
-                                <Text style={s.inputLabel}>{t('profile.label', { defaultValue: 'Label' })}</Text>
-                                <View style={s.labelRow}>
-                                    {[t('profile.home', { defaultValue: 'Home' }), t('profile.office', { defaultValue: 'Office' }), t('profile.family', { defaultValue: 'Family' }), t('profile.other', { defaultValue: 'Other' })].map((l, i) => {
-                                        const actualLabels = ['Home', 'Office', 'Family', 'Other'];
-                                        const key = actualLabels[i];
-                                        return (
-                                            <Pressable key={key} style={[s.labelChip, addrLabel === key && s.labelChipActive]} onPress={() => setAddrLabel(key)}>
-                                                <Text style={[s.labelChipTxt, addrLabel === key && s.labelChipTxtActive]}>{l}</Text>
-                                            </Pressable>
-                                        );
-                                    })}
-                                </View>
+                {/* Full address */}
+                <SmartInput
+                    label={t('profile.full_address', { defaultValue: 'Full Address *' })}
+                    value={addrLine}
+                    onChangeText={(v) => { setAddrLine(v); if (addrErrors.addrLine) setAddrErrors(e => ({ ...e, addrLine: null })); }}
+                    placeholder={t('profile.full_address_placeholder', { defaultValue: 'e.g. 12-4-82, Flat 301, Banjara Hills' })}
+                    error={addrErrors.addrLine}
+                />
+                {addrErrors.addrLine ? <Text style={s.fieldError}>{addrErrors.addrLine}</Text> : null}
 
-                                {/* Full address */}
-                                <SmartInput
-                                    label={t('profile.full_address', { defaultValue: 'Full Address *' })}
-                                    value={addrLine}
-                                    onChangeText={(v) => { setAddrLine(v); if (addrErrors.addrLine) setAddrErrors(e => ({ ...e, addrLine: null })); }}
-                                    placeholder={t('profile.full_address_placeholder', { defaultValue: 'e.g. 12-4-82, Flat 301, Banjara Hills' })}
-                                    error={addrErrors.addrLine}
-                                />
-                                {addrErrors.addrLine ? <Text style={s.fieldError}>{addrErrors.addrLine}</Text> : null}
-
-                                {/* City + State side by side */}
-                                <View style={s.addrRow}>
-                                    <View style={s.addrCol}>
-                                        <SmartInput
-                                            label={t('common.city', { defaultValue: 'City *' })}
-                                            value={addrCity}
-                                            onChangeText={(v) => { setAddrCity(v); if (addrErrors.addrCity) setAddrErrors(e => ({ ...e, addrCity: null })); }}
-                                            placeholder="Hyderabad"
-                                            error={addrErrors.addrCity}
-                                        />
-                                        {addrErrors.addrCity ? <Text style={s.fieldError}>{addrErrors.addrCity}</Text> : null}
-                                    </View>
-                                    <View style={s.addrCol}>
-                                        <SmartInput
-                                            label={t('common.state', { defaultValue: 'State' })}
-                                            value={addrState}
-                                            onChangeText={setAddrState}
-                                            placeholder="Telangana"
-                                        />
-                                    </View>
-                                </View>
-
-                                {/* Postcode */}
-                                <SmartInput
-                                    label={t('common.postcode', { defaultValue: 'Postcode' })}
-                                    value={addrPostcode}
-                                    onChangeText={(v) => { setAddrPostcode(v.replace(/[^0-9]/g, '')); if (addrErrors.addrPostcode) setAddrErrors(e => ({ ...e, addrPostcode: null })); }}
-                                    placeholder="500034"
-                                    keyboardType="number-pad"
-                                    maxLength={6}
-                                />
-                                {addrErrors.addrPostcode ? <Text style={s.fieldError}>{addrErrors.addrPostcode}</Text> : null}
-
-                                <Pressable style={[s.saveBtn, { marginTop: 20 }]} onPress={handleAddAddress} disabled={saving}>
-                                    <Save size={18} color="#FFFFFF" />
-                                    <Text style={s.saveBtnTxt}>{saving ? t('common.saving', { defaultValue: 'Saving...' }) : t('profile.save_address', { defaultValue: 'Save Address' })}</Text>
-                                </Pressable>
-                            </ScrollView>
-                        </View>
+                {/* City + State side by side */}
+                <View style={s.addrRow}>
+                    <View style={s.addrCol}>
+                        <SmartInput
+                            label={t('common.city', { defaultValue: 'City *' })}
+                            value={addrCity}
+                            onChangeText={(v) => { setAddrCity(v); if (addrErrors.addrCity) setAddrErrors(e => ({ ...e, addrCity: null })); }}
+                            placeholder="Hyderabad"
+                            error={addrErrors.addrCity}
+                        />
+                        {addrErrors.addrCity ? <Text style={s.fieldError}>{addrErrors.addrCity}</Text> : null}
                     </View>
-                </KeyboardAvoidingView>
-            </Modal>
+                    <View style={s.addrCol}>
+                        <SmartInput
+                            label={t('common.state', { defaultValue: 'State' })}
+                            value={addrState}
+                            onChangeText={setAddrState}
+                            placeholder="Telangana"
+                        />
+                    </View>
+                </View>
+
+                {/* Postcode */}
+                <SmartInput
+                    label={t('common.postcode', { defaultValue: 'Postcode' })}
+                    value={addrPostcode}
+                    onChangeText={(v) => { setAddrPostcode(v.replace(/[^0-9]/g, '')); if (addrErrors.addrPostcode) setAddrErrors(e => ({ ...e, addrPostcode: null })); }}
+                    placeholder="500034"
+                    keyboardType="number-pad"
+                    maxLength={6}
+                />
+                {addrErrors.addrPostcode ? <Text style={s.fieldError}>{addrErrors.addrPostcode}</Text> : null}
+            </PremiumFormModal>
 
             {/* ── Family Profiles ── */}
             <Modal visible={familyModalVisible} animationType="slide" transparent onRequestClose={() => { setFamilyModalVisible(false); setInviteCode(null); }}>
