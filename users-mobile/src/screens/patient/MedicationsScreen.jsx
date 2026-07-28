@@ -22,9 +22,16 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from 'expo-haptics';
 import PremiumFormModal from "../../components/ui/PremiumFormModal";
 import CelebrationOverlay from "../../components/ui/CelebrationOverlay";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const triggerHapticSelection = async () => {
+  try {
+    await Haptics.selectionAsync();
+  } catch (e) {}
+};
 import {
   Pill,
   Sunrise,

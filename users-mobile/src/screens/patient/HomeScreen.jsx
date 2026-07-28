@@ -24,10 +24,17 @@ import {
   RefreshControl,
   Alert,
 } from "react-native";
+import * as Haptics from 'expo-haptics';
 import { getStreakState } from "../../utils/streakHelper";
 import StreakCompanion from "../../components/ui/StreakCompanion";
 import CelebrationOverlay from "../../components/ui/CelebrationOverlay";
 import { LinearGradient } from "expo-linear-gradient";
+
+const triggerHapticSelection = async () => {
+  try {
+    await Haptics.selectionAsync();
+  } catch (e) {}
+};
 import {
   Pill,
   Sparkles,
