@@ -920,10 +920,10 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
         !isSmall && {
           width: itemWidth,
           height: 154,
-          backgroundColor: data.unlocked ? "#FFFFFF" : "rgba(248, 250, 252, 0.8)",
+          backgroundColor: data.unlocked ? "#FFFFFF" : "#F8FAFC",
           borderRadius: 22,
-          borderWidth: 1.2,
-          borderColor: data.unlocked ? tierColor + "30" : "rgba(226, 232, 240, 0.4)",
+          borderWidth: 1,
+          borderColor: data.unlocked ? tierColor + "40" : "rgba(226, 232, 240, 0.7)",
           paddingVertical: 12,
           paddingHorizontal: 6,
           alignItems: "center",
@@ -2833,25 +2833,26 @@ export default function AdherenceScreen({ navigation }) {
                       marginBottom: 20,
                       backgroundColor: "#FFFFFF",
                       borderRadius: 24,
+                      borderWidth: 1,
+                      borderColor: catConfig.accent[0] + "1E",
                       shadowColor: "#0F172A",
                       shadowOffset: { width: 0, height: 6 },
-                      shadowOpacity: 0.05,
+                      shadowOpacity: 0.04,
                       shadowRadius: 16,
-                      elevation: 3,
+                      elevation: 4,
                       overflow: "hidden",
                     }}
                   >
                     <LinearGradient
                       colors={[
                         "#FFFFFF",
-                        catConfig.accent[0] + "04",
-                        catConfig.accent[0] + "0D",
+                        catConfig.accent[0] + "03",
+                        catConfig.accent[0] + "0B",
                       ]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={{ padding: 20 }}
                     >
-
                       {/* Watermark/Vector Decor in Corner */}
                       <Svg
                         pointerEvents="none"
