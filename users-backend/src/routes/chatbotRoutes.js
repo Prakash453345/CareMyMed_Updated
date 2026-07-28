@@ -17,11 +17,11 @@ const AIChatSession = require('../models/AIChatSession');
 
 const PYTHON_API = process.env.PYTHON_API || 'http://localhost:8000';
 
-// Configure Multer for in-memory storage and strict filtering
+// Configure Multer for in-memory storage and strict filtering (audio + image attachments)
 const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter: (req, file, cb) => {
-    const allowed = [
+    const allowedAudio = [
       'audio/m4a',
       'audio/mp4',
       'audio/mpeg',
@@ -29,12 +29,18 @@ const upload = multer({
       'audio/x-m4a',
       'audio/aac',
     ];
-    if (allowed.includes(file.mimetype)) {
+    const allowedImages = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+    ];
+    if (allowedAudio.includes(file.mimetype) || allowedImages.includes(file.mimetype)) {
       cb(null, true);
     } else {
       cb(
         new Error(
-          `Invalid file type: ${file.mimetype}. Only audio files are allowed.`
+          `Invalid file type: ${file.mimetype}. Allowed: audio (m4a, mp3, aac) and images (jpeg, png, webp).`
         )
       );
     }
@@ -237,7 +243,7 @@ router.post(
   aiChatRateLimiter,
   aiChatIpRateLimiter,
   aiChatPatientRateLimiter,
-  upload.single('audio'),
+  upload.fields([{ name: 'audio', maxCount: 1 }, { name: 'image', maxCount: 1 }]),
   async (req, res) => {
     let patientId = null;
     let sessionId = req.body.sessionId;
@@ -259,20 +265,23 @@ router.post(
           );
       }
 
-      let extractedQuery = query;
+      const audioFile = req.files?.audio?.[0] || (req.file?.fieldname === 'audio' ? req.file : null);
+      const imageFile = req.files?.image?.[0] || (req.file?.fieldname === 'image' ? req.file : null);
+
+      let extractedQuery = (query || '').trim();
       let transcribedText = null;
 
       // 1. Audio Proxy Phase (STT) — runs BEFORE we open the SSE stream
-      if (req.file) {
+      if (audioFile) {
         console.log(
-          `[ChatbotRoute] Received audio file: ${req.file.originalname} (${req.file.mimetype})`
+          `[ChatbotRoute] Received audio file: ${audioFile.originalname} (${audioFile.mimetype})`
         );
 
         try {
           const internalForm = new FormData();
-          internalForm.append('audio_file', req.file.buffer, {
-            filename: req.file.originalname || 'voice_note.m4a',
-            contentType: req.file.mimetype,
+          internalForm.append('audio_file', audioFile.buffer, {
+            filename: audioFile.originalname || 'voice_note.m4a',
+            contentType: audioFile.mimetype,
           });
 
           console.log(`[ChatbotRoute] Proxying audio to Python STT Service...`);
@@ -316,14 +325,62 @@ router.post(
         }
       }
 
-      // 2. Validate query
+      // 2. Vision AI / Image Attachment Phase
+      if (imageFile) {
+        console.log(
+          `[ChatbotRoute] Received medical image attachment: ${imageFile.originalname} (${imageFile.mimetype}, ${imageFile.size} bytes)`
+        );
+
+        let visionContextText = '';
+        let docClassification = 'General Medical Document';
+
+        try {
+          // Attempt to proxy to Python Vision AI endpoint
+          const visionForm = new FormData();
+          visionForm.append('image_file', imageFile.buffer, {
+            filename: imageFile.originalname || 'medical_image.jpg',
+            contentType: imageFile.mimetype,
+          });
+
+          console.log(`[ChatbotRoute] Proxying image to Python Vision AI Service...`);
+          const visionRes = await axios.post(
+            `${PYTHON_API}/analyze-vision`,
+            visionForm,
+            {
+              headers: { ...visionForm.getHeaders() },
+              timeout: 25000,
+            }
+          );
+
+          if (visionRes.data && visionRes.data.extractedText) {
+            visionContextText = visionRes.data.extractedText;
+            docClassification = visionRes.data.classification || docClassification;
+          }
+        } catch (visionErr) {
+          console.warn(`[ChatbotRoute] Python Vision service offline/fallback:`, visionErr.message);
+          // Fallback metadata context
+          visionContextText = `Medical image uploaded (${imageFile.originalname}).`;
+        }
+
+        const userCaption = extractedQuery;
+        const structuredContext = [
+          `[SYSTEM: ATTACHED MEDICAL DOCUMENT]`,
+          `Document Classification: ${docClassification}`,
+          `Extracted Information:\n${visionContextText}`,
+          `User Caption / Question: ${userCaption || 'Please analyze this medical document and explain its key details.'}`
+        ].join('\n\n');
+
+        extractedQuery = structuredContext;
+      }
+
+      // 3. Validate query
       if (!extractedQuery) {
         return res
           .status(400)
           .json(
             buildErrorResponse(
               'validation',
-              'Neither audio nor text query was provided.'
+              'Neither audio, image, nor text query was provided.'
             )
           );
       }

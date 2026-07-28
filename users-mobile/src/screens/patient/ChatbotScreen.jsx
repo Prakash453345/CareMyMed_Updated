@@ -887,6 +887,9 @@ export default function ChatbotScreen({ navigation, route }) {
     const [isStreaming, setIsStreaming] = useState(false);
     const [typingStages, setTypingStages] = useState(['🧠 Understanding...', '💬 Preparing response...']);
     
+    // Attachments pipeline state
+    const [attachments, setAttachments] = useState([]);
+
     // Follow-up suggestions from the last bot response
     const [followUpSuggestions, setFollowUpSuggestions] = useState([]);
     
@@ -1099,7 +1102,7 @@ export default function ChatbotScreen({ navigation, route }) {
     }, [isTyping, typingStages]);
 
     // ── SSE Streaming API Integration ────────────
-    const streamFromBackend = (userMsg, botMessageId, isAudio = false, recordingUri = null, currentSessionId) => {
+    const streamFromBackend = (userMsg, botMessageId, isAudio = false, recordingUri = null, currentSessionId = null, imageAttachment = null) => {
         return new Promise(async (resolve, reject) => {
             try {
                 // Abort any previous in-flight stream
@@ -1127,6 +1130,15 @@ export default function ChatbotScreen({ navigation, route }) {
                     formData.append('sessionId', currentSessionId);
                 }
 
+                if (imageAttachment) {
+                    setTypingStage('📷 Analyzing image...');
+                    formData.append('image', {
+                        uri: imageAttachment.uri,
+                        type: imageAttachment.mime || 'image/jpeg',
+                        name: imageAttachment.name || 'medical_image.jpg'
+                    });
+                }
+
                 if (isAudio && recordingUri) {
                     setTypingStage('📝 Transcribing...');
                     const extension = Platform.OS === 'ios' ? 'm4a' : 'm4a';
@@ -1136,7 +1148,9 @@ export default function ChatbotScreen({ navigation, route }) {
                         name: `voice_note.${extension}`
                     });
                 } else {
-                    setTypingStage('🧠 Thinking...');
+                    if (!imageAttachment) {
+                        setTypingStage('🧠 Thinking...');
+                    }
                     let finalQuery = userMsg;
                     const healthContext = route.params?.healthContext;
                     if (healthContext && userMsg === route.params?.initialMessage) {
@@ -1271,8 +1285,12 @@ export default function ChatbotScreen({ navigation, route }) {
     };
 
     const handleSend = useCallback(async (text, imageUri = null, audioUri = null) => {
+        const activeAttachment = attachments[0] || (imageUri ? { uri: imageUri, mime: 'image/jpeg', name: 'medical_image.jpg' } : null);
         const msg = (text || inputText).trim();
-        if (!msg && !imageUri && !audioUri && !recording) return;
+        if (!msg && !activeAttachment && !audioUri && !recording) return;
+
+        // Clear attachments preview bar immediately
+        setAttachments([]);
 
         // Zero-latency Client-side Emergency Interception
         const lowerText = msg.toLowerCase();
@@ -1283,7 +1301,7 @@ export default function ChatbotScreen({ navigation, route }) {
         ];
         const isEmergency = emergencyKeywords.some(keyword => lowerText.includes(keyword));
 
-        if (isEmergency && !imageUri && !audioUri) {
+        if (isEmergency && !activeAttachment && !audioUri) {
             const userMessage = { 
                 id: Date.now().toString(), 
                 text: msg, 
@@ -1320,7 +1338,7 @@ export default function ChatbotScreen({ navigation, route }) {
         const userMessage = { 
             id: Date.now().toString(), 
             text: isAudioMsg ? '' : msg, 
-            image: imageUri,
+            image: activeAttachment ? activeAttachment.uri : null,
             audio: currentRecordingUri,
             isUser: true, 
             timestamp: Date.now() 
@@ -1342,7 +1360,10 @@ export default function ChatbotScreen({ navigation, route }) {
         let initialStage = '🧠 Understanding...';
         let customStages = ['🧠 Understanding...', '💬 Preparing response...'];
 
-        if (isAudioMsg) {
+        if (activeAttachment) {
+            initialStage = '📷 Analyzing image...';
+            customStages = ['📷 Analyzing image...', '🩺 Classifying medical document...', '🧠 Extracting details...', '💬 Drafting guidance...'];
+        } else if (isAudioMsg) {
             initialStage = '🎤 Listening...';
             customStages = ['🎤 Listening...', '📝 Transcribing...', '🧠 Understanding...', '💬 Preparing response...'];
         } else {
@@ -1392,7 +1413,7 @@ export default function ChatbotScreen({ navigation, route }) {
                 }
             }
 
-            await streamFromBackend(msg, botMessageId, isAudioMsg, currentRecordingUri, currentSessionId);
+            await streamFromBackend(msg, botMessageId, isAudioMsg, currentRecordingUri, currentSessionId, activeAttachment);
         } catch (error) {
             setMessages(prev =>
                 prev.map(m =>
@@ -1511,7 +1532,14 @@ export default function ChatbotScreen({ navigation, route }) {
             });
 
             if (!result.canceled && result.assets && result.assets[0]) {
-                handleSend('', result.assets[0].uri);
+                const asset = result.assets[0];
+                setAttachments([{
+                    id: Date.now().toString(),
+                    type: 'image',
+                    uri: asset.uri,
+                    name: asset.fileName || 'medical_image.jpg',
+                    mime: asset.mimeType || 'image/jpeg'
+                }]);
             }
         } catch (error) {
             console.warn('Image picker error:', error);
@@ -1737,17 +1765,33 @@ export default function ChatbotScreen({ navigation, route }) {
                     }
                 />
 
+                {/* ── Attachment Preview Bar ── */}
+                {attachments.length > 0 && (
+                    <View style={styles.attachmentBar}>
+                        <View style={styles.attachmentCard}>
+                            <Image source={{ uri: attachments[0].uri }} style={styles.attachmentThumb} />
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.attachmentTitle} numberOfLines={1}>{attachments[0].name || 'Medical Attachment'}</Text>
+                                <Text style={styles.attachmentSub}>Ready to send • Add caption below</Text>
+                            </View>
+                            <Pressable onPress={() => setAttachments([])} style={styles.removeAttachmentBtn} hitSlop={10}>
+                                <X size={16} color="#64748B" />
+                            </Pressable>
+                        </View>
+                    </View>
+                )}
+
                 {/* ── Input bar ── */}
-                <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+                <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom + 8, 20) }]}>
                     {recordingMode === 'idle' ? (
                         <>
                             <Pressable style={styles.inputAction} onPress={handlePickImage}>
-                                <Paperclip size={20} color="#94A3B8" strokeWidth={2} />
+                                <Paperclip size={20} color={attachments.length > 0 ? "#6366F1" : "#94A3B8"} strokeWidth={2} />
                             </Pressable>
                             <View style={styles.inputWrapper}>
                                 <TextInput
                                     style={styles.textInput}
-                                    placeholder="Type your message..."
+                                    placeholder={attachments.length > 0 ? "Add optional caption..." : "Type your message..."}
                                     placeholderTextColor="#94A3B8"
                                     value={inputText}
                                     onChangeText={setInputText}
@@ -1765,7 +1809,7 @@ export default function ChatbotScreen({ navigation, route }) {
                                 <>
                                     <View style={styles.recordingRow}>
                                         <View style={styles.recordingDotPulse} />
-                                        <Text style={styles.recordingText}>Recording...</Text>
+                                        <Text style={styles.recordingText}>Recording voice note...</Text>
                                     </View>
                                     <Pressable style={styles.cancelRecordingBtn} onPress={cancelRecording}>
                                         <Text style={styles.cancelRecordingTxt}>Cancel</Text>
@@ -1776,10 +1820,10 @@ export default function ChatbotScreen({ navigation, route }) {
                                     <View style={styles.recordingRow}>
                                         <View style={[styles.recordingDotPulse, isCancelling && { backgroundColor: '#EF4444' }]} />
                                         <Text style={[styles.recordingText, isCancelling && { color: '#EF4444' }]}>
-                                            {isCancelling ? 'Release to cancel' : 'Slide up to lock ⬆️'}
+                                            {isCancelling ? 'Release to cancel 🗑️' : 'Hold to speak • Slide up 🔒'}
                                         </Text>
                                     </View>
-                                    <Text style={{ color: '#94A3B8', fontSize: 13, marginRight: 50 }}>Slide left to cancel ⬅️</Text>
+                                    <Text style={{ color: '#94A3B8', fontSize: 12, marginRight: 44 }}>Slide left ⬅️</Text>
                                 </>
                             )}
                         </View>
@@ -1792,7 +1836,7 @@ export default function ChatbotScreen({ navigation, route }) {
                                 <Square size={14} color="#FFF" fill="#FFF" />
                             </LinearGradient>
                         </Pressable>
-                    ) : inputText.trim().length > 0 ? (
+                    ) : (inputText.trim().length > 0 || attachments.length > 0) ? (
                         <Pressable style={styles.sendBtn} onPress={() => handleSend()}>
                             <LinearGradient colors={['#818CF8', '#4F46E5']} style={styles.sendGradient}>
                                 <Send size={18} color="#FFF" strokeWidth={2.5} />
@@ -2103,6 +2147,24 @@ const styles = StyleSheet.create({
         borderRadius: 16, paddingHorizontal: 12, paddingVertical: 7,
     },
     followUpText: { fontSize: 12, fontWeight: '600', color: '#4338CA' },
+
+    // ── Attachments Bar ──
+    attachmentBar: {
+        paddingHorizontal: 12, paddingTop: 8, paddingBottom: 4,
+        backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#F1F5F9',
+    },
+    attachmentCard: {
+        flexDirection: 'row', alignItems: 'center', gap: 10,
+        backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0',
+        borderRadius: 14, padding: 8,
+    },
+    attachmentThumb: { width: 44, height: 44, borderRadius: 8, backgroundColor: '#CBD5E1' },
+    attachmentTitle: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
+    attachmentSub: { fontSize: 11, fontWeight: '500', color: '#64748B', marginTop: 1 },
+    removeAttachmentBtn: {
+        width: 28, height: 28, borderRadius: 14,
+        backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center',
+    },
 
     // ── Input bar ──
     inputBar: {
