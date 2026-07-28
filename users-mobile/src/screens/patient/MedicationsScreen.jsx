@@ -2886,7 +2886,7 @@ export default function MedicationsScreen({ navigation, route }) {
                   <View style={{ marginTop: 8 }}>
                     <Text style={[styles.sectionLabel, { marginBottom: 12 }]}>
                       {t("medications.uploaded_prescriptions", {
-                        defaultValue: "UPLOADED PRESCRIPTIONS",
+                        defaultValue: "UPLOADED RX DOCUMENTS",
                       })}
                     </Text>
                     {[...(patient?.uploaded_prescriptions || [])]
@@ -3794,10 +3794,10 @@ function UploadRow({ upload, number }) {
             {number
               ? t("medications.prescription_number", {
                   number,
-                  defaultValue: `Prescription #${number}`,
+                  defaultValue: `Rx Document #${number}`,
                 })
               : t("medications.prescription_slip", {
-                  defaultValue: "Prescription",
+                  defaultValue: "Rx Document",
                 })}
           </Text>
           <Text style={styles.uploadDate}>

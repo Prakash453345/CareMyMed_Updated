@@ -642,12 +642,12 @@
     "caregiver_discuss": "Your caregiver will discuss meds on your next call.",
     "request_sent": "Request Sent!",
     "request_caregiver_review": "Request Caregiver Review",
-    "upload_prescription": "Upload Prescription",
+    "upload_prescription": "Upload Rx Document",
     "recent_uploads": "RECENT UPLOADS",
     "caregiver_review_next_call": "Your caregiver will review your meds on the next call.",
     "request_med_review": "Request Medication Review",
-    "upload_new_prescription": "Upload New Prescription",
-    "uploaded_prescriptions": "UPLOADED PRESCRIPTIONS",
+    "upload_new_prescription": "Upload New Rx Document",
+    "uploaded_prescriptions": "UPLOADED RX DOCUMENTS",
     "doctors_slip": "Doctor's Slip",
     "call_preferences": "Call Preferences",
     "save_prefs": "Save Preferences",
@@ -655,8 +655,8 @@
     "confirm_intake": "Confirm Intake",
     "have_you_taken": "Have you taken\n",
     "yes_i_took_it": "Yes, I took it!",
-    "prescription_slip": "Prescription",
-    "prescription_number": "Prescription #{{number}}"
+    "prescription_slip": "Rx Document",
+    "prescription_number": "Rx Document #{{number}}"
   },
   "meds": {
     "care_plan": "CARE PLAN"
