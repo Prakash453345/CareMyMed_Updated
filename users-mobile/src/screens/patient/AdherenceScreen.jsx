@@ -860,7 +860,7 @@ const getUnlockedLabel = (data) => {
 
 function PremiumBadge({ data, size = "normal", onPress, style }) {
   const isSmall = size === "small";
-  const itemWidth = style?.width || (isSmall ? 70 : (SCREEN_WIDTH - 64 - GRID_GAP * 2) / 3);
+  const itemWidth = style?.width || (isSmall ? 70 : (SCREEN_WIDTH - 88) / 2);
   const dim = isSmall ? 50 : 62;
 
   const target = data.meta.target || 1;
@@ -919,7 +919,7 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
       style={[
         !isSmall && {
           width: itemWidth,
-          minHeight: 156,
+          height: 154,
           backgroundColor: data.unlocked ? "#FFFFFF" : "rgba(248, 250, 252, 0.8)",
           borderRadius: 22,
           borderWidth: 1.2,
@@ -934,6 +934,7 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
           shadowRadius: 12,
           elevation: data.unlocked ? 4 : 1,
           position: "relative",
+          overflow: "hidden",
         },
         isSmall && { width: itemWidth, alignItems: "center" },
         style,
@@ -943,9 +944,9 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
         style={{
           transform: [{ scale: pressScale }],
           width: "100%",
+          height: "100%",
           alignItems: "center",
           justifyContent: "space-between",
-          flex: isSmall ? undefined : 1,
         }}
       >
         {/* Top Section: Metallic Emblem & Title */}
@@ -1380,33 +1381,35 @@ function TimelineLayout({ badges, onSelect }) {
     <View
       style={{
         position: "relative",
-        width: 240,
-        alignSelf: "center",
+        width: "100%",
+        alignSelf: "stretch",
         paddingTop: 6,
         paddingBottom: 6,
       }}
     >
-      {/* Background line track */}
-      <View
-        style={{
-          position: "absolute",
-          top: 31,
-          left: 35,
-          right: 35,
-          height: 4,
-          borderRadius: 2,
-          backgroundColor: "#E2E8F0",
-        }}
-      />
-
-      {/* Colored progress line overlay */}
-      {unlockedCount > 1 && (
+      {/* Background line track (only when 2+ badges exist) */}
+      {badges.length > 1 && (
         <View
           style={{
             position: "absolute",
             top: 31,
-            left: 35,
-            right: 35,
+            left: 45,
+            right: 45,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: "#E2E8F0",
+          }}
+        />
+      )}
+
+      {/* Colored progress line overlay */}
+      {badges.length > 1 && unlockedCount > 1 && (
+        <View
+          style={{
+            position: "absolute",
+            top: 31,
+            left: 45,
+            right: 45,
             height: 4,
             borderRadius: 2,
             overflow: "hidden",
@@ -1433,7 +1436,10 @@ function TimelineLayout({ badges, onSelect }) {
       <View
         style={{
           flexDirection: "row",
-          justifyContent: "space-between",
+          flexWrap: "wrap",
+          justifyContent: badges.length === 1 ? "center" : "space-around",
+          alignItems: "center",
+          gap: 12,
           zIndex: 1,
         }}
       >
@@ -1441,9 +1447,9 @@ function TimelineLayout({ badges, onSelect }) {
           <PremiumBadge
             key={i}
             data={b}
-            size="small"
+            size={badges.length === 1 ? "normal" : "small"}
             onPress={() => onSelect(b)}
-            style={{ width: 70, marginBottom: 0 }}
+            style={{ marginBottom: 0 }}
           />
         ))}
       </View>
@@ -2951,7 +2957,8 @@ export default function AdherenceScreen({ navigation }) {
                           style={{
                             flexDirection: "row",
                             flexWrap: "wrap",
-                            gap: GRID_GAP,
+                            justifyContent: catAchievements.length === 1 ? "center" : "space-between",
+                            gap: 12,
                             alignItems: "flex-start",
                           }}
                         >
