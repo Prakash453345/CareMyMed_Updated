@@ -923,7 +923,7 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
           backgroundColor: data.unlocked ? "#FFFFFF" : "rgba(248, 250, 252, 0.8)",
           borderRadius: 22,
           borderWidth: 1.2,
-          borderColor: data.unlocked ? tierColor + "30" : "#E2E8F0",
+          borderColor: data.unlocked ? tierColor + "30" : "rgba(226, 232, 240, 0.4)",
           paddingVertical: 12,
           paddingHorizontal: 6,
           alignItems: "center",
@@ -2833,57 +2833,24 @@ export default function AdherenceScreen({ navigation }) {
                       marginBottom: 20,
                       backgroundColor: "#FFFFFF",
                       borderRadius: 24,
-                      borderWidth: 1,
-                      borderColor: catConfig.accent[0] + "1E",
                       shadowColor: "#0F172A",
                       shadowOffset: { width: 0, height: 6 },
-                      shadowOpacity: 0.04,
+                      shadowOpacity: 0.05,
                       shadowRadius: 16,
-                      elevation: 4,
+                      elevation: 3,
                       overflow: "hidden",
                     }}
                   >
                     <LinearGradient
                       colors={[
                         "#FFFFFF",
-                        catConfig.accent[0] + "03",
-                        catConfig.accent[0] + "0B",
+                        catConfig.accent[0] + "04",
+                        catConfig.accent[0] + "0D",
                       ]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={{ padding: 20 }}
                     >
-                      {/* Outer Double-Line Frame */}
-                      <View
-                        pointerEvents="none"
-                        style={{
-                          position: "absolute",
-                          top: 6,
-                          bottom: 6,
-                          left: 6,
-                          right: 6,
-                          borderRadius: 18,
-                          borderWidth: 1,
-                          borderColor: catConfig.accent[0] + "12",
-                          borderStyle: "solid",
-                        }}
-                      />
-
-                      {/* Inner Dashed Frame */}
-                      <View
-                        pointerEvents="none"
-                        style={{
-                          position: "absolute",
-                          top: 10,
-                          bottom: 10,
-                          left: 10,
-                          right: 10,
-                          borderRadius: 14,
-                          borderWidth: 0.8,
-                          borderColor: catConfig.accent[0] + "0C",
-                          borderStyle: "dashed",
-                        }}
-                      />
 
                       {/* Watermark/Vector Decor in Corner */}
                       <Svg
