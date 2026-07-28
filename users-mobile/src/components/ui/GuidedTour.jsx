@@ -51,20 +51,33 @@ export default function GuidedTour({
     /**
      * Animate spotlight cutout, card position, and arrow alignment to new target coordinates
      */
+    /**
+     * Animate spotlight cutout, card position, and arrow alignment to new target coordinates
+     */
     const animateToCoords = useCallback((coords, isUp, arrowLeft) => {
         if (!coords) return;
 
-        const screenWidth = Dimensions.get('window').width;
-        const screenHeight = Dimensions.get('window').height;
+        const screenWidth = Dimensions.get('window').width || 360;
+        const screenHeight = Dimensions.get('window').height || 640;
 
-        const pad = coords.padding || 8;
-        const spotTop = Math.max(0, coords.top - pad);
-        const spotLeft = Math.max(0, coords.left - pad);
-        const spotWidth = Math.min(screenWidth, coords.width + pad * 2);
-        const spotHeight = coords.height + pad * 2;
+        const pad = Number(coords.padding) || 8;
+        const rawTop = Number(coords.top);
+        const rawLeft = Number(coords.left);
+        const rawWidth = Number(coords.width);
+        const rawHeight = Number(coords.height);
+
+        const safeTop = isNaN(rawTop) ? 120 : rawTop;
+        const safeLeft = isNaN(rawLeft) ? 16 : rawLeft;
+        const safeWidth = isNaN(rawWidth) || rawWidth <= 0 ? screenWidth - 32 : rawWidth;
+        const safeHeight = isNaN(rawHeight) || rawHeight <= 0 ? 80 : rawHeight;
+
+        const spotTop = Math.max(0, safeTop - pad);
+        const spotLeft = Math.max(0, safeLeft - pad);
+        const spotWidth = Math.min(screenWidth, Math.max(10, safeWidth + pad * 2));
+        const spotHeight = Math.max(10, safeHeight + pad * 2);
 
         const cardWidth = Math.min(screenWidth - 32, 340);
-        const targetCenterX = coords.left + coords.width / 2;
+        const targetCenterX = safeLeft + safeWidth / 2;
         const cardLeft = Math.max(16, Math.min(targetCenterX - cardWidth / 2, screenWidth - cardWidth - 16));
         const computedArrowLeft = Math.max(24, Math.min(targetCenterX - cardLeft - 8, cardWidth - 40));
 
@@ -75,27 +88,35 @@ export default function GuidedTour({
             cardTop = Math.max(20, spotTop - 160);
         }
 
-        setArrowConfig({ isUp, arrowLeft: computedArrowLeft });
+        const finalSpotTop = isNaN(spotTop) ? 0 : spotTop;
+        const finalSpotLeft = isNaN(spotLeft) ? 0 : spotLeft;
+        const finalSpotWidth = isNaN(spotWidth) ? 100 : spotWidth;
+        const finalSpotHeight = isNaN(spotHeight) ? 100 : spotHeight;
+        const finalCardTop = isNaN(cardTop) ? 100 : cardTop;
+        const finalCardLeft = isNaN(cardLeft) ? 16 : cardLeft;
+        const finalArrowLeft = isNaN(computedArrowLeft) ? 48 : computedArrowLeft;
+
+        setArrowConfig({ isUp, arrowLeft: finalArrowLeft });
 
         if (isFirstMeasureRef.current || reduceMotion) {
-            animSpotTop.setValue(spotTop);
-            animSpotLeft.setValue(spotLeft);
-            animSpotWidth.setValue(spotWidth);
-            animSpotHeight.setValue(spotHeight);
-            animCardTop.setValue(cardTop);
-            animCardLeft.setValue(cardLeft);
-            animArrowLeft.setValue(computedArrowLeft);
+            animSpotTop.setValue(finalSpotTop);
+            animSpotLeft.setValue(finalSpotLeft);
+            animSpotWidth.setValue(finalSpotWidth);
+            animSpotHeight.setValue(finalSpotHeight);
+            animCardTop.setValue(finalCardTop);
+            animCardLeft.setValue(finalCardLeft);
+            animArrowLeft.setValue(finalArrowLeft);
             animOpacity.setValue(1);
             isFirstMeasureRef.current = false;
         } else {
             Animated.parallel([
-                Animated.timing(animSpotTop, { toValue: spotTop, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animSpotLeft, { toValue: spotLeft, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animSpotWidth, { toValue: spotWidth, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animSpotHeight, { toValue: spotHeight, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animCardTop, { toValue: cardTop, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animCardLeft, { toValue: cardLeft, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animArrowLeft, { toValue: computedArrowLeft, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animSpotTop, { toValue: finalSpotTop, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animSpotLeft, { toValue: finalSpotLeft, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animSpotWidth, { toValue: finalSpotWidth, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animSpotHeight, { toValue: finalSpotHeight, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animCardTop, { toValue: finalCardTop, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animCardLeft, { toValue: finalCardLeft, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animArrowLeft, { toValue: finalArrowLeft, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
                 Animated.timing(animOpacity, { toValue: 1, duration: 250, useNativeDriver: false }),
             ]).start();
         }
@@ -108,19 +129,15 @@ export default function GuidedTour({
         if (!stepData) return;
 
         const applyStaticFallback = (sd) => {
-            const screenWidth = Dimensions.get('window').width;
-            if (sd && sd.spotlightTop !== undefined) {
-                const fallbackCoords = {
-                    top: sd.spotlightTop,
-                    height: sd.spotlightHeight || 100,
-                    left: 16,
-                    width: screenWidth - 32
-                };
-                setSpotlightCoords(fallbackCoords);
-                animateToCoords(fallbackCoords, true, 48);
-            } else {
-                setSpotlightCoords(null);
-            }
+            const screenWidth = Dimensions.get('window').width || 360;
+            const fallbackCoords = {
+                top: Number(sd?.spotlightTop) || 140,
+                height: Number(sd?.spotlightHeight) || 90,
+                left: 16,
+                width: screenWidth - 32
+            };
+            setSpotlightCoords(fallbackCoords);
+            animateToCoords(fallbackCoords, true, 48);
         };
 
         const doWindowMeasure = () => {
