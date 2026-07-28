@@ -99,6 +99,7 @@ import {
   fetchDailyVitalsSummary,
   isHealthSupported,
 } from "../../lib/healthIntegration";
+import CustomCalendarPicker from "../../components/ui/CustomCalendarPicker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import {
   COUNTRY_CODES,
@@ -4720,86 +4721,84 @@ export default function HealthProfileScreen({ navigation }) {
           </View>
         </Modal>
 
-        {/* Native Date Picker */}
-        {showDatePicker && (
-          <View
-            style={
-              Platform.OS === "ios"
-                ? {
-                    position: "absolute",
-                    bottom: 0,
-                    width: "100%",
-                    backgroundColor: "#FFF",
-                    borderTopLeftRadius: 20,
-                    borderTopRightRadius: 20,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: -4 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 10,
-                    elevation: 10,
-                    zIndex: 9999,
-                    paddingBottom: 20,
-                  }
-                : {}
-            }
-          >
-            {Platform.OS === "ios" && (
-              <View
+        {/* Vitals Height & Weight Wheel Picker Modal */}
+        <Modal visible={vitalsPickerVisible} transparent animationType="slide" onRequestClose={() => setVitalsPickerVisible(false)}>
+          <View style={s.countryModalWrap}>
+            <View style={s.countryModalHeader}>
+              <Text style={s.countryModalTitle}>
+                {vitalsPickerType === 'height' ? 'Select Height (cm)' : 'Select Weight (kg)'}
+              </Text>
+              <Pressable onPress={() => setVitalsPickerVisible(false)} style={s.closeIconBtn}>
+                <X size={20} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+            <View style={{ padding: 24, alignItems: 'center' }}>
+              <Text style={{ fontSize: 28, fontWeight: '800', color: '#7C3AED', marginBottom: 4 }}>
+                {vitalsPickerType === 'height'
+                  ? `${vitalsTempHeightCm} cm (${cmToFtIn(vitalsTempHeightCm)})`
+                  : `${vitalsTempWeightKg} kg (${Math.round(vitalsTempWeightKg / 0.45359237)} lbs)`
+                }
+              </Text>
+              <Text style={{ fontSize: 13, color: '#64748B', marginBottom: 16 }}>
+                Scroll wheel to select exact measurement
+              </Text>
+
+              <TactileWheelPicker
+                data={vitalsPickerType === 'height'
+                  ? Array.from({ length: 101 }, (_, i) => ({ label: `${120 + i} cm (${cmToFtIn(120 + i)})`, value: 120 + i }))
+                  : Array.from({ length: 151 }, (_, i) => ({ label: `${30 + i} kg (${Math.round((30 + i) / 0.45359237)} lbs)`, value: 30 + i }))
+                }
+                selectedValue={vitalsPickerType === 'height' ? vitalsTempHeightCm : vitalsTempWeightKg}
+                onValueChange={(val) => {
+                  if (vitalsPickerType === 'height') setVitalsTempHeightCm(val);
+                  else setVitalsTempWeightKg(val);
+                }}
+              />
+
+              <Pressable
                 style={{
-                  flexDirection: "row",
-                  justifyContent: "flex-end",
-                  padding: 16,
-                  borderBottomWidth: 1,
-                  borderBottomColor: "#F1F5F9",
+                  width: '100%',
+                  backgroundColor: '#7C3AED',
+                  paddingVertical: 14,
+                  borderRadius: 16,
+                  alignItems: 'center',
+                  marginTop: 20,
+                }}
+                onPress={() => {
+                  if (vitalsPickerType === 'height') {
+                    setFormState(prev => ({ ...prev, height_cm: String(vitalsTempHeightCm) }));
+                  } else {
+                    setFormState(prev => ({ ...prev, weight_kg: String(vitalsTempWeightKg) }));
+                  }
+                  setVitalsPickerVisible(false);
                 }}
               >
-                <Pressable onPress={() => setShowDatePicker(false)}>
-                  <Text
-                    style={{
-                      color: colors.primary,
-                      fontWeight: "bold",
-                      fontSize: 16,
-                    }}
-                  >
-                    Done
-                  </Text>
-                </Pressable>
-              </View>
-            )}
-            <DateTimePicker
-              value={
-                formState[datePickerField]
-                  ? new Date(formState[datePickerField])
-                  : new Date()
-              }
-              mode="date"
-              display={Platform.OS === "ios" ? "spinner" : "default"}
-              maximumDate={
-                editingType === "appointment" ? undefined : new Date()
-              }
-              onChange={(event, selectedDate) => {
-                if (Platform.OS === "android") setShowDatePicker(false);
-                if (event.type !== "dismissed" && selectedDate) {
-                  if (editingType === "appointment") {
-                    const current = formState[datePickerField]
-                      ? new Date(formState[datePickerField])
-                      : new Date();
-                    selectedDate.setHours(
-                      current.getHours(),
-                      current.getMinutes(),
-                      0,
-                      0,
-                    );
-                  }
-                  setFormState((prev) => ({
-                    ...prev,
-                    [datePickerField]: selectedDate.toISOString(),
-                  }));
-                }
-              }}
-            />
+                <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '800' }}>Confirm {vitalsPickerType === 'height' ? 'Height' : 'Weight'}</Text>
+              </Pressable>
+            </View>
           </View>
-        )}
+        </Modal>
+
+        {/* Custom Calendar Date Picker */}
+        <CustomCalendarPicker
+          visible={showDatePicker}
+          onClose={() => setShowDatePicker(false)}
+          initialDate={formState[datePickerField] ? new Date(formState[datePickerField]) : new Date()}
+          maximumDate={editingType === "appointment" ? undefined : new Date()}
+          title={editingType === "appointment" ? "Appointment Date" : "Select Date"}
+          onSelectDate={(selectedDate) => {
+            if (selectedDate) {
+              if (editingType === "appointment") {
+                const current = formState[datePickerField] ? new Date(formState[datePickerField]) : new Date();
+                selectedDate.setHours(current.getHours(), current.getMinutes(), 0, 0);
+              }
+              setFormState((prev) => ({
+                ...prev,
+                [datePickerField]: selectedDate.toISOString(),
+              }));
+            }
+          }}
+        />
 
         {/* Native Time Picker */}
         {showTimePicker && (

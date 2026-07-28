@@ -8,6 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LineChart } from 'react-native-chart-kit';
 import NetInfo from '@react-native-community/netinfo';
+import CustomCalendarPicker from '../../components/ui/CustomCalendarPicker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
     ChevronLeft, ChevronRight, Heart, Activity, Wind, Droplets,
@@ -843,14 +844,24 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                     </Pressable>
                 </View>
 
-                {showCustomStartPicker && (
-                    <DateTimePicker value={customStartDate} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                        onChange={(e, d) => { setShowCustomStartPicker(false); if (d) setCustomStartDate(d); }} />
-                )}
-                {showCustomEndPicker && (
-                    <DateTimePicker value={customEndDate} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                        onChange={(e, d) => { setShowCustomEndPicker(false); if (d) setCustomEndDate(d); }} />
-                )}
+                <CustomCalendarPicker
+                    visible={showCustomStartPicker}
+                    onClose={() => setShowCustomStartPicker(false)}
+                    initialDate={customStartDate}
+                    title="Start Date"
+                    onSelectDate={(d) => {
+                        if (d) setCustomStartDate(d);
+                    }}
+                />
+                <CustomCalendarPicker
+                    visible={showCustomEndPicker}
+                    onClose={() => setShowCustomEndPicker(false)}
+                    initialDate={customEndDate}
+                    title="End Date"
+                    onSelectDate={(d) => {
+                        if (d) setCustomEndDate(d);
+                    }}
+                />
             </Animated.View>
         );
     };
