@@ -97,8 +97,6 @@ const CustomAlert = forwardRef((_, ref) => {
             { transform: [{ scale: scaleAnim }] },
           ]}
         >
-          <View style={[styles.accentBar, { backgroundColor: theme.accent }]} />
-
           <View style={styles.contentContainer}>
             <View style={[styles.iconContainer, { backgroundColor: theme.iconBg }]}>
               <Text style={[styles.iconText, { color: theme.accent }]}>{theme.icon}</Text>
@@ -169,17 +167,15 @@ const styles = StyleSheet.create({
   alertBox: {
     width: ALERT_WIDTH,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.08)',
     overflow: 'hidden',
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.18,
     shadowRadius: 24,
     elevation: 12,
-  },
-  accentBar: {
-    height: 4,
-    width: '100%',
   },
   contentContainer: {
     paddingHorizontal: 24,
