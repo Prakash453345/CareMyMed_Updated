@@ -1228,6 +1228,147 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
   );
 }
 
+function SmartInsightCard({ insights = [], feedback, t }) {
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  // Consolidate all insights & feedback into a single clean list
+  const items = useMemo(() => {
+    const list = [];
+    if (insights && insights.length > 0) {
+      insights.forEach((ins) => list.push({ type: "insight", text: ins }));
+    }
+    if (feedback && feedback.text) {
+      list.push({
+        type: "feedback",
+        text: feedback.text,
+        color: feedback.color || "#7C3AED",
+      });
+    }
+    return list;
+  }, [insights, feedback]);
+
+  if (items.length === 0) return null;
+
+  const currentItem = items[activeIdx] || items[0];
+
+  return (
+    <View
+      style={{
+        backgroundColor: "#FFFFFF",
+        borderRadius: 22,
+        borderWidth: 1,
+        borderColor: "rgba(124, 58, 237, 0.12)",
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: "#7C3AED",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 2,
+      }}
+    >
+      {/* Header Row */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 10,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
+          <View
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: 12,
+              backgroundColor: "#F3E8FF",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Sparkles size={12} color="#7C3AED" />
+          </View>
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: "800",
+              color: "#7C3AED",
+              letterSpacing: 0.6,
+              textTransform: "uppercase",
+            }}
+          >
+            {t("adherence.ai_health_coach", { defaultValue: "AI Health Coach" })}
+          </Text>
+        </View>
+
+        {/* Carousel Dots */}
+        {items.length > 1 && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+            {items.map((_, i) => (
+              <Pressable
+                key={i}
+                onPress={() => setActiveIdx(i)}
+                style={{
+                  width: activeIdx === i ? 14 : 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: activeIdx === i ? "#7C3AED" : "#CBD5E1",
+                }}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+
+      {/* Main Text Content */}
+      <Text
+        style={{
+          fontSize: 13,
+          fontWeight: "600",
+          color: "#1E293B",
+          lineHeight: 19,
+        }}
+      >
+        {currentItem.text}
+      </Text>
+
+      {/* Optional CTA Button */}
+      {(currentItem.text.includes("reminder") || currentItem.text.includes("doses")) && (
+        <Pressable
+          style={{
+            marginTop: 12,
+            alignSelf: "flex-start",
+            backgroundColor: "#7C3AED",
+            paddingHorizontal: 14,
+            paddingVertical: 7,
+            borderRadius: 12,
+            shadowColor: "#7C3AED",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.2,
+            shadowRadius: 4,
+            elevation: 2,
+          }}
+          onPress={() =>
+            Alert.alert(
+              t("adherence.set_reminder", { defaultValue: "Set Reminder" }),
+              t("adherence.reminder_desc", {
+                defaultValue:
+                  "Medication reminder will be added to your notifications.",
+              }),
+              [{ text: t("common.ok", { defaultValue: "OK" }) }]
+            )
+          }
+        >
+          <Text style={{ fontSize: 11.5, fontWeight: "800", color: "#FFFFFF" }}>
+            {t("adherence.set_reminder", { defaultValue: "Set Reminder" })}
+          </Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
 function TimelineLayout({ badges, onSelect }) {
   const unlockedCount = badges.filter((b) => b.unlocked).length;
   const accentColors = CATEGORY_CONFIG.perfect_days?.accent || [
@@ -2164,68 +2305,9 @@ export default function AdherenceScreen({ navigation }) {
               </Animated.View>
             )}
 
-            {/* ── [3] Feedback + Insights ── */}
+            {/* ── [3] AI Health Coach Smart Insights Carousel ── */}
             <Animated.View style={anim(3)}>
-              <View
-                style={[
-                  styles.feedbackBanner,
-                  {
-                    backgroundColor: feedback.color + "12",
-                    borderColor: feedback.color + "30",
-                  },
-                ]}
-              >
-                <Heart
-                  size={16}
-                  color={feedback.color}
-                  fill={feedback.color + "40"}
-                />
-                <Text style={[styles.feedbackText, { color: feedback.color }]}>
-                  {feedback.text}
-                </Text>
-              </View>
-
-              {insights.length > 0 && (
-                <View style={{ gap: 10, marginBottom: 20 }}>
-                  {insights.map((insight, idx) => (
-                    <View key={idx} style={styles.insightCard}>
-                      <View style={styles.insightLeft}>
-                        <View style={styles.insightIconBox}>
-                          <Sparkles size={14} color={C.purple} />
-                        </View>
-                        <Text style={styles.insightText}>{insight}</Text>
-                      </View>
-                      {insight.includes("afternoon") && (
-                        <Pressable
-                          style={styles.reminderBtn}
-                          onPress={() =>
-                            Alert.alert(
-                              t("adherence.set_reminder", {
-                                defaultValue: "Set Reminder",
-                              }),
-                              t("adherence.reminder_desc", {
-                                defaultValue:
-                                  "Afternoon medication reminder will be added to your notifications.",
-                              }),
-                              [
-                                {
-                                  text: t("common.ok", { defaultValue: "OK" }),
-                                },
-                              ],
-                            )
-                          }
-                        >
-                          <Text style={styles.reminderBtnText}>
-                            {t("adherence.set_reminder", {
-                              defaultValue: "Set Reminder",
-                            })}
-                          </Text>
-                        </Pressable>
-                      )}
-                    </View>
-                  ))}
-                </View>
-              )}
+              <SmartInsightCard insights={insights} feedback={feedback} t={t} />
             </Animated.View>
 
             {/* ── [4] 7-Day Trend ── */}
