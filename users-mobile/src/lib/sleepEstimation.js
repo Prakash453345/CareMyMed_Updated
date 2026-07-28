@@ -79,9 +79,16 @@ export const estimateSleep = async () => {
               return `${hrs}:${minStr} ${ampm}`;
             };
 
+            const totalMins = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
+            const h = Math.floor(totalMins / 60);
+            const m = totalMins % 60;
+            const durationText = m > 0 ? `${h}h ${m}m` : `${h}h`;
+            const exactHours = Math.round((totalMins / 60) * 100) / 100;
+
             return {
               estimate: {
-                hours: Math.round(durationHours * 10) / 10,
+                hours: exactHours,
+                durationText,
                 rawHours: durationHours,
                 startTime: formatTime(start),
                 endTime: formatTime(end),
@@ -217,9 +224,16 @@ export const estimateSleep = async () => {
                 return `${hrs}:${minStr} ${ampm}`;
               };
 
+              const totalMins = Math.round((bestBlock.end - bestBlock.start) / (1000 * 60));
+              const h = Math.floor(totalMins / 60);
+              const m = totalMins % 60;
+              const durationText = m > 0 ? `${h}h ${m}m` : `${h}h`;
+              const exactHours = Math.round((totalMins / 60) * 100) / 100;
+
               return {
                 estimate: {
-                  hours: Math.round(durationHours * 10) / 10,
+                  hours: exactHours,
+                  durationText,
                   rawHours: durationHours,
                   startTime: formatTime(lastActiveDate),
                   endTime: formatTime(wakeUpDate),

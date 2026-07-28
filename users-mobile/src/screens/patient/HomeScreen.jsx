@@ -2320,7 +2320,7 @@ export default function PatientHomeScreen({ navigation }) {
                         <>
                           Your watch or phone logged{" "}
                           <Text style={{ fontWeight: "800", color: "#1E1B4B" }}>
-                            {estimatedSleep.hours} hours
+                            {estimatedSleep.durationText || `${estimatedSleep.hours} hours`}
                           </Text>{" "}
                           of sleep last night ({estimatedSleep.startTime} to{" "}
                           {estimatedSleep.endTime}).
@@ -2329,7 +2329,7 @@ export default function PatientHomeScreen({ navigation }) {
                         <>
                           Your phone was quiet for{" "}
                           <Text style={{ fontWeight: "800", color: "#1E1B4B" }}>
-                            {estimatedSleep.hours} hours
+                            {estimatedSleep.durationText || `${estimatedSleep.hours} hours`}
                           </Text>{" "}
                           last night ({estimatedSleep.startTime} to{" "}
                           {estimatedSleep.endTime}).
@@ -2354,7 +2354,7 @@ export default function PatientHomeScreen({ navigation }) {
                         <Text style={styles.sleepPromptBtnYesText}>
                           {sleepLogging
                             ? "Logging..."
-                            : `Yes, log ${estimatedSleep.hours}h`}
+                            : `Yes, log ${estimatedSleep.durationText || estimatedSleep.hours + 'h'}`}
                         </Text>
                       </Pressable>
                       <Pressable
