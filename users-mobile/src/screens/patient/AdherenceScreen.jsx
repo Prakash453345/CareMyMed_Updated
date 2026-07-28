@@ -860,22 +860,23 @@ const getUnlockedLabel = (data) => {
 
 function PremiumBadge({ data, size = "normal", onPress, style }) {
   const isSmall = size === "small";
+  const itemWidth = style?.width || (isSmall ? 70 : (SCREEN_WIDTH - 64 - GRID_GAP * 2) / 3);
   const dim = isSmall ? 50 : 62;
-  const IconComponent = Icons[data.meta.iconName] || Icons.Award;
-  const colors = data.tierConfig.gradient;
-  const itemWidth = style?.width || badgeWidth;
 
   const target = data.meta.target || 1;
   const current =
     data.progress >= 1 ? target : Math.floor((data.progress || 0) * target);
-  const pct = Math.min(100, (data.progress || 0) * 100);
-  const tierColor = data.tierConfig.color;
+  const pct = Math.min(100, Math.max(0, (data.progress || 0) * 100));
+  const tier = data.meta.tier || "bronze";
+  const tierConfig = TIER_CONFIG[tier] || TIER_CONFIG.bronze;
+  const tierColor = tierConfig.color;
+  const isLegendary = tier === "legendary";
 
   const pressScale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
     Animated.spring(pressScale, {
-      toValue: 0.93,
+      toValue: 0.94,
       useNativeDriver: true,
       tension: 60,
       friction: 8,
@@ -891,248 +892,24 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
     }).start();
   };
 
-  if (!data.unlocked) {
-    const ringSize = dim;
-    const strokeWidth = 3;
-    const r = (ringSize - strokeWidth) / 2;
-    const circumference = 2 * Math.PI * r;
-    const strokeDashoffset = circumference - (pct / 100) * circumference;
-
-    return (
-      <Pressable
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        style={[
-          !isSmall && {
-            width: itemWidth,
-            height: 140,
-            backgroundColor: "rgba(248, 250, 252, 0.65)",
-            borderRadius: 22,
-            borderWidth: 1,
-            borderColor: "#E2E8F0",
-            paddingVertical: 14,
-            paddingHorizontal: 6,
-            alignItems: "center",
-            justifyContent: "space-between",
-          },
-          isSmall && { width: itemWidth, alignItems: "center" },
-          style,
-        ]}
-      >
-        <Animated.View
-          style={{
-            transform: [{ scale: pressScale }],
-            width: "100%",
-            height: isSmall ? undefined : "100%",
-            alignItems: "center",
-            justifyContent: isSmall ? undefined : "space-between",
-          }}
-        >
-          <View style={{ alignItems: "center", width: "100%" }}>
-            {/* Ringed locked medal container */}
-            <View
-              style={{
-                width: dim,
-                height: dim,
-                borderRadius: dim / 2,
-                alignItems: "center",
-                justifyContent: "center",
-                position: "relative",
-                ...(isSmall
-                  ? {
-                      borderWidth: 1,
-                      borderColor: "#CBD5E1",
-                      backgroundColor: "#FFFFFF",
-                    }
-                  : {}),
-              }}
-            >
-              {/* SVG Progress Ring only for grid/large nodes */}
-              {!isSmall && (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    transform: [{ rotate: "-90deg" }],
-                  }}
-                >
-                  <Svg width={dim} height={dim}>
-                    <Circle
-                      cx={dim / 2}
-                      cy={dim / 2}
-                      r={r}
-                      stroke="#E2E8F0"
-                      strokeWidth={strokeWidth}
-                      fill="none"
-                    />
-                    <Circle
-                      cx={dim / 2}
-                      cy={dim / 2}
-                      r={r}
-                      stroke={tierColor}
-                      strokeWidth={strokeWidth}
-                      fill="none"
-                      strokeDasharray={circumference}
-                      strokeDashoffset={strokeDashoffset}
-                      strokeLinecap="round"
-                    />
-                  </Svg>
-                </View>
-              )}
-
-              <View
-                style={{
-                  width: dim - 6,
-                  height: dim - 6,
-                  borderRadius: (dim - 6) / 2,
-                  backgroundColor: "rgba(148, 163, 184, 0.08)",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {data.meta.iconName === "Shield" ? (
-                  <View
-                    style={{ alignItems: "center", justifyContent: "center" }}
-                  >
-                    <IconComponent
-                      size={isSmall ? 20 : 26}
-                      color="#64748B"
-                      style={{ opacity: 0.65 }}
-                    />
-                    <Icons.Star
-                      size={isSmall ? 8 : 10}
-                      color="#64748B"
-                      fill="#64748B"
-                      style={{
-                        position: "absolute",
-                        top: isSmall ? 5 : 7,
-                        opacity: 0.65,
-                      }}
-                    />
-                  </View>
-                ) : (
-                  <IconComponent
-                    size={isSmall ? 20 : 26}
-                    color="#64748B"
-                    style={{ opacity: 0.65 }}
-                  />
-                )}
-              </View>
-
-              <View
-                style={{
-                  position: "absolute",
-                  top: -2,
-                  right: -2,
-                  backgroundColor: "#94A3B8",
-                  width: 18,
-                  height: 18,
-                  borderRadius: 9,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderWidth: 1.5,
-                  borderColor: "#FFFFFF",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 1,
-                  elevation: 1,
-                  zIndex: 10,
-                }}
-              >
-                <Lock size={8} color="white" />
-              </View>
-            </View>
-
-            <Text
-              style={{
-                fontSize: 11,
-                fontWeight: "750",
-                color: "#64748B",
-                marginTop: 10,
-                textAlign: "center",
-                lineHeight: 14,
-                paddingHorizontal: 2,
-              }}
-              numberOfLines={2}
-            >
-              {data.meta.title || data.key}
-            </Text>
-          </View>
-
-          {!isSmall && (
-            <View style={{ alignItems: "center", width: "100%", marginTop: 8 }}>
-              {target > 1 ? (
-                <View
-                  style={{ width: "80%", alignItems: "center", marginTop: 2 }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 10,
-                      ...FONT.heavy,
-                      color: "#64748B",
-                      marginBottom: 4,
-                    }}
-                  >
-                    {current}/{target}
-                  </Text>
-                  <View
-                    style={{
-                      width: "100%",
-                      height: 4,
-                      borderRadius: 2,
-                      backgroundColor: "#E2E8F0",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: `${pct}%`,
-                        height: "100%",
-                        borderRadius: 2,
-                        backgroundColor: tierColor,
-                      }}
-                    />
-                  </View>
-                </View>
-              ) : (
-                <View
-                  style={{
-                    borderColor: "#E2E8F0",
-                    borderWidth: 1,
-                    backgroundColor: "#F8FAFC",
-                    borderRadius: 12,
-                    paddingHorizontal: 8,
-                    paddingVertical: 2,
-                    marginTop: 4,
-                  }}
-                >
-                  <Text
-                    style={{ fontSize: 9, ...FONT.heavy, color: "#94A3B8" }}
-                  >
-                    LOCKED
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-        </Animated.View>
-      </Pressable>
-    );
-  }
-
-  // Unlocked State
+  const IconComponent = Icons[data.meta.iconName] || Icons.Award;
   const label = getUnlockedLabel(data);
-  const statusColor =
-    label === "Achieved" ||
-    label.endsWith("complete") ||
-    label.endsWith("perfect days")
-      ? "#10B981"
-      : "#64748B";
+
+  // Metallic 3D Sheen Gradients
+  const metallicGradients = {
+    bronze: ["#F6C89F", "#D98242", "#8C4315"],
+    silver: ["#FFFFFF", "#CBD5E1", "#64748B"],
+    gold: ["#FEF08A", "#F59E0B", "#B45309"],
+    legendary: ["#F3E8FF", "#A855F7", "#581C87"],
+  };
+  const gradientColors = metallicGradients[tier] || metallicGradients.bronze;
+
+  const shadowColors = {
+    bronze: "#D97706",
+    silver: "#64748B",
+    gold: "#F59E0B",
+    legendary: "#8B5CF6",
+  };
 
   return (
     <Pressable
@@ -1142,20 +919,20 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
       style={[
         !isSmall && {
           width: itemWidth,
-          height: 140,
-          backgroundColor: "#FFFFFF",
+          minHeight: 156,
+          backgroundColor: data.unlocked ? "#FFFFFF" : "rgba(248, 250, 252, 0.8)",
           borderRadius: 22,
-          borderWidth: 1,
-          borderColor: tierColor + "25",
-          paddingVertical: 14,
+          borderWidth: 1.2,
+          borderColor: data.unlocked ? tierColor + "30" : "#E2E8F0",
+          paddingVertical: 12,
           paddingHorizontal: 6,
           alignItems: "center",
           justifyContent: "space-between",
-          shadowColor: tierColor,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.05,
-          shadowRadius: 10,
-          elevation: 2,
+          shadowColor: data.unlocked ? shadowColors[tier] : "#0F172A",
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: data.unlocked ? 0.2 : 0.04,
+          shadowRadius: 12,
+          elevation: data.unlocked ? 4 : 1,
           position: "relative",
         },
         isSmall && { width: itemWidth, alignItems: "center" },
@@ -1166,97 +943,93 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
         style={{
           transform: [{ scale: pressScale }],
           width: "100%",
-          height: isSmall ? undefined : "100%",
           alignItems: "center",
-          justifyContent: isSmall ? undefined : "space-between",
+          justifyContent: "space-between",
+          flex: isSmall ? undefined : 1,
         }}
       >
+        {/* Top Section: Metallic Emblem & Title */}
         <View style={{ alignItems: "center", width: "100%" }}>
-          {/* Metallic Ring - Outer Gradient Circle */}
-          <LinearGradient
-            colors={colors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+          {/* Metallic 3D Emblem Container */}
+          <View
             style={{
               width: dim,
               height: dim,
               borderRadius: dim / 2,
-              padding: 3,
               alignItems: "center",
               justifyContent: "center",
-              shadowColor: tierColor,
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: 0.25,
-              shadowRadius: 6,
-              elevation: 3,
               position: "relative",
+              shadowColor: shadowColors[tier],
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: data.unlocked ? 0.35 : 0.08,
+              shadowRadius: 8,
+              elevation: data.unlocked ? 5 : 2,
             }}
           >
-            {/* Inner Core Gradient */}
+            {/* Outer Metallic Bezel Gradient */}
             <LinearGradient
-              colors={colors.slice().reverse()}
+              colors={data.unlocked ? gradientColors : ["#E2E8F0", "#94A3B8"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{
                 width: "100%",
                 height: "100%",
-                borderRadius: (dim - 6) / 2,
+                borderRadius: dim / 2,
+                padding: 2.5,
                 alignItems: "center",
                 justifyContent: "center",
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.45)",
               }}
             >
-              {/* Concentric Dotted Circle Inside Core */}
-              <View
+              {/* Inner Core Gradient */}
+              <LinearGradient
+                colors={
+                  data.unlocked
+                    ? [gradientColors[1], gradientColors[2] || gradientColors[0]]
+                    : ["#F8FAFC", "#CBD5E1"]
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={{
-                  width: "85%",
-                  height: "85%",
-                  borderRadius: ((dim - 6) * 0.85) / 2,
-                  borderWidth: 0.8,
-                  borderColor: "rgba(255,255,255,0.25)",
-                  borderStyle: "dashed",
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: (dim - 5) / 2,
                   alignItems: "center",
                   justifyContent: "center",
+                  borderWidth: 1,
+                  borderColor: "rgba(255, 255, 255, 0.65)",
                   position: "relative",
+                  overflow: "hidden",
                 }}
               >
-                {data.meta.iconName === "Shield" ? (
-                  <View
-                    style={{ alignItems: "center", justifyContent: "center" }}
-                  >
-                    <IconComponent
-                      size={isSmall ? 18 : 24}
-                      color="white"
-                      style={{
-                        textShadowColor: "rgba(0,0,0,0.15)",
-                        textShadowOffset: { width: 0, height: 1 },
-                        textShadowRadius: 2,
-                      }}
-                    />
-                    <Icons.Star
-                      size={isSmall ? 8 : 10}
-                      color="white"
-                      fill="white"
-                      style={{ position: "absolute", top: isSmall ? 4 : 6 }}
-                    />
-                  </View>
-                ) : (
-                  <IconComponent
-                    size={isSmall ? 18 : 24}
-                    color="white"
-                    style={{
-                      textShadowColor: "rgba(0,0,0,0.15)",
-                      textShadowOffset: { width: 0, height: 1 },
-                      textShadowRadius: 2,
-                    }}
-                  />
-                )}
-              </View>
+                {/* Glossy Sheen Highlight Overlay */}
+                <LinearGradient
+                  colors={["rgba(255, 255, 255, 0.75)", "rgba(255, 255, 255, 0)"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: "55%",
+                  }}
+                />
+
+                {/* Inner Icon */}
+                <IconComponent
+                  size={isSmall ? 18 : 24}
+                  color={data.unlocked ? "#FFFFFF" : "#64748B"}
+                  style={{
+                    textShadowColor: data.unlocked ? "rgba(0, 0, 0, 0.25)" : "transparent",
+                    textShadowOffset: { width: 0, height: 1 },
+                    textShadowRadius: 2,
+                  }}
+                />
+              </LinearGradient>
             </LinearGradient>
 
-            {/* Checkmark icon for unlocked items */}
-            {data.meta.tier !== "legendary" && (
+            {/* Unlocked Checkmark Badge */}
+            {data.unlocked && !isLegendary && (
               <View
                 style={{
                   position: "absolute",
@@ -1272,27 +1045,54 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
                   borderColor: "#FFFFFF",
                   shadowColor: "#000",
                   shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 1,
-                  elevation: 2,
+                  shadowOpacity: 0.2,
+                  shadowRadius: 2,
+                  elevation: 3,
                   zIndex: 10,
                 }}
               >
-                <Check size={9} color="white" strokeWidth={4} />
+                <Check size={10} color="white" strokeWidth={3.5} />
               </View>
             )}
 
-            {/* Crown badge for legendary */}
-            {data.meta.tier === "legendary" && (
+            {/* Legendary Crown Badge */}
+            {data.unlocked && isLegendary && (
               <View
                 style={{
                   position: "absolute",
-                  top: -5,
-                  right: -5,
-                  backgroundColor: "#FBBF24",
+                  top: -4,
+                  right: -4,
+                  backgroundColor: "#F59E0B",
                   borderRadius: 10,
-                  width: 18,
-                  height: 18,
+                  width: 19,
+                  height: 19,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderWidth: 1.5,
+                  borderColor: "#FFFFFF",
+                  shadowColor: "#F59E0B",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 4,
+                  elevation: 3,
+                  zIndex: 10,
+                }}
+              >
+                <Icons.Crown size={10} color="#FFFFFF" fill="#FFFFFF" />
+              </View>
+            )}
+
+            {/* Locked Badge Lock Overlay */}
+            {!data.unlocked && (
+              <View
+                style={{
+                  position: "absolute",
+                  top: -2,
+                  right: -2,
+                  backgroundColor: "#64748B",
+                  width: 17,
+                  height: 17,
+                  borderRadius: 8.5,
                   alignItems: "center",
                   justifyContent: "center",
                   borderWidth: 1.5,
@@ -1305,19 +1105,21 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
                   zIndex: 10,
                 }}
               >
-                <Icons.Crown size={9} color="#7C3AED" fill="#7C3AED" />
+                <Lock size={9} color="#FFFFFF" strokeWidth={2.5} />
               </View>
             )}
-          </LinearGradient>
+          </View>
 
+          {/* Title Text (Fixed Height & Line Alignment) */}
           <Text
             style={{
               fontSize: 11,
               fontWeight: "800",
-              color: "#0F172A",
-              marginTop: 10,
+              color: data.unlocked ? "#0F172A" : "#64748B",
+              marginTop: 8,
               textAlign: "center",
-              lineHeight: 14,
+              lineHeight: 13.5,
+              minHeight: 27,
               paddingHorizontal: 2,
             }}
             numberOfLines={2}
@@ -1326,16 +1128,99 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
           </Text>
         </View>
 
+        {/* Bottom Status / Progress Section (Always 100% enclosed within Card) */}
         {!isSmall && (
-          <View
-            style={{
-              marginTop: 8,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontSize: 10, ...FONT.bold, color: statusColor }}>
-              {label}
-            </Text>
+          <View style={{ alignItems: "center", width: "100%", marginTop: 6 }}>
+            {data.unlocked ? (
+              <View
+                style={{
+                  backgroundColor: "#ECFDF5",
+                  borderColor: "#A7F3D0",
+                  borderWidth: 1,
+                  borderRadius: 12,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 9.5,
+                    fontWeight: "800",
+                    color: "#059669",
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {label}
+                </Text>
+              </View>
+            ) : target > 1 ? (
+              <View style={{ width: "90%", alignItems: "center" }}>
+                <View
+                  style={{
+                    backgroundColor: "#F1F5F9",
+                    borderColor: "#E2E8F0",
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    paddingHorizontal: 7,
+                    paddingVertical: 2,
+                    marginBottom: 4,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 9.5,
+                      fontWeight: "800",
+                      color: "#64748B",
+                    }}
+                  >
+                    {current}/{target}
+                  </Text>
+                </View>
+
+                {/* Progress bar fill */}
+                <View
+                  style={{
+                    width: "100%",
+                    height: 4,
+                    borderRadius: 2,
+                    backgroundColor: "#E2E8F0",
+                    overflow: "hidden",
+                  }}
+                >
+                  <View
+                    style={{
+                      width: `${pct}%`,
+                      height: "100%",
+                      borderRadius: 2,
+                      backgroundColor: tierColor,
+                    }}
+                  />
+                </View>
+              </View>
+            ) : (
+              <View
+                style={{
+                  backgroundColor: "#F8FAFC",
+                  borderColor: "#E2E8F0",
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  paddingHorizontal: 8,
+                  paddingVertical: 2,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 9,
+                    fontWeight: "800",
+                    color: "#94A3B8",
+                  }}
+                >
+                  LOCKED
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </Animated.View>
