@@ -3646,7 +3646,7 @@ export default function PatientHomeScreen({ navigation }) {
                 </LinearGradient>
               </Pressable>
             </Animated.View>
-          </ScrollView>
+          </Animated.ScrollView>
 
           <GuidedTour
             visible={showVitalsTour}

@@ -241,6 +241,22 @@ export function AuthProvider({ children }) {
                 if (apiTok?.access_token) {
                     if (__DEV__) console.log('[Auth] Fetching profile + patient...');
 
+                    // Hydrate immediately from disk cache FIRST so AppNavigator sees authenticated user with 0 flash
+                    const initialCachedProfile = await getCachedProfile().catch(() => null);
+                    if (initialCachedProfile) {
+                        const id = initialCachedProfile.id || initialCachedProfile._id;
+                        setCacheUserId(id);
+                        setProfile(initialCachedProfile);
+                        profileRef.current = initialCachedProfile;
+                        setUser({ id, email: initialCachedProfile.email });
+                        setSession({ access_token: apiTok.access_token, user: { id } });
+                        const initialCachedPat = await getCachedPatient().catch(() => null);
+                        if (initialCachedPat) {
+                            setPatient(initialCachedPat);
+                            usePatientStore.getState().setPatient(initialCachedPat);
+                        }
+                    }
+
                     const profileRes = await apiService.auth.getProfile().catch(() => ({ data: null }));
                     const resolvedRole = profileRes?.data?.profile?.role;
                     // Only fetch patient data for patient roles — companions get a 403 from /patients/me
@@ -260,7 +276,7 @@ export function AuthProvider({ children }) {
                         setUser(userData);
                         setSession({ access_token: apiTok.access_token, user: userData });
                         analytics.identify(userData.id, { role: profileData.role });
-                    } else {
+                    } else if (!initialCachedProfile) {
                         // Network responded but returned no profile — serve cache.
                         const cached = await getCachedProfile();
                         if (cached) {

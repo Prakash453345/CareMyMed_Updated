@@ -171,15 +171,20 @@ export default function GuidedTour({
 
         // Handle auto-scroll if scrollRef and offset/ref are provided
         if (stepData.scrollOffset !== undefined && scrollRef?.current) {
-            scrollRef.current.scrollTo({ y: stepData.scrollOffset, animated: !reduceMotion });
+            try {
+                scrollRef.current.scrollTo({ y: stepData.scrollOffset, animated: !reduceMotion });
+            } catch {}
             setTrackedTimeout(doWindowMeasure, 250);
         } else if (stepData.ref?.current && scrollRef?.current) {
             try {
-                if (stepData.ref.current.measureLayout) {
+                const targetNode = scrollRef.current.getNode ? scrollRef.current.getNode() : (scrollRef.current._component || scrollRef.current);
+                if (stepData.ref.current.measureLayout && targetNode) {
                     stepData.ref.current.measureLayout(
-                        scrollRef.current,
+                        targetNode,
                         (x, y) => {
-                            scrollRef.current.scrollTo({ y: Math.max(0, y - 40), animated: !reduceMotion });
+                            try {
+                                scrollRef.current.scrollTo({ y: Math.max(0, y - 40), animated: !reduceMotion });
+                            } catch {}
                             setTrackedTimeout(doWindowMeasure, 250);
                         },
                         () => setTrackedTimeout(doWindowMeasure, 100)
@@ -187,7 +192,8 @@ export default function GuidedTour({
                 } else {
                     setTrackedTimeout(doWindowMeasure, 100);
                 }
-            } catch {
+            } catch (err) {
+                if (__DEV__) console.warn('[GuidedTour] measureLayout error:', err.message);
                 setTrackedTimeout(doWindowMeasure, 100);
             }
         } else {
