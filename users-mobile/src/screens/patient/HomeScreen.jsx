@@ -2080,10 +2080,12 @@ export default function PatientHomeScreen({ navigation }) {
               <View style={styles.stickyPillIconBadge}>
                 <Pill size={15} color="#FFFFFF" />
               </View>
-              <Text style={styles.stickyBannerText} numberOfLines={1}>
-                {nextAction.bannerDescription}
+              <Text style={styles.stickyBannerText} numberOfLines={1} ellipsizeMode="tail">
+                {nextAction.actionPayload?.name
+                  ? `Take ${nextAction.actionPayload.name}`
+                  : nextAction.bannerDescription?.split("•")[0]?.trim() || nextAction.bannerDescription}
               </Text>
-              <ChevronRight size={16} color="#C084FC" />
+              <ChevronRight size={15} color="#C084FC" />
             </Pressable>
 
             <View style={styles.stickyHeaderActions}>
