@@ -677,58 +677,58 @@ export default function PatientHomeScreen({ navigation }) {
   // ScrollY tracking for Container Transform Morphing Header
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  // Staggered hero greeting title & subtext fade/slide animations
+  // Staggered hero greeting title, subtext & inline header actions fade/slide animations
   const heroTitleOpacity = scrollY.interpolate({
-    inputRange: [0, 45],
+    inputRange: [0, 40],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
   const heroTitleTranslateY = scrollY.interpolate({
-    inputRange: [0, 45],
-    outputRange: [0, -15],
+    inputRange: [0, 40],
+    outputRange: [0, -12],
     extrapolate: "clamp",
   });
   const heroSubtextOpacity = scrollY.interpolate({
-    inputRange: [15, 60],
+    inputRange: [10, 50],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
   const heroSubtextTranslateY = scrollY.interpolate({
-    inputRange: [15, 60],
+    inputRange: [10, 50],
     outputRange: [0, -10],
     extrapolate: "clamp",
   });
 
-  // Container transform for inline banner & sticky header
+  // Seamless Morphing Container Transform (inline banner -> sticky top pill)
   const inlineBannerScale = scrollY.interpolate({
-    inputRange: [20, 100],
-    outputRange: [1.0, 0.95],
+    inputRange: [0, 85],
+    outputRange: [1.0, 0.94],
     extrapolate: "clamp",
   });
   const inlineBannerOpacity = scrollY.interpolate({
-    inputRange: [30, 95],
+    inputRange: [15, 80],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
   const inlineBannerTranslateY = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [0, -15],
+    inputRange: [0, 85],
+    outputRange: [0, -30],
     extrapolate: "clamp",
   });
 
   const stickyHeaderOpacity = scrollY.interpolate({
-    inputRange: [65, 110],
+    inputRange: [40, 85],
     outputRange: [0, 1],
     extrapolate: "clamp",
   });
   const stickyHeaderTranslateY = scrollY.interpolate({
-    inputRange: [65, 110],
-    outputRange: [-35, 0],
+    inputRange: [40, 85],
+    outputRange: [-18, 0],
     extrapolate: "clamp",
   });
   const stickyHeaderScale = scrollY.interpolate({
-    inputRange: [65, 110],
-    outputRange: [0.95, 1.0],
+    inputRange: [40, 85],
+    outputRange: [0.94, 1.0],
     extrapolate: "clamp",
   });
 
@@ -2155,7 +2155,15 @@ export default function PatientHomeScreen({ navigation }) {
                   {headerSubtitle}
                 </Animated.Text>
               </View>
-              <View style={styles.headerActions}>
+              <Animated.View
+                style={[
+                  styles.headerActions,
+                  {
+                    opacity: heroTitleOpacity,
+                    transform: [{ translateY: heroTitleTranslateY }],
+                  },
+                ]}
+              >
                 <Pressable
                   style={styles.headerIconBtn}
                   onPress={() => {
@@ -2185,7 +2193,7 @@ export default function PatientHomeScreen({ navigation }) {
                     {displayName?.charAt(0) || "U"}
                   </Text>
                 </TouchableOpacity>
-              </View>
+              </Animated.View>
             </View>
           </View>
 
@@ -5039,13 +5047,13 @@ const styles = StyleSheet.create({
   // Frosted Sticky Container Header Morphing Bar
   stickyHeaderBar: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 44 : 28,
+    top: Platform.OS === "ios" ? 52 : (StatusBar.currentHeight || 36) + 6,
     left: 12,
     right: 12,
     zIndex: 120,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(15, 23, 42, 0.92)",
+    backgroundColor: "#0F172A",
     borderRadius: 24,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -5053,9 +5061,9 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255, 255, 255, 0.14)",
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.22,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 6,
     gap: 10,
   },
   stickyBannerCapsule: {
