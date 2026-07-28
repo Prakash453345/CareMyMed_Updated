@@ -667,6 +667,64 @@ export default function PatientHomeScreen({ navigation }) {
   const medsCardScaleAnim = useRef(new Animated.Value(1)).current;
   const prevMedsCompletedRef = useRef(null);
 
+  // ScrollY tracking for Container Transform Morphing Header
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Staggered hero greeting title & subtext fade/slide animations
+  const heroTitleOpacity = scrollY.interpolate({
+    inputRange: [0, 45],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+  const heroTitleTranslateY = scrollY.interpolate({
+    inputRange: [0, 45],
+    outputRange: [0, -15],
+    extrapolate: "clamp",
+  });
+  const heroSubtextOpacity = scrollY.interpolate({
+    inputRange: [15, 60],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+  const heroSubtextTranslateY = scrollY.interpolate({
+    inputRange: [15, 60],
+    outputRange: [0, -10],
+    extrapolate: "clamp",
+  });
+
+  // Container transform for inline banner & sticky header
+  const inlineBannerScale = scrollY.interpolate({
+    inputRange: [20, 100],
+    outputRange: [1.0, 0.95],
+    extrapolate: "clamp",
+  });
+  const inlineBannerOpacity = scrollY.interpolate({
+    inputRange: [30, 95],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+  const inlineBannerTranslateY = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [0, -15],
+    extrapolate: "clamp",
+  });
+
+  const stickyHeaderOpacity = scrollY.interpolate({
+    inputRange: [65, 110],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
+  const stickyHeaderTranslateY = scrollY.interpolate({
+    inputRange: [65, 110],
+    outputRange: [-35, 0],
+    extrapolate: "clamp",
+  });
+  const stickyHeaderScale = scrollY.interpolate({
+    inputRange: [65, 110],
+    outputRange: [0.95, 1.0],
+    extrapolate: "clamp",
+  });
+
   // Coach card insight cross-fade & slide
   const coachFadeAnim = useRef(new Animated.Value(1)).current;
   const coachSlideAnim = useRef(new Animated.Value(0)).current;
@@ -2001,12 +2059,69 @@ export default function PatientHomeScreen({ navigation }) {
             </Svg>
           </View>
 
+          {/* ── Frosted Sticky Container Header (Morphed State) ── */}
+          <Animated.View
+            pointerEvents="box-none"
+            style={[
+              styles.stickyHeaderBar,
+              {
+                opacity: stickyHeaderOpacity,
+                transform: [
+                  { translateY: stickyHeaderTranslateY },
+                  { scale: stickyHeaderScale },
+                ],
+              },
+            ]}
+          >
+            <Pressable
+              style={styles.stickyBannerCapsule}
+              onPress={() => navigation.navigate(nextAction.targetScreen)}
+            >
+              <View style={styles.stickyPillIconBadge}>
+                <Pill size={15} color="#FFFFFF" />
+              </View>
+              <Text style={styles.stickyBannerText} numberOfLines={1}>
+                {nextAction.bannerDescription}
+              </Text>
+              <ChevronRight size={16} color="#C084FC" />
+            </Pressable>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={styles.stickyAvatarBtn}
+              onPress={() => navigation.navigate("Profile")}
+            >
+              <Text style={styles.avatarText}>
+                {displayName?.charAt(0) || "U"}
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+
           {/* ── HEADER ── */}
           <View style={styles.header}>
             <View style={styles.mainHeaderRow}>
               <View style={{ flex: 1, paddingRight: 16 }}>
-                <Text style={styles.greetingName}>{adaptiveGreeting}</Text>
-                <Text style={styles.headerSubtext}>{headerSubtitle}</Text>
+                <Animated.Text
+                  style={[
+                    styles.greetingName,
+                    {
+                      opacity: heroTitleOpacity,
+                      transform: [{ translateY: heroTitleTranslateY }],
+                    },
+                  ]}
+                >
+                  {adaptiveGreeting}
+                </Animated.Text>
+                <Animated.Text
+                  style={[
+                    styles.headerSubtext,
+                    {
+                      opacity: heroSubtextOpacity,
+                      transform: [{ translateY: heroSubtextTranslateY }],
+                    },
+                  ]}
+                >
+                  {headerSubtitle}
+                </Animated.Text>
               </View>
               <View style={styles.headerActions}>
                 <Pressable
@@ -2042,21 +2157,36 @@ export default function PatientHomeScreen({ navigation }) {
             </View>
           </View>
 
-          {/* ── Progressive Disclosure Guidance Banner ── */}
-          <TurnByTurnBanner
-            stepTitle={nextAction.bannerTitle}
-            stepDescription={nextAction.bannerDescription}
-            iconType={nextAction.iconType}
-            onPress={() => navigation.navigate(nextAction.targetScreen)}
-          />
+          {/* ── Progressive Disclosure Guidance Banner (Inline Morphing Container) ── */}
+          <Animated.View
+            style={{
+              opacity: inlineBannerOpacity,
+              transform: [
+                { translateY: inlineBannerTranslateY },
+                { scale: inlineBannerScale },
+              ],
+            }}
+          >
+            <TurnByTurnBanner
+              stepTitle={nextAction.bannerTitle}
+              stepDescription={nextAction.bannerDescription}
+              iconType={nextAction.iconType}
+              onPress={() => navigation.navigate(nextAction.targetScreen)}
+            />
+          </Animated.View>
 
           {/* ── SCROLLABLE CONTAINER ── */}
-          <ScrollView
+          <Animated.ScrollView
             ref={scrollViewRef}
             style={{ flex: 1 }}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: true }
+            )}
+            scrollEventThrottle={16}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -4873,5 +5003,55 @@ const styles = StyleSheet.create({
     color: "#D97706",
     fontSize: 13,
     fontWeight: "700",
+  },
+  // Frosted Sticky Container Header Morphing Bar
+  stickyHeaderBar: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 44 : 28,
+    left: 12,
+    right: 12,
+    zIndex: 120,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(15, 23, 42, 0.92)",
+    borderRadius: 24,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.14)",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 16,
+    elevation: 8,
+    gap: 10,
+  },
+  stickyBannerCapsule: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  stickyPillIconBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(124, 58, 237, 0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stickyBannerText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#F8FAFC",
+  },
+  stickyAvatarBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#7C3AED",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
