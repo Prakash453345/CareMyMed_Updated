@@ -4,10 +4,11 @@ import { StyleSheet, View, Dimensions, Animated } from 'react-native';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const ConfettiParticle = ({ index }) => {
-  const angle = (index * 10 + Math.random() * 8) * Math.PI / 180;
-  const distance = 80 + Math.random() * 160;
-  const destX = Math.cos(angle) * distance;
-  const destY = Math.sin(angle) * distance - (140 + Math.random() * 180);
+  // 360-degree balanced radial explosion around origin
+  const angle = ((index / 36) * 360 + (Math.random() * 16 - 8)) * (Math.PI / 180);
+  const velocity = 60 + Math.random() * 130;
+  const destX = Math.cos(angle) * velocity;
+  const destY = Math.sin(angle) * velocity * 0.85 + 40; // Gentle gravity drop
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const txAnim = useRef(new Animated.Value(0)).current;
@@ -84,7 +85,7 @@ const ConfettiParticle = ({ index }) => {
   );
 };
 
-export default function CelebrationOverlay({ active, onComplete }) {
+export default function CelebrationOverlay({ active, onComplete, origin }) {
   const [show, setShow] = useState(false);
   const [burstKey, setBurstKey] = useState(0);
 
@@ -104,11 +105,14 @@ export default function CelebrationOverlay({ active, onComplete }) {
 
   if (!show) return null;
 
+  const originX = origin?.x ?? SCREEN_WIDTH / 2;
+  const originY = origin?.y ?? SCREEN_HEIGHT * 0.45;
+
   const particles = Array.from({ length: 36 });
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <View style={styles.burstContainer}>
+      <View style={[styles.burstContainer, { left: originX, top: originY }]}>
         {particles.map((_, i) => (
           <ConfettiParticle key={`${burstKey}-${i}`} index={i} />
         ))}
@@ -120,8 +124,6 @@ export default function CelebrationOverlay({ active, onComplete }) {
 const styles = StyleSheet.create({
   burstContainer: {
     position: 'absolute',
-    left: SCREEN_WIDTH / 2,
-    top: SCREEN_HEIGHT / 2 - 50,
     alignItems: 'center',
     justifyContent: 'center',
   },
