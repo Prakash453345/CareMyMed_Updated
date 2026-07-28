@@ -2087,45 +2087,19 @@ export default function PatientHomeScreen({ navigation }) {
               <View style={styles.stickyPillIconBadge}>
                 <Pill size={15} color="#FFFFFF" />
               </View>
-              <Text style={styles.stickyBannerText} numberOfLines={1} ellipsizeMode="tail">
-                {nextAction.actionPayload?.name
-                  ? `Take ${nextAction.actionPayload.name}`
-                  : nextAction.bannerDescription?.split("•")[0]?.trim() || nextAction.bannerDescription}
-              </Text>
-              <ChevronRight size={15} color="#C084FC" />
-            </Pressable>
-
-            <View style={styles.stickyHeaderActions}>
-              <Pressable
-                style={styles.stickyHeaderIconBtn}
-                onPress={() => {
-                  triggerHapticSelection();
-                  scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-                  setShowVitalsTour(true);
-                }}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <HelpCircle size={18} color="#C084FC" strokeWidth={2.5} />
-              </Pressable>
-              <Pressable
-                style={styles.stickyHeaderIconBtn}
-                onPress={() => navigation.navigate("Notifications")}
-              >
-                <Bell size={18} color="#94A3B8" strokeWidth={2.5} />
-                {(unreadCount > 0 || hasContextualAlerts) && (
-                  <View style={styles.bellDot} />
-                )}
-              </Pressable>
-              <TouchableOpacity
-                activeOpacity={0.85}
-                style={styles.stickyAvatarBtn}
-                onPress={() => navigation.navigate("Profile")}
-              >
-                <Text style={styles.avatarText}>
-                  {displayName?.charAt(0) || "U"}
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={styles.stickyEyebrowText}>NEXT STEP</Text>
+                <Text style={styles.stickyBannerText} numberOfLines={1} ellipsizeMode="tail">
+                  {nextAction.actionPayload?.name
+                    ? `Take ${nextAction.actionPayload.name}`
+                    : nextAction.bannerDescription?.split("•")[0]?.trim() || nextAction.bannerDescription}
                 </Text>
-              </TouchableOpacity>
-            </View>
+              </View>
+              <View style={styles.stickyCtaBadge}>
+                <Text style={styles.stickyCtaText}>View</Text>
+                <ChevronRight size={13} color="#C084FC" />
+              </View>
+            </Pressable>
           </Animated.View>
 
           {/* ── HEADER ── */}
@@ -5045,66 +5019,67 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   // Frosted Sticky Container Header Morphing Bar
+  // Frosted Sticky Container Header Morphing Floating Dock Capsule
   stickyHeaderBar: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 52 : (StatusBar.currentHeight || 36) + 6,
-    left: 12,
-    right: 12,
+    top: Platform.OS === "ios" ? 60 : (StatusBar.currentHeight ? StatusBar.currentHeight + 18 : 52),
+    left: 16,
+    right: 16,
     zIndex: 120,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#0F172A",
-    borderRadius: 24,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 28,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.14)",
+    borderColor: "rgba(255, 255, 255, 0.16)",
     shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    elevation: 6,
-    gap: 10,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.24,
+    shadowRadius: 16,
+    elevation: 8,
   },
   stickyBannerCapsule: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 12,
   },
   stickyPillIconBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: "rgba(124, 58, 237, 0.35)",
     alignItems: "center",
     justifyContent: "center",
   },
+  stickyEyebrowText: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#C084FC",
+    letterSpacing: 0.8,
+  },
   stickyBannerText: {
-    flex: 1,
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#F8FAFC",
+    marginTop: 1,
   },
-  stickyAvatarBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#7C3AED",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stickyHeaderActions: {
+  stickyCtaBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 4,
+    backgroundColor: "rgba(124, 58, 237, 0.25)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(192, 132, 252, 0.3)",
   },
-  stickyHeaderIconBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    alignItems: "center",
-    justifyContent: "center",
+  stickyCtaText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#E9D5FF",
   },
 });
