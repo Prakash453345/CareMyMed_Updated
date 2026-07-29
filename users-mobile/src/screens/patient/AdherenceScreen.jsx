@@ -865,10 +865,9 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
   const isSmall = size === "small";
   const itemWidth = style?.width || (isSmall ? 70 : (SCREEN_WIDTH - 68) / 2);
 
-  const target = data.meta.target || 1;
+  const target = data.meta?.target || 1;
   const current = data.progress >= 1 ? target : Math.floor((data.progress || 0) * target);
-  const pct = Math.min(100, Math.max(0, (data.progress || 0) * 100));
-  const tier = data.meta.tier || "bronze";
+  const isHiddenLocked = data.meta?.isHidden && !data.unlocked;
 
   const pressScale = useRef(new Animated.Value(1)).current;
 
@@ -886,20 +885,29 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
     }).start();
   };
 
-  const IconComponent = Icons[data.meta.iconName] || Icons.Award;
+  const IconComponent = isHiddenLocked
+    ? Icons.HelpCircle
+    : Icons[data.meta?.iconName] || Icons.Award;
   const label = getUnlockedLabel(data);
 
-  // 3D Sphere Gradients matching the design concept mockup
-  const sphereGradients = {
-    Crown: ["#E9D5FF", "#A855F7", "#6B21A8"],
-    Pill: ["#C084FC", "#9333EA", "#6B21A8"],
-    Activity: ["#93C5FD", "#3B82F6", "#1E40AF"],
-    HeartPulse: ["#F9A8D4", "#EC4899", "#9D174D"],
-    Medal: ["#FDE047", "#EAB308", "#854D0E"],
-    Trophy: ["#FDE047", "#F59E0B", "#9A3412"],
-    Award: ["#A5B4FC", "#6366F1", "#3730A3"],
+  // Material 3 / SF Symbols Subtle Radial Depth Gradients
+  const materialGradients = {
+    common: ["#F8FAFC", "#E2E8F0", "#CBD5E1"],
+    rare: ["#F3E8FF", "#C084FC", "#7C3AED"],
+    epic: ["#EEF2FF", "#818CF8", "#4338CA"],
+    legendary: ["#FEF3C7", "#F59E0B", "#B45309"],
+    mythic: ["#38BDF8", "#A855F7", "#0F172A"],
   };
-  const gradientColors = sphereGradients[data.meta.iconName] || sphereGradients.Award;
+
+  const tierKey = data.meta?.tier || "common";
+  const gradientColors = materialGradients[tierKey] || materialGradients.rare;
+
+  const displayTitle = isHiddenLocked
+    ? "???"
+    : data.meta?.unlockedTitle || data.meta?.title || data.key;
+  const displayDesc = isHiddenLocked
+    ? "Secret health milestone"
+    : data.meta?.description || "Complete activity to unlock";
 
   if (isSmall) {
     return (
@@ -911,18 +919,42 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
       >
         <Animated.View style={{ transform: [{ scale: pressScale }], alignItems: "center" }}>
           <LinearGradient
-            colors={data.unlocked ? gradientColors : ["#E2E8F0", "#94A3B8"]}
+            colors={data.unlocked ? gradientColors : ["#F1F5F9", "#CBD5E1"]}
             style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" }}
           >
-            <IconComponent size={20} color="#FFF" />
+            <IconComponent size={20} color={data.unlocked ? "#FFF" : "#64748B"} />
           </LinearGradient>
           <Text style={{ fontSize: 10, fontWeight: "700", color: "#64748B", marginTop: 4, textAlign: "center" }} numberOfLines={1}>
-            {data.meta.title || data.key}
+            {displayTitle}
           </Text>
         </Animated.View>
       </Pressable>
     );
   }
+
+  // Themed Watermark Renderer
+  const renderWatermark = () => {
+    const iconName = data.meta?.iconName;
+    if (iconName === "Pill" || iconName === "Sprout") {
+      return (
+        <Svg width="50" height="50" viewBox="0 0 24 24" style={{ position: "absolute", right: -10, top: -10, opacity: 0.05 }}>
+          <Path d="M10.5 20.4l-6.9-6.9c-1.6-1.6-1.6-4.1 0-5.7l6.9-6.9c1.6-1.6 4.1-1.6 5.7 0l6.9 6.9c1.6 1.6 1.6 4.1 0 5.7l-6.9 6.9c-1.6 1.5-4.1 1.5-5.7 0z" stroke="#7C3AED" strokeWidth="1.5" fill="none" />
+        </Svg>
+      );
+    }
+    if (iconName === "Activity" || iconName === "HeartPulse") {
+      return (
+        <Svg width="50" height="50" viewBox="0 0 24 24" style={{ position: "absolute", right: -10, top: -10, opacity: 0.05 }}>
+          <Path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="#7C3AED" strokeWidth="1.5" fill="none" />
+        </Svg>
+      );
+    }
+    return (
+      <Svg width="50" height="50" viewBox="0 0 24 24" style={{ position: "absolute", right: -10, top: -10, opacity: 0.05 }}>
+        <Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="#7C3AED" strokeWidth="1.5" fill="none" />
+      </Svg>
+    );
+  };
 
   return (
     <Pressable
@@ -935,19 +967,20 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
           backgroundColor: "#FFFFFF",
           borderRadius: 20,
           borderWidth: 1,
-          borderColor: data.unlocked ? "rgba(241, 245, 249, 0.9)" : "rgba(226, 232, 240, 0.8)",
+          borderColor: data.unlocked ? "rgba(124, 58, 237, 0.14)" : "rgba(226, 232, 240, 0.8)",
           padding: 12,
-          shadowColor: "#0F172A",
+          shadowColor: "#7C3AED",
           shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.04,
+          shadowOpacity: data.unlocked ? 0.06 : 0.02,
           shadowRadius: 10,
-          elevation: 2,
+          elevation: data.unlocked ? 2 : 1,
           position: "relative",
           overflow: "hidden",
         },
         style,
       ]}
     >
+      {renderWatermark()}
       <Animated.View
         style={{
           transform: [{ scale: pressScale }],
@@ -955,62 +988,77 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
           alignItems: "center",
         }}
       >
-        {/* Left 3D Spherical Badge */}
+        {/* Left Material Depth Emblem */}
         <View
           style={{
-            width: 52,
-            height: 52,
-            borderRadius: 26,
+            width: 48,
+            height: 48,
+            borderRadius: 24,
             alignItems: "center",
             justifyContent: "center",
             position: "relative",
+            borderWidth: 1.5,
+            borderColor: data.unlocked ? "rgba(255, 255, 255, 0.6)" : "#E2E8F0",
             shadowColor: gradientColors[1],
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: data.unlocked ? 0.35 : 0.05,
-            shadowRadius: 8,
-            elevation: data.unlocked ? 4 : 1,
+            shadowOpacity: data.unlocked ? 0.25 : 0.05,
+            shadowRadius: 6,
+            elevation: data.unlocked ? 3 : 1,
           }}
         >
           <LinearGradient
-            colors={data.unlocked ? gradientColors : ["#F1F5F9", "#CBD5E1"]}
+            colors={data.unlocked ? gradientColors : ["#F8FAFC", "#E2E8F0"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{
               width: "100%",
               height: "100%",
-              borderRadius: 26,
+              borderRadius: 24,
               alignItems: "center",
               justifyContent: "center",
-              overflow: "hidden",
             }}
           >
-            {/* Glossy Sheen Highlight */}
-            <LinearGradient
-              colors={["rgba(255, 255, 255, 0.65)", "rgba(255, 255, 255, 0)"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ position: "absolute", top: 0, left: 0, right: 0, height: "50%" }}
-            />
-            <IconComponent size={24} color={data.unlocked ? "#FFFFFF" : "#94A3B8"} />
+            <IconComponent size={22} color={data.unlocked ? "#FFFFFF" : "#94A3B8"} />
           </LinearGradient>
+
+          {/* Top Right Checkmark Badge */}
+          {data.unlocked && (
+            <View
+              style={{
+                position: "absolute",
+                top: -2,
+                right: -2,
+                backgroundColor: "#10B981",
+                borderRadius: 9,
+                width: 18,
+                height: 18,
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 1.5,
+                borderColor: "#FFFFFF",
+              }}
+            >
+              <CheckCircle2 size={11} color="#FFFFFF" strokeWidth={3} />
+            </View>
+          )}
         </View>
 
         {/* Center Details Column */}
-        <View style={{ flex: 1, marginLeft: 10, paddingRight: 14 }}>
+        <View style={{ flex: 1, marginLeft: 10, paddingRight: 4 }}>
           <Text
             style={{
-              fontSize: 13,
+              fontSize: 12.5,
               fontWeight: "800",
               color: data.unlocked ? "#0F172A" : "#64748B",
               lineHeight: 16,
             }}
             numberOfLines={1}
           >
-            {data.meta.title || data.key}
+            {displayTitle}
           </Text>
           <Text
             style={{
-              fontSize: 10.5,
+              fontSize: 10,
               fontWeight: "500",
               color: "#64748B",
               marginTop: 2,
@@ -2500,6 +2548,102 @@ export default function AdherenceScreen({ navigation }) {
 
             {/* ── [6] Achievements ── */}
             <Animated.View style={[anim(6), { position: "relative" }]}>
+              {/* Hero Award Plaque Showcase (Apple Award / PlayStation Platinum Trophy style) */}
+              <View
+                style={{
+                  marginBottom: 20,
+                  borderRadius: 24,
+                  backgroundColor: "#F8F5FF",
+                  borderWidth: 1,
+                  borderColor: "rgba(124, 58, 237, 0.16)",
+                  padding: 18,
+                  shadowColor: "#7C3AED",
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.06,
+                  shadowRadius: 16,
+                  elevation: 3,
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+              >
+                {/* Background Laurel Branch Watermark Svg */}
+                <Svg width="140" height="140" viewBox="0 0 100 100" style={{ position: "absolute", right: -20, bottom: -20, opacity: 0.07 }}>
+                  <Path d="M50 10 C30 30, 20 60, 20 90 M50 10 C70 30, 80 60, 80 90 M30 35 C20 40, 15 50, 20 60 M70 35 C80 40, 85 50, 80 60" stroke="#7C3AED" strokeWidth="2" fill="none" />
+                </Svg>
+
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  {/* Large Shield / Hexagonal Crest Plaque */}
+                  <View
+                    style={{
+                      width: 68,
+                      height: 68,
+                      borderRadius: 22,
+                      backgroundColor: "#5B21B6",
+                      borderWidth: 2,
+                      borderColor: "rgba(255, 255, 255, 0.4)",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      position: "relative",
+                      shadowColor: "#5B21B6",
+                      shadowOffset: { width: 0, height: 6 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 10,
+                      elevation: 4,
+                    }}
+                  >
+                    <LinearGradient
+                      colors={["#A855F7", "#7C3AED", "#4C1D95"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        borderRadius: 20,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Crown size={30} color="#FFFBEB" fill="#F59E0B" />
+                    </LinearGradient>
+
+                    {/* Floating Lock / Unlocked Badge */}
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: -3,
+                        right: -3,
+                        backgroundColor: "#475569",
+                        width: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderWidth: 2,
+                        borderColor: "#FFFFFF",
+                      }}
+                    >
+                      <Lock size={10} color="#FFFFFF" strokeWidth={2.5} />
+                    </View>
+                  </View>
+
+                  {/* Plaque Details */}
+                  <View style={{ flex: 1, marginLeft: 14 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                      <Sparkles size={12} color="#7C3AED" />
+                      <Text style={{ fontSize: 10.5, fontWeight: "800", color: "#7C3AED", letterSpacing: 0.8, textTransform: "uppercase" }}>
+                        Pinnacle Award Showcase
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 16, fontWeight: "900", color: "#0F172A", marginTop: 2, letterSpacing: -0.3 }}>
+                      Consistency Master
+                    </Text>
+                    <Text style={{ fontSize: 11, fontWeight: "500", color: "#64748B", marginTop: 3, lineHeight: 15 }}>
+                      Log your medications or vitals for 30 consecutive days. True mastery is built one daily habit at a time.
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
               {/* Category Sections */}
               {Object.keys(CATEGORY_CONFIG).map((categoryKey, idx) => {
                 const catConfig = CATEGORY_CONFIG[categoryKey];
