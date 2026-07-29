@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Modal, View, Text, StyleSheet, Pressable, Animated, Dimensions, Easing
 } from 'react-native';
-import Svg, { Defs, Mask, Rect as SvgRect } from 'react-native-svg';
+import Svg, { Defs, Mask, Rect as SvgRect, Circle as SvgCircle } from 'react-native-svg';
 import { ChevronRight } from 'lucide-react-native';
 import { colors } from '../../theme';
 import { useReduceMotion } from '../../theme/motion';
@@ -19,6 +19,7 @@ export default function GuidedTour({
     const [activeStep, setActiveStep] = useState(0);
     const [spotlightCoords, setSpotlightCoords] = useState(null);
     const [arrowConfig, setArrowConfig] = useState({ isUp: true, arrowLeft: 48 });
+    const [computedShapeConfig, setComputedShapeConfig] = useState({ shape: 'roundedRect', radius: 16 });
     const [isTransitioning, setIsTransitioning] = useState(false);
     const reduceMotion = useReduceMotion();
     const cardFade = useRef(new Animated.Value(1)).current;
@@ -35,6 +36,7 @@ export default function GuidedTour({
     const animCardLeft = useRef(new Animated.Value(20)).current;
     const animArrowLeft = useRef(new Animated.Value(48)).current;
     const animOpacity = useRef(new Animated.Value(0)).current;
+    const animRadius = useRef(new Animated.Value(16)).current;
     const isFirstMeasureRef = useRef(true);
 
     const setTrackedTimeout = useCallback((fn, delay) => {
@@ -50,15 +52,17 @@ export default function GuidedTour({
     }, []);
 
     /**
-     * Animate spotlight cutout, card position, and arrow alignment to new target coordinates
+     * GUIDED TOUR LAYOUT ENGINE
+     * Computes safe margins, smart placement, custom anchors, adaptive card sizing, and shapes
      */
-    const animateToCoords = useCallback((coords, isUp) => {
-        if (!coords) return;
+    const animateToCoords = useCallback((coords, stepData) => {
+        if (!coords || !stepData) return;
 
         const screenWidth = Dimensions.get('window').width || 360;
         const screenHeight = Dimensions.get('window').height || 640;
+        const SAFE_MARGIN = 16;
 
-        const pad = Number(coords.padding) || 6;
+        const pad = Number(stepData.spotlightPadding ?? coords.padding) || 6;
         const rawTop = Number(coords.top);
         const rawLeft = Number(coords.left);
         const rawWidth = Number(coords.width);
@@ -69,22 +73,61 @@ export default function GuidedTour({
         const safeWidth = isNaN(rawWidth) || rawWidth <= 0 ? screenWidth - 32 : rawWidth;
         const safeHeight = isNaN(rawHeight) || rawHeight <= 0 ? 80 : rawHeight;
 
-        const spotTop = Math.max(0, safeTop - pad);
-        const spotLeft = Math.max(0, safeLeft - pad);
-        const spotWidth = Math.min(screenWidth, Math.max(10, safeWidth + pad * 2));
+        // 1. Safe Edge Boundaries (Never clip screen edges)
+        const spotTop = Math.max(10, safeTop - pad);
+        const spotLeft = Math.max(SAFE_MARGIN, Math.min(screenWidth - SAFE_MARGIN - 20, safeLeft - pad));
+        const spotWidth = Math.min(screenWidth - SAFE_MARGIN * 2, Math.max(10, safeWidth + pad * 2));
         const spotHeight = Math.max(10, safeHeight + pad * 2);
 
-        // Adaptive tooltip width (~86% on phones, capped at 340-360dp on tablets)
-        const cardWidth = Math.min(Math.round(screenWidth * 0.86), screenWidth > 600 ? 360 : 310);
-        const targetCenterX = safeLeft + safeWidth / 2;
-        const cardLeft = Math.max(16, Math.min(targetCenterX - cardWidth / 2, screenWidth - cardWidth - 16));
+        // 2. Shape & Corner Radius Engine
+        const shape = stepData.shape || 'roundedRect';
+        let computedRadius = stepData.spotlightRadius || stepData.borderRadius || 16;
+        if (shape === 'circle') {
+            computedRadius = Math.max(spotWidth, spotHeight) / 2;
+        } else if (shape === 'pill') {
+            computedRadius = spotHeight / 2;
+        }
+
+        setComputedShapeConfig({ shape, radius: computedRadius });
+
+        // 3. Smart Placement Engine (Auto-calculates largest free area above vs below target)
+        const spaceAbove = spotTop - 20;
+        const spaceBelow = screenHeight - (spotTop + spotHeight) - 40;
+        const preferred = stepData.preferredPlacement || stepData.arrow || 'auto';
+
+        let isUp; // isUp = true means card sits BELOW spotlight (arrow points UP)
+        if (preferred === 'top' || preferred === 'above') {
+            isUp = false;
+        } else if (preferred === 'bottom' || preferred === 'below') {
+            isUp = true;
+        } else {
+            // Auto placement: Pick direction with largest free area
+            if (spaceBelow >= 180) {
+                isUp = true;
+            } else if (spaceAbove >= 180) {
+                isUp = false;
+            } else {
+                isUp = spaceBelow >= spaceAbove;
+            }
+        }
+
+        // 4. Custom Anchor Points (anchorX ratio 0.0 to 1.0)
+        const anchorRatio = stepData.anchorX !== undefined ? stepData.anchorX : 0.5;
+        const targetCenterX = safeLeft + safeWidth * anchorRatio;
+
+        // 5. Adaptive Tooltip Card Width (~86% on phones, capped on tablets)
+        const cardWidth = Math.min(
+            stepData.maxCardWidth || 340,
+            Math.min(Math.round(screenWidth * 0.86), screenWidth > 600 ? 360 : 310)
+        );
+        const cardLeft = Math.max(SAFE_MARGIN, Math.min(targetCenterX - cardWidth / 2, screenWidth - cardWidth - SAFE_MARGIN));
         const computedArrowLeft = Math.max(16, Math.min(targetCenterX - cardLeft - 8, cardWidth - 32));
 
         let cardTop;
         if (isUp) {
-            cardTop = spotTop + spotHeight + 12;
+            cardTop = Math.min(screenHeight - 200, spotTop + spotHeight + 12);
         } else {
-            cardTop = Math.max(20, spotTop - 170);
+            cardTop = Math.max(20, spotTop - (stepData.cardOffset || 170));
         }
 
         const finalSpotTop = isNaN(spotTop) ? 0 : spotTop;
@@ -105,10 +148,11 @@ export default function GuidedTour({
             animCardTop.setValue(finalCardTop);
             animCardLeft.setValue(finalCardLeft);
             animArrowLeft.setValue(finalArrowLeft);
+            animRadius.setValue(computedRadius);
             animOpacity.setValue(1);
             isFirstMeasureRef.current = false;
         } else {
-            // Smooth 240ms gliding animation across screen targets
+            // Coordinated 240ms gliding animation across all parameters
             Animated.parallel([
                 Animated.timing(animSpotTop, { toValue: finalSpotTop, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
                 Animated.timing(animSpotLeft, { toValue: finalSpotLeft, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
@@ -117,10 +161,11 @@ export default function GuidedTour({
                 Animated.timing(animCardTop, { toValue: finalCardTop, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
                 Animated.timing(animCardLeft, { toValue: finalCardLeft, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
                 Animated.timing(animArrowLeft, { toValue: finalArrowLeft, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animRadius, { toValue: computedRadius, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
                 Animated.timing(animOpacity, { toValue: 1, duration: 180, useNativeDriver: false }),
             ]).start();
         }
-    }, [animSpotTop, animSpotLeft, animSpotWidth, animSpotHeight, animCardTop, animCardLeft, animArrowLeft, animOpacity, reduceMotion]);
+    }, [animSpotTop, animSpotLeft, animSpotWidth, animSpotHeight, animCardTop, animCardLeft, animArrowLeft, animRadius, animOpacity, reduceMotion]);
 
     /**
      * Measure step target using measureInWindow with retry pass & scroll offset
@@ -137,7 +182,7 @@ export default function GuidedTour({
                 width: screenWidth - 32
             };
             setSpotlightCoords(fallbackCoords);
-            animateToCoords(fallbackCoords, true);
+            animateToCoords(fallbackCoords, sd);
         };
 
         const doWindowMeasure = () => {
@@ -152,9 +197,7 @@ export default function GuidedTour({
                                 width: mwidth
                             };
                             setSpotlightCoords(coords);
-                            const screenHeight = Dimensions.get('window').height;
-                            const isUp = stepData.arrow === 'top' || (y < screenHeight / 2 - 20 && stepData.arrow !== 'bottom');
-                            animateToCoords(coords, isUp);
+                            animateToCoords(coords, stepData);
                         } else if (attempt < 4) {
                             setTrackedTimeout(() => measureStep(stepData, attempt + 1), 60);
                         } else {
@@ -171,9 +214,7 @@ export default function GuidedTour({
                                 width: mwidth
                             };
                             setSpotlightCoords(coords);
-                            const screenHeight = Dimensions.get('window').height;
-                            const isUp = stepData.arrow === 'top' || (pageY < screenHeight / 2 - 20 && stepData.arrow !== 'bottom');
-                            animateToCoords(coords, isUp);
+                            animateToCoords(coords, stepData);
                         } else {
                             applyStaticFallback(stepData);
                         }
@@ -280,6 +321,12 @@ export default function GuidedTour({
         if (onClose) onClose();
     };
 
+    const pad = Number(stepData.spotlightPadding ?? spotlightCoords?.padding) || 6;
+    const spotX = spotlightCoords ? Math.max(16, spotlightCoords.left - pad) : 0;
+    const spotY = spotlightCoords ? Math.max(10, spotlightCoords.top - pad) : 0;
+    const spotW = spotlightCoords ? spotlightCoords.width + pad * 2 : 0;
+    const spotH = spotlightCoords ? spotlightCoords.height + pad * 2 : 0;
+
     return (
         <Modal transparent visible={visible} animationType="fade" statusBarTranslucent={true}>
             <View style={[s.wtOverlay, !spotlightCoords && s.wtOverlayCentered]}>
@@ -289,14 +336,23 @@ export default function GuidedTour({
                         <Defs>
                             <Mask id="spotlightMask">
                                 <SvgRect width="100%" height="100%" fill="white" />
-                                <SvgRect
-                                    x={spotlightCoords.left - (stepData.padding || 6)}
-                                    y={spotlightCoords.top - (stepData.padding || 6)}
-                                    width={spotlightCoords.width + (stepData.padding || 6) * 2}
-                                    height={spotlightCoords.height + (stepData.padding || 6) * 2}
-                                    rx={stepData.borderRadius || 16}
-                                    fill="black"
-                                />
+                                {computedShapeConfig.shape === 'circle' ? (
+                                    <SvgCircle
+                                        cx={spotX + spotW / 2}
+                                        cy={spotY + spotH / 2}
+                                        r={Math.max(spotW, spotH) / 2}
+                                        fill="black"
+                                    />
+                                ) : (
+                                    <SvgRect
+                                        x={spotX}
+                                        y={spotY}
+                                        width={spotW}
+                                        height={spotH}
+                                        rx={computedShapeConfig.radius}
+                                        fill="black"
+                                    />
+                                )}
                             </Mask>
                         </Defs>
                         <SvgRect
@@ -321,7 +377,7 @@ export default function GuidedTour({
                                 width: animSpotWidth,
                                 height: animSpotHeight,
                                 opacity: animOpacity,
-                                borderRadius: stepData.borderRadius || 16,
+                                borderRadius: animRadius,
                             }
                         ]}
                         pointerEvents="none"
@@ -346,7 +402,7 @@ export default function GuidedTour({
                     ]}
                     pointerEvents={isTransitioning ? 'none' : 'auto'}
                 >
-                    {/* Anchored Arrow pointing to component center */}
+                    {/* Anchored Arrow pointing to component center / custom anchorX */}
                     {spotlightCoords && (
                         <Animated.View
                             style={[
@@ -397,7 +453,7 @@ const s = StyleSheet.create({
         flex: 1,
     },
     wtOverlayCentered: {
-        justify: 'center',
+        justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
     },
@@ -434,7 +490,7 @@ const s = StyleSheet.create({
         borderRadius: 10,
         backgroundColor: '#F8FAFC',
         alignItems: 'center',
-        justify: 'center',
+        justifyContent: 'center',
         marginRight: 10,
     },
     wtTitle: {
@@ -463,7 +519,7 @@ const s = StyleSheet.create({
     wtFooter: {
         flexDirection: 'row',
         alignItems: 'center',
-        justify: 'space-between',
+        justifyContent: 'space-between',
     },
     wtStepCounter: {
         backgroundColor: '#F1F5F9',
