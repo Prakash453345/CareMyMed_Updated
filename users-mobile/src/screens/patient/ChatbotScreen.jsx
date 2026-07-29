@@ -893,23 +893,58 @@ export default function ChatbotScreen({ navigation, route }) {
     // Follow-up suggestions from the last bot response
     const [followUpSuggestions, setFollowUpSuggestions] = useState([]);
     
-    // Audio recording state
+    // State Machine-driven Audio Recording state
     const [recording, setRecording] = useState(null);
-    const [recordingMode, setRecordingMode] = useState('idle'); // 'idle', 'holding', 'locked'
-    const [isCancelling, setIsCancelling] = useState(false);
-    
-    const recordingModeRef = useRef('idle');
-    const isCancellingRef = useRef(false);
-    const pan = useRef(new Animated.ValueXY()).current;
+    const [voiceState, setVoiceState] = useState('idle'); // 'idle' | 'recording' | 'review'
+    const [recordingDuration, setRecordingDuration] = useState(0);
+    const [recordedAudioUri, setRecordedAudioUri] = useState(null);
+    const timerIntervalRef = useRef(null);
 
-    const setRecMode = useCallback((mode) => {
-        setRecordingMode(mode);
-        recordingModeRef.current = mode;
-    }, []);
+    // Telegram Live Waveform Animated Drivers
+    const waveAnim1 = useRef(new Animated.Value(6)).current;
+    const waveAnim2 = useRef(new Animated.Value(14)).current;
+    const waveAnim3 = useRef(new Animated.Value(22)).current;
+    const waveAnim4 = useRef(new Animated.Value(10)).current;
 
-    const setCancelMode = useCallback((val) => {
-        setIsCancelling(val);
-        isCancellingRef.current = val;
+    useEffect(() => {
+        let waveAnimation = null;
+        if (voiceState === 'recording') {
+            waveAnimation = Animated.loop(
+                Animated.parallel([
+                    Animated.sequence([
+                        Animated.timing(waveAnim1, { toValue: 24, duration: 400, useNativeDriver: false }),
+                        Animated.timing(waveAnim1, { toValue: 6, duration: 400, useNativeDriver: false }),
+                    ]),
+                    Animated.sequence([
+                        Animated.timing(waveAnim2, { toValue: 8, duration: 350, useNativeDriver: false }),
+                        Animated.timing(waveAnim2, { toValue: 26, duration: 350, useNativeDriver: false }),
+                    ]),
+                    Animated.sequence([
+                        Animated.timing(waveAnim3, { toValue: 28, duration: 450, useNativeDriver: false }),
+                        Animated.timing(waveAnim3, { toValue: 10, duration: 450, useNativeDriver: false }),
+                    ]),
+                    Animated.sequence([
+                        Animated.timing(waveAnim4, { toValue: 12, duration: 300, useNativeDriver: false }),
+                        Animated.timing(waveAnim4, { toValue: 22, duration: 300, useNativeDriver: false }),
+                    ]),
+                ])
+            );
+            waveAnimation.start();
+        } else {
+            waveAnim1.setValue(6);
+            waveAnim2.setValue(14);
+            waveAnim3.setValue(22);
+            waveAnim4.setValue(10);
+        }
+        return () => {
+            if (waveAnimation) waveAnimation.stop();
+        };
+    }, [voiceState]);
+
+    const formatDuration = useCallback((secs) => {
+        const m = Math.floor(secs / 60);
+        const s = secs % 60;
+        return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
     }, []);
 
     const firstName = displayName?.split(' ')[0] || 'there';
@@ -1341,19 +1376,13 @@ export default function ChatbotScreen({ navigation, route }) {
             return;
         }
 
-        const isAudioMsg = recordingModeRef.current !== 'idle' || !!audioUri;
-        let currentRecordingUri = isAudioMsg ? audioUri : null;
+        const targetAudioUri = audioUri || recordedAudioUri;
+        const isAudioMsg = !!targetAudioUri;
+        let currentRecordingUri = isAudioMsg ? targetAudioUri : null;
 
-        if (recording) {
-            const currentRec = recording;
-            setRecording(null);
-            setRecMode('idle');
-            setCancelMode(false);
-            const uri = await safeStopAndUnload(currentRec);
-            if (!currentRecordingUri && uri) {
-                currentRecordingUri = uri;
-            }
-        }
+        // Reset voice state machine after send
+        setVoiceState('idle');
+        setRecordedAudioUri(null);
 
         const userMessage = { 
             id: Date.now().toString(), 
@@ -1579,93 +1608,71 @@ export default function ChatbotScreen({ navigation, route }) {
                     Audio.RecordingOptionsPresets.HIGH_QUALITY
                 );
                 setRecording(recording);
+                setRecordedAudioUri(null);
+                setRecordingDuration(0);
+                setVoiceState('recording');
+                Vibration.vibrate(50);
+
+                // Start second timer
+                if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+                timerIntervalRef.current = setInterval(() => {
+                    setRecordingDuration(prev => prev + 1);
+                }, 1000);
             } else {
                 AlertManager.alert('Permission needed', 'Please grant microphone access to send voice messages.', [{ text: 'OK' }], { type: 'warning' });
-                setRecMode('idle');
+                setVoiceState('idle');
             }
         } catch (err) {
             console.error('Failed to start recording', err);
-            setRecMode('idle');
+            setVoiceState('idle');
         }
     };
 
-    const stopRecordingAndSend = async () => {
-        if (!recording) return;
+    const stopRecordingAndReview = async () => {
+        if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+        }
+        if (!recording) {
+            setVoiceState('idle');
+            return;
+        }
         const currentRec = recording;
         setRecording(null);
-        setRecMode('idle');
+        Vibration.vibrate(50);
         try {
             const uri = await safeStopAndUnload(currentRec);
             if (uri) {
-                handleSend('', null, uri);
+                setRecordedAudioUri(uri);
+                setVoiceState('review');
+            } else {
+                setVoiceState('idle');
             }
         } catch (err) {
             console.error('Failed to stop recording', err);
+            setVoiceState('idle');
         }
     };
 
     const cancelRecording = async () => {
-        if (!recording) return;
-        const currentRec = recording;
-        setRecording(null);
-        setRecMode('idle');
-        setCancelMode(false);
-        try {
-            await safeStopAndUnload(currentRec);
-            Vibration.vibrate([0, 50, 50, 50]); // Quick buzz to indicate cancelled
-        } catch (err) {
-            console.error('Failed to cancel recording', err);
+        if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
         }
-    };
-
-    const panResponder = useRef(
-        PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onPanResponderGrant: async () => {
-                setRecMode('holding');
-                setCancelMode(false);
-                pan.setValue({ x: 0, y: 0 });
-                Vibration.vibrate(50); 
-                await startRecording();
-            },
-            onPanResponderMove: (evt, gestureState) => {
-                if (recordingModeRef.current === 'locked') return;
-
-                if (gestureState.dy < -80) {
-                    // Locked!
-                    setRecMode('locked');
-                    Vibration.vibrate(50);
-                    pan.setValue({ x: 0, y: 0 });
-                } else if (gestureState.dx < -80) {
-                    // Cancel!
-                    setCancelMode(true);
-                    pan.setValue({ x: gestureState.dx, y: 0 });
-                } else {
-                    setCancelMode(false);
-                    // Move the mic visually up/left based on drag
-                    pan.setValue({ 
-                        x: gestureState.dx < 0 ? gestureState.dx : 0, 
-                        y: gestureState.dy < 0 ? gestureState.dy : 0 
-                    });
-                }
-            },
-            onPanResponderRelease: async (evt, gestureState) => {
-                if (isCancellingRef.current) {
-                    pan.setValue({ x: 0, y: 0 });
-                    await cancelRecording();
-                } else if (recordingModeRef.current === 'locked') {
-                    // Doing nothing, wait for tap to stop
-                } else {
-                    pan.setValue({ x: 0, y: 0 });
-                    await stopRecordingAndSend();
-                }
-            },
-            onPanResponderTerminate: async () => {
-                pan.setValue({ x: 0, y: 0 });
-                await cancelRecording();
+        if (recording) {
+            const currentRec = recording;
+            setRecording(null);
+            try {
+                await safeStopAndUnload(currentRec);
+            } catch (err) {
+                console.error('Failed to cancel recording', err);
             }
-        })
-    ).current;
+        }
+        setRecordedAudioUri(null);
+        setRecordingDuration(0);
+        setVoiceState('idle');
+        Vibration.vibrate([0, 40, 40, 40]); // Buzz on cancel
+    };
 
     const renderMessage = useCallback(({ item }) => {
         if (item.isSkeleton) {
@@ -1773,11 +1780,29 @@ export default function ChatbotScreen({ navigation, route }) {
                                 />
                             )}
                             {isTyping ? <TypingIndicator stage={typingStage} /> : null}
-                            {!isTyping && followUpSuggestions.length > 0 ? (
-                                <FollowUpChips 
-                                    suggestions={followUpSuggestions} 
-                                    onPress={(s) => handleSend(s)} 
-                                />
+                            {!isTyping && messages.some(m => !m.isUser && m.text) ? (
+                                <View style={styles.followUpContainer}>
+                                    {(followUpSuggestions.length > 0 
+                                        ? followUpSuggestions 
+                                        : [
+                                            '🎤 Explain in simple terms',
+                                            '💊 Which medicine helps?',
+                                            '📈 Show my vitals trend',
+                                            '🩺 What should I ask my doctor?',
+                                          ]
+                                    ).map((chip, idx) => (
+                                        <Pressable
+                                            key={idx}
+                                            style={({ pressed }) => [
+                                                styles.followUpChip,
+                                                pressed && { opacity: 0.7 }
+                                            ]}
+                                            onPress={() => handleSend(chip)}
+                                        >
+                                            <Text style={styles.followUpText}>{chip}</Text>
+                                        </Pressable>
+                                    ))}
+                                </View>
                             ) : null}
                         </>
                     }
@@ -1799,9 +1824,60 @@ export default function ChatbotScreen({ navigation, route }) {
                     </View>
                 )}
 
-                {/* ── Input bar ── */}
+                {/* ── Input Bar State Machine ── */}
                 <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom + 8, 20) }]}>
-                    {recordingMode === 'idle' ? (
+                    {voiceState === 'recording' ? (
+                        /* 🎙️ RECORDING STATE (Telegram Visual Polish) */
+                        <View style={styles.recordingOverlayBar}>
+                            <Pressable style={styles.trashCircleBtn} onPress={cancelRecording} hitSlop={8}>
+                                <Trash2 size={18} color="#EF4444" strokeWidth={2} />
+                            </Pressable>
+
+                            <View style={styles.recordingMetaRow}>
+                                <View style={styles.recordingRedDotPulse} />
+                                <Text style={styles.recordingTimerTxt}>{formatDuration(recordingDuration)}</Text>
+                                
+                                {/* Telegram Live Waveform Visualization */}
+                                <View style={styles.waveformContainer}>
+                                    <Animated.View style={[styles.waveBarItem, { height: waveAnim1 }]} />
+                                    <Animated.View style={[styles.waveBarItem, { height: waveAnim2 }]} />
+                                    <Animated.View style={[styles.waveBarItem, { height: waveAnim3 }]} />
+                                    <Animated.View style={[styles.waveBarItem, { height: waveAnim4 }]} />
+                                    <Animated.View style={[styles.waveBarItem, { height: waveAnim2 }]} />
+                                    <Animated.View style={[styles.waveBarItem, { height: waveAnim1 }]} />
+                                </View>
+                            </View>
+
+                            <Pressable style={styles.stopSquareBtn} onPress={stopRecordingAndReview} hitSlop={8}>
+                                <LinearGradient colors={['#EF4444', '#DC2626']} style={styles.sendGradient}>
+                                    <Square size={14} color="#FFF" fill="#FFF" />
+                                </LinearGradient>
+                            </Pressable>
+                        </View>
+                    ) : voiceState === 'review' ? (
+                        /* 📝 REVIEW / TRANSCRIPT STATE */
+                        <View style={styles.reviewInputWrapper}>
+                            <View style={styles.reviewHeaderRow}>
+                                <View style={styles.voiceNoteBadge}>
+                                    <Mic size={13} color="#6366F1" strokeWidth={2.5} />
+                                    <Text style={styles.voiceNoteBadgeTxt}>Voice Note • {formatDuration(recordingDuration)}</Text>
+                                </View>
+                                <Pressable onPress={cancelRecording} hitSlop={8} style={styles.clearVoiceBtn}>
+                                    <X size={14} color="#64748B" />
+                                </Pressable>
+                            </View>
+                            <TextInput
+                                style={styles.textInput}
+                                placeholder="Edit optional text or add caption..."
+                                placeholderTextColor="#94A3B8"
+                                value={inputText}
+                                onChangeText={setInputText}
+                                multiline
+                                maxLength={500}
+                            />
+                        </View>
+                    ) : (
+                        /* 🟣 IDLE STATE */
                         <>
                             <Pressable style={styles.inputAction} onPress={handlePickImage}>
                                 <Paperclip size={20} color={attachments.length > 0 ? "#6366F1" : "#94A3B8"} strokeWidth={2} />
@@ -1809,7 +1885,7 @@ export default function ChatbotScreen({ navigation, route }) {
                             <View style={styles.inputWrapper}>
                                 <TextInput
                                     style={styles.textInput}
-                                    placeholder={attachments.length > 0 ? "Add optional caption..." : "Type your message..."}
+                                    placeholder={attachments.length > 0 ? "Add optional caption..." : "Ask anything about your health..."}
                                     placeholderTextColor="#94A3B8"
                                     value={inputText}
                                     onChangeText={setInputText}
@@ -1821,66 +1897,28 @@ export default function ChatbotScreen({ navigation, route }) {
                                 />
                             </View>
                         </>
-                    ) : (
-                        <View style={styles.recordingOverlay}>
-                            {recordingMode === 'locked' ? (
-                                <>
-                                    <View style={styles.recordingRow}>
-                                        <View style={styles.recordingDotPulse} />
-                                        <Text style={styles.recordingText}>Recording voice note...</Text>
-                                    </View>
-                                    <Pressable style={styles.cancelRecordingBtn} onPress={cancelRecording}>
-                                        <Text style={styles.cancelRecordingTxt}>Cancel</Text>
-                                    </Pressable>
-                                </>
-                            ) : (
-                                <>
-                                    <View style={styles.recordingRow}>
-                                        <View style={[styles.recordingDotPulse, isCancelling && { backgroundColor: '#EF4444' }]} />
-                                        <Text style={[styles.recordingText, isCancelling && { color: '#EF4444' }]}>
-                                            {isCancelling ? 'Release to cancel 🗑️' : 'Hold to speak • Slide up 🔒'}
-                                        </Text>
-                                    </View>
-                                    <Text style={{ color: '#94A3B8', fontSize: 12, marginRight: 44 }}>Slide left ⬅️</Text>
-                                </>
-                            )}
-                        </View>
                     )}
 
-                    {/* Primary Button: Stop, Send or Hold-to-Speak */}
+                    {/* Primary Button Action: Stop Gen, Send or Tap-to-Talk Mic */}
                     {isGenerating ? (
                         <Pressable style={styles.sendBtn} onPress={handleStopGeneration}>
                             <LinearGradient colors={['#EF4444', '#DC2626']} style={styles.sendGradient}>
                                 <Square size={14} color="#FFF" fill="#FFF" />
                             </LinearGradient>
                         </Pressable>
-                    ) : (inputText.trim().length > 0 || attachments.length > 0) ? (
+                    ) : (inputText.trim().length > 0 || attachments.length > 0 || recordedAudioUri) ? (
                         <Pressable style={styles.sendBtn} onPress={() => handleSend()}>
                             <LinearGradient colors={['#818CF8', '#4F46E5']} style={styles.sendGradient}>
                                 <Send size={18} color="#FFF" strokeWidth={2.5} />
                             </LinearGradient>
                         </Pressable>
-                    ) : (
-                        <Animated.View 
-                            style={[
-                                styles.micBtnContainer, 
-                                { transform: [{ translateX: pan.x }, { translateY: pan.y }] }
-                            ]} 
-                            {...panResponder.panHandlers}
-                        >
-                            {recordingMode === 'locked' ? (
-                                <Pressable style={styles.sendBtn} onPress={stopRecordingAndSend}>
-                                    <LinearGradient colors={['#10B981', '#059669']} style={styles.sendGradient}>
-                                        <Send size={18} color="#FFF" strokeWidth={2.5} />
-                                    </LinearGradient>
-                                </Pressable>
-                            ) : (
-                                <View style={[styles.micBtnInner, recordingMode === 'holding' ? styles.micBtnHolding : styles.micBtnIdle]}>
-                                    <Mic size={20} color={recordingMode === 'holding' ? '#EF4444' : '#FFF'} strokeWidth={2.5} />
-                                </View>
-                            )}
-                        </Animated.View>
-                    )}
+                    ) : voiceState === 'idle' ? (
+                        <Pressable style={styles.sendBtn} onPress={startRecording}>
+                            <LinearGradient colors={['#6366F1', '#4F46E5']} style={styles.sendGradient}>
+                                <Mic size={20} color="#FFF" strokeWidth={2.5} />
+                            </LinearGradient>
+                        </Pressable>
+                    ) : null}
                 </View>
             </KeyboardAvoidingView>
         </View>
@@ -2201,6 +2239,33 @@ const styles = StyleSheet.create({
     sendBtn: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' },
     sendBtnDisabled: { opacity: 0.6 },
     sendGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+    // ── Telegram Live Waveform & Voice State Machine Styles ──
+    recordingOverlayBar: {
+        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        backgroundColor: '#FEF2F2', borderRadius: 22, borderWidth: 1, borderColor: '#FCA5A5',
+        paddingHorizontal: 10, height: 44,
+    },
+    trashCircleBtn: {
+        width: 34, height: 34, borderRadius: 17, backgroundColor: '#FEE2E2',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    recordingMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    recordingRedDotPulse: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#EF4444' },
+    recordingTimerTxt: { fontSize: 13, fontWeight: '700', color: '#DC2626', letterSpacing: 0.5 },
+    waveformContainer: { flexDirection: 'row', alignItems: 'center', gap: 3, height: 28, paddingHorizontal: 6 },
+    waveBarItem: { width: 3, backgroundColor: '#EF4444', borderRadius: 1.5 },
+    stopSquareBtn: { width: 34, height: 34, borderRadius: 17, overflow: 'hidden' },
+
+    // Review / Transcript State Styles
+    reviewInputWrapper: {
+        flex: 1, backgroundColor: '#F8FAFC', borderRadius: 18,
+        borderWidth: 1, borderColor: '#C7D2FE', paddingHorizontal: 12, paddingVertical: 8,
+    },
+    reviewHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+    voiceNoteBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EEF2FF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+    voiceNoteBadgeTxt: { fontSize: 11, fontWeight: '700', color: '#4F46E5' },
+    clearVoiceBtn: { padding: 2 },
 
     // ── Structured Cards ──
     cardsWrapper: { marginTop: 8, gap: 10, width: '100%' },
