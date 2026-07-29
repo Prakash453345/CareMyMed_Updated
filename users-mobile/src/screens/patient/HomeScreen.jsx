@@ -1047,7 +1047,12 @@ export default function PatientHomeScreen({ navigation }) {
                   (1000 * 60 * 60 * 24),
               );
             }
-            syncAllSchedules(medsToSync, medPrefs, daysLeft, !!result.vitals);
+            // Defer notification sync slightly off the main UI loop to prevent JNI lock contention / ANRs
+            setTimeout(() => {
+              syncAllSchedules(medsToSync, medPrefs, daysLeft, !!result.vitals).catch(err => {
+                console.warn("Async syncAllSchedules warning:", err.message);
+              });
+            }, 300);
           } catch (notifErr) {
             console.warn("Notification scheduling error:", notifErr.message);
           }

@@ -225,47 +225,50 @@ export async function syncAllSchedules(medicines = [], prefs = {}, subscriptionD
         const { status } = await Notifications.getPermissionsAsync();
         if (status !== 'granted') return;
 
-        // 1. Cancel + reschedule logic (prevent any duplicates, stale alarms)
-        await Notifications.cancelAllScheduledNotificationsAsync();
+        // Query current scheduled notifications to avoid nuclear cancellation
+        // and eliminate JNI lock contention / ANR deadlocks with active alarms.
+        const scheduled = await Notifications.getAllScheduledNotificationsAsync();
         
         // --- 2. Vitals Reminder (Daily exactly at 10 AM) ---
         if (!vitalsLoggedToday) {
-            await Notifications.scheduleNotificationAsync({
-                content: {
-                    title: '❤️ Daily Vitals Reminder',
-                    body: getRandomTemplate('vitals', 'reminders') || 'Time to log your daily vitals!',
-                    data: { screen: 'PatientHome', type: 'vitals_reminder' },
-                    sound: 'default',
-                },
-                // Native repeating exact alarm
-                trigger: { hour: 10, minute: 0, repeats: true },
-            });
-            console.log('✅ Daily repeating Vitals reminder synced');
+            const hasVitalsReminder = scheduled.some(n => n.content?.data?.type === 'vitals_reminder');
+            if (!hasVitalsReminder) {
+                await Notifications.scheduleNotificationAsync({
+                    content: {
+                        title: '❤️ Daily Vitals Reminder',
+                        body: getRandomTemplate('vitals', 'reminders') || 'Time to log your daily vitals!',
+                        data: { screen: 'PatientHome', type: 'vitals_reminder' },
+                        sound: 'default',
+                    },
+                    trigger: { hour: 10, minute: 0, repeats: true },
+                });
+                console.log('✅ Daily repeating Vitals reminder synced');
+            }
         }
 
         // --- 3. Medication Reminders (DEPRECATED LOCAL SYNC) ---
         // Medication reminders are now handled by the backend FCM scheduler
-        // to ensure sync across devices and reliable delivery even if app is killed.
         console.log('ℹ️ Local medication scheduling skipped (Backend-driven mode active)');
 
         // --- 4. Subscription Alert (One-off) ---
         if (subscriptionDaysLeft !== null && subscriptionDaysLeft >= 0 && subscriptionDaysLeft <= 7) {
-            const triggerDate = new Date();
-            triggerDate.setHours(9, 30, 0, 0); 
-            // If it's already past 9:30 AM today, schedule it for 5 seconds from now
-            // so we don't accidentally schedule it in the past (which fires instantly anyway, but 5s is cleaner)
-            const resolvedTrigger = triggerDate > new Date() ? triggerDate : { seconds: 5 };
-            
-            await Notifications.scheduleNotificationAsync({
-                content: {
-                    title: '⚠️ Subscription Expiring Soon',
-                    body: `Your premium subscription expires in ${subscriptionDaysLeft} day${subscriptionDaysLeft !== 1 ? 's' : ''}. Renew to maintain uninterrupted care.`,
-                    data: { screen: 'Profile', type: 'subscription_alert' },
-                    sound: 'default',
-                },
-                trigger: resolvedTrigger,
-            });
-            console.log('✅ Subscription warning synced');
+            const hasSubAlert = scheduled.some(n => n.content?.data?.type === 'subscription_alert');
+            if (!hasSubAlert) {
+                const triggerDate = new Date();
+                triggerDate.setHours(9, 30, 0, 0); 
+                const resolvedTrigger = triggerDate > new Date() ? triggerDate : { seconds: 5 };
+                
+                await Notifications.scheduleNotificationAsync({
+                    content: {
+                        title: '⚠️ Subscription Expiring Soon',
+                        body: `Your premium subscription expires in ${subscriptionDaysLeft} day${subscriptionDaysLeft !== 1 ? 's' : ''}. Renew to maintain uninterrupted care.`,
+                        data: { screen: 'Profile', type: 'subscription_alert' },
+                        sound: 'default',
+                    },
+                    trigger: resolvedTrigger,
+                });
+                console.log('✅ Subscription warning synced');
+            }
         }
 
     } catch (error) {
