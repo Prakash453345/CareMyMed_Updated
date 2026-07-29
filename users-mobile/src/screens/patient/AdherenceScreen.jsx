@@ -21,6 +21,7 @@ import {
   Modal,
   Alert,
   Image,
+  PanResponder,
 } from "react-native";
 import { getStreakState } from "../../utils/streakHelper";
 import StreakCompanion from "../../components/ui/StreakCompanion";
@@ -1142,7 +1143,7 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
   );
 }
 
-function SmartInsightCard({ insights = [], feedback, t }) {
+function SmartInsightCard({ insights = [], feedback, t, onSetReminder }) {
   const [activeIdx, setActiveIdx] = useState(0);
 
   // Consolidate all insights & feedback into a single clean list
@@ -1161,12 +1162,34 @@ function SmartInsightCard({ insights = [], feedback, t }) {
     return list;
   }, [insights, feedback]);
 
+  // Touch Swipe Gesture Handler (PanResponder)
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          Math.abs(gestureState.dx) > 15 && Math.abs(gestureState.dy) < 30,
+        onPanResponderRelease: (_, gestureState) => {
+          if (items.length <= 1) return;
+          if (gestureState.dx < -25) {
+            // Swipe Left -> Next Insight
+            setActiveIdx((prev) => (prev + 1) % items.length);
+          } else if (gestureState.dx > 25) {
+            // Swipe Right -> Prev Insight
+            setActiveIdx((prev) => (prev - 1 + items.length) % items.length);
+          }
+        },
+      }),
+    [items.length]
+  );
+
   if (items.length === 0) return null;
 
   const currentItem = items[activeIdx] || items[0];
 
   return (
     <View
+      {...panResponder.panHandlers}
       style={{
         backgroundColor: "#FFFFFF",
         borderRadius: 22,
@@ -1216,13 +1239,14 @@ function SmartInsightCard({ insights = [], feedback, t }) {
           </Text>
         </View>
 
-        {/* Carousel Dots */}
+        {/* Carousel Dots & Touch Targets */}
         {items.length > 1 && (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
             {items.map((_, i) => (
               <Pressable
                 key={i}
                 onPress={() => setActiveIdx(i)}
+                hitSlop={6}
                 style={{
                   width: activeIdx === i ? 14 : 6,
                   height: 6,
@@ -1263,16 +1287,11 @@ function SmartInsightCard({ insights = [], feedback, t }) {
             shadowRadius: 4,
             elevation: 2,
           }}
-          onPress={() =>
-            Alert.alert(
-              t("adherence.set_reminder", { defaultValue: "Set Reminder" }),
-              t("adherence.reminder_desc", {
-                defaultValue:
-                  "Medication reminder will be added to your notifications.",
-              }),
-              [{ text: t("common.ok", { defaultValue: "OK" }) }]
-            )
-          }
+          onPress={() => {
+            if (onSetReminder) {
+              onSetReminder(currentItem);
+            }
+          }}
         >
           <Text style={{ fontSize: 11.5, fontWeight: "800", color: "#FFFFFF" }}>
             {t("adherence.set_reminder", { defaultValue: "Set Reminder" })}
@@ -1385,6 +1404,7 @@ export default function AdherenceScreen({ navigation }) {
   const [activeRecapTab, setActiveRecapTab] = useState("weekly");
   const [showStoryModal, setShowStoryModal] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState(null);
+  const [reminderModalVisible, setReminderModalVisible] = useState(false);
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const badgeScaleAnim = useRef(new Animated.Value(0)).current;
   const badgeRotateAnim = useRef(new Animated.Value(0)).current;
@@ -2273,7 +2293,12 @@ export default function AdherenceScreen({ navigation }) {
 
             {/* ── [3] AI Health Coach Smart Insights Carousel ── */}
             <Animated.View style={anim(3)}>
-              <SmartInsightCard insights={insights} feedback={feedback} t={t} />
+              <SmartInsightCard
+                insights={insights}
+                feedback={feedback}
+                t={t}
+                onSetReminder={() => setReminderModalVisible(true)}
+              />
             </Animated.View>
 
             {/* ── [4] 7-Day Trend ── */}
@@ -3692,6 +3717,87 @@ export default function AdherenceScreen({ navigation }) {
                 })()}
             </Animated.View>
           </View>
+        </Modal>
+
+        {/* Custom CareMyMed Set Reminder Modal (Replaces browser/OS native Alert.alert) */}
+        <Modal
+          visible={reminderModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setReminderModalVisible(false)}
+        >
+          <Pressable
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(15, 23, 42, 0.6)",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 24,
+            }}
+            onPress={() => setReminderModalVisible(false)}
+          >
+            <Pressable
+              style={{
+                backgroundColor: "#FFFFFF",
+                borderRadius: 26,
+                padding: 24,
+                width: "100%",
+                maxWidth: 340,
+                alignItems: "center",
+                shadowColor: "#7C3AED",
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.2,
+                shadowRadius: 24,
+                elevation: 8,
+                borderWidth: 1,
+                borderColor: "rgba(124, 58, 237, 0.15)",
+              }}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <LinearGradient
+                colors={["#F3E8FF", "#DDD6FE"]}
+                style={{
+                  width: 58,
+                  height: 58,
+                  borderRadius: 22,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 16,
+                }}
+              >
+                <Icons.BellRing size={28} color="#7C3AED" />
+              </LinearGradient>
+
+              <Text style={{ fontSize: 18, fontWeight: "900", color: "#0F172A", textAlign: "center" }}>
+                Reminder Configured
+              </Text>
+
+              <Text style={{ fontSize: 13, fontWeight: "500", color: "#64748B", textAlign: "center", marginTop: 8, lineHeight: 19 }}>
+                Afternoon and evening medication reminders have been scheduled to your CareMyMed smart notification timeline.
+              </Text>
+
+              <Pressable
+                style={{
+                  marginTop: 22,
+                  backgroundColor: "#7C3AED",
+                  width: "100%",
+                  paddingVertical: 13,
+                  borderRadius: 16,
+                  alignItems: "center",
+                  shadowColor: "#7C3AED",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }}
+                onPress={() => setReminderModalVisible(false)}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "800", color: "#FFFFFF" }}>
+                  Got It
+                </Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
         </Modal>
       </View>
     </TabScreenTransition>
