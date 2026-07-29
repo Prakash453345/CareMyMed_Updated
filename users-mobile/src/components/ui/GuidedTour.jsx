@@ -168,9 +168,74 @@ export default function GuidedTour({
     }, [animSpotTop, animSpotLeft, animSpotWidth, animSpotHeight, animCardTop, animCardLeft, animArrowLeft, animRadius, animOpacity, reduceMotion]);
 
     /**
-     * Measure step target using measureInWindow with retry pass & scroll offset
+     * AUTO-SCROLL ENGINE
+     * Automatically scrolls screen container until target is fully in viewport before measuring
      */
-    const measureStep = useCallback((stepData, attempt = 0) => {
+    const scrollToTarget = useCallback((stepData, callback) => {
+        const activeScrollRef = stepData?.scrollRef || scrollRef;
+        if (!stepData || !activeScrollRef?.current) {
+            if (callback) callback();
+            return;
+        }
+
+        const scrollInst = activeScrollRef.current;
+
+        // A) Explicit scrollOffset provided
+        if (stepData.scrollOffset !== undefined) {
+            try {
+                if (scrollInst.scrollTo) {
+                    scrollInst.scrollTo({ y: Math.max(0, stepData.scrollOffset), animated: !reduceMotion });
+                } else if (scrollInst.scrollToOffset) {
+                    scrollInst.scrollToOffset({ offset: Math.max(0, stepData.scrollOffset), animated: !reduceMotion });
+                }
+            } catch (e) {}
+            setTrackedTimeout(callback, reduceMotion ? 50 : 260);
+            return;
+        }
+
+        // B) FlatList scrollToIndex
+        if (stepData.index !== undefined && scrollInst.scrollToIndex) {
+            try {
+                scrollInst.scrollToIndex({ index: stepData.index, animated: !reduceMotion, viewPosition: 0.3 });
+            } catch (e) {}
+            setTrackedTimeout(callback, reduceMotion ? 50 : 280);
+            return;
+        }
+
+        // C) Automatic Layout Measurement & Scroll (measureLayout against ScrollView node)
+        if (stepData.ref?.current) {
+            try {
+                const targetNode = scrollInst.getNode ? scrollInst.getNode() : (scrollInst._component || scrollInst);
+                if (stepData.ref.current.measureLayout && targetNode) {
+                    stepData.ref.current.measureLayout(
+                        targetNode,
+                        (x, y) => {
+                            try {
+                                const offset = Math.max(0, y - (stepData.scrollMargin || 50));
+                                if (scrollInst.scrollTo) {
+                                    scrollInst.scrollTo({ y: offset, animated: !reduceMotion });
+                                } else if (scrollInst.scrollToOffset) {
+                                    scrollInst.scrollToOffset({ offset, animated: !reduceMotion });
+                                }
+                            } catch (e) {}
+                            setTrackedTimeout(callback, reduceMotion ? 50 : 260);
+                        },
+                        () => {
+                            if (callback) callback();
+                        }
+                    );
+                    return;
+                }
+            } catch (e) {}
+        }
+
+        if (callback) callback();
+    }, [scrollRef, reduceMotion, setTrackedTimeout]);
+
+    /**
+     * Measure step target using measureInWindow after auto-scroll completes
+     */
+    const measureStep = useCallback((stepData, attempt = 0, onDone = null) => {
         if (!stepData) return;
 
         const applyStaticFallback = (sd) => {
@@ -183,6 +248,7 @@ export default function GuidedTour({
             };
             setSpotlightCoords(fallbackCoords);
             animateToCoords(fallbackCoords, sd);
+            if (onDone) onDone();
         };
 
         const doWindowMeasure = () => {
@@ -198,8 +264,9 @@ export default function GuidedTour({
                             };
                             setSpotlightCoords(coords);
                             animateToCoords(coords, stepData);
+                            if (onDone) onDone();
                         } else if (attempt < 4) {
-                            setTrackedTimeout(() => measureStep(stepData, attempt + 1), 60);
+                            setTrackedTimeout(() => measureStep(stepData, attempt + 1, onDone), 60);
                         } else {
                             applyStaticFallback(stepData);
                         }
@@ -215,6 +282,7 @@ export default function GuidedTour({
                             };
                             setSpotlightCoords(coords);
                             animateToCoords(coords, stepData);
+                            if (onDone) onDone();
                         } else {
                             applyStaticFallback(stepData);
                         }
@@ -227,50 +295,23 @@ export default function GuidedTour({
             }
         };
 
-        // Handle auto-scroll if scrollRef and offset/ref are provided
-        if (stepData.scrollOffset !== undefined && scrollRef?.current) {
-            try {
-                scrollRef.current.scrollTo({ y: stepData.scrollOffset, animated: !reduceMotion });
-            } catch {}
-            setTrackedTimeout(doWindowMeasure, 250);
-        } else if (stepData.ref?.current && scrollRef?.current) {
-            try {
-                const targetNode = scrollRef.current.getNode ? scrollRef.current.getNode() : (scrollRef.current._component || scrollRef.current);
-                if (stepData.ref.current.measureLayout && targetNode) {
-                    stepData.ref.current.measureLayout(
-                        targetNode,
-                        (x, y) => {
-                            try {
-                                scrollRef.current.scrollTo({ y: Math.max(0, y - 40), animated: !reduceMotion });
-                            } catch {}
-                            setTrackedTimeout(doWindowMeasure, 250);
-                        },
-                        () => setTrackedTimeout(doWindowMeasure, 100)
-                    );
-                } else {
-                    setTrackedTimeout(doWindowMeasure, 100);
-                }
-            } catch (err) {
-                if (__DEV__) console.warn('[GuidedTour] measureLayout error:', err.message);
-                setTrackedTimeout(doWindowMeasure, 100);
-            }
-        } else {
-            setTrackedTimeout(doWindowMeasure, 100);
-        }
-    }, [scrollRef, reduceMotion, setTrackedTimeout, animateToCoords]);
+        doWindowMeasure();
+    }, [setTrackedTimeout, animateToCoords]);
 
-    // Measure spotlight whenever the active step or visibility changes
+    // Measure spotlight whenever active step or visibility changes
     useEffect(() => {
         if (visible && steps.length > 0) {
             const stepData = steps[activeStep];
-            measureStep(stepData);
+            scrollToTarget(stepData, () => {
+                measureStep(stepData);
+            });
         } else {
             setActiveStep(0);
             setSpotlightCoords(null);
             isFirstMeasureRef.current = true;
             animOpacity.setValue(0);
         }
-    }, [visible, activeStep, steps, measureStep, animOpacity]);
+    }, [visible, activeStep, steps, scrollToTarget, measureStep, animOpacity]);
 
     if (!visible || steps.length === 0) return null;
 
@@ -283,27 +324,28 @@ export default function GuidedTour({
         HapticPatterns.selection();
         if (activeStep < steps.length - 1) {
             setIsTransitioning(true);
-            Animated.timing(cardContentFade, {
-                toValue: 0,
-                duration: 100,
-                useNativeDriver: true,
-            }).start(() => {
-                const nextStep = activeStep + 1;
-                setActiveStep(nextStep);
-                cardTranslateY.setValue(8);
-                Animated.parallel([
-                    Animated.timing(cardContentFade, {
-                        toValue: 1,
-                        duration: 180,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(cardTranslateY, {
-                        toValue: 0,
-                        duration: 180,
-                        easing: Easing.out(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                ]).start(() => setIsTransitioning(false));
+            const nextStepIdx = activeStep + 1;
+            const nextStepData = steps[nextStepIdx];
+
+            // 1. Fade out current card content & spotlight while scrolling
+            Animated.parallel([
+                Animated.timing(cardContentFade, { toValue: 0, duration: 100, useNativeDriver: true }),
+                Animated.timing(animOpacity, { toValue: 0, duration: 100, useNativeDriver: false }),
+            ]).start(() => {
+                setActiveStep(nextStepIdx);
+
+                // 2. Perform Auto-Scroll
+                scrollToTarget(nextStepData, () => {
+                    // 3. Measure target after scroll finishes
+                    measureStep(nextStepData, 0, () => {
+                        // 4. Fade back in with translateY lift
+                        cardTranslateY.setValue(8);
+                        Animated.parallel([
+                            Animated.timing(cardContentFade, { toValue: 1, duration: 180, useNativeDriver: true }),
+                            Animated.timing(cardTranslateY, { toValue: 0, duration: 180, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+                        ]).start(() => setIsTransitioning(false));
+                    });
+                });
             });
         } else {
             if (tourKey) {
@@ -453,7 +495,7 @@ const s = StyleSheet.create({
         flex: 1,
     },
     wtOverlayCentered: {
-        justifyContent: 'center',
+        justify: 'center',
         alignItems: 'center',
         padding: 20,
     },
@@ -490,7 +532,7 @@ const s = StyleSheet.create({
         borderRadius: 10,
         backgroundColor: '#F8FAFC',
         alignItems: 'center',
-        justifyContent: 'center',
+        justify: 'center',
         marginRight: 10,
     },
     wtTitle: {
@@ -519,7 +561,7 @@ const s = StyleSheet.create({
     wtFooter: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        justify: 'space-between',
     },
     wtStepCounter: {
         backgroundColor: '#F1F5F9',
