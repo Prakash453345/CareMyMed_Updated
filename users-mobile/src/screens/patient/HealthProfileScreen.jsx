@@ -93,6 +93,14 @@ import { TourService } from "../../lib/TourService";
 import SectionContainer from "../../components/ui/SectionContainer";
 import SectionErrorCard from "../../components/ui/SectionErrorCard";
 import { useSectionQuery } from "../../hooks/useSectionQuery";
+
+const cmToFtIn = (cm) => {
+  if (!cm || isNaN(cm)) return "0 ft 0 in";
+  const totalInches = Math.round(Number(cm) / 2.54);
+  const feet = Math.floor(totalInches / 12);
+  const inches = totalInches % 12;
+  return `${feet} ft ${inches} in`;
+};
 import {
   initializeHealthPlatform,
   requestHealthPermissions,
@@ -4704,64 +4712,6 @@ export default function HealthProfileScreen({ navigation }) {
                 </Pressable>
               )}
             />
-          </View>
-        </Modal>
-
-        {/* Vitals Height & Weight Wheel Picker Modal */}
-        <Modal visible={vitalsPickerVisible} transparent animationType="slide" onRequestClose={() => setVitalsPickerVisible(false)}>
-          <View style={s.countryModalWrap}>
-            <View style={s.countryModalHeader}>
-              <Text style={s.countryModalTitle}>
-                {vitalsPickerType === 'height' ? 'Select Height (cm)' : 'Select Weight (kg)'}
-              </Text>
-              <Pressable onPress={() => setVitalsPickerVisible(false)} style={s.closeIconBtn}>
-                <X size={20} color={colors.textSecondary} />
-              </Pressable>
-            </View>
-            <View style={{ padding: 24, alignItems: 'center' }}>
-              <Text style={{ fontSize: 28, fontWeight: '800', color: '#7C3AED', marginBottom: 4 }}>
-                {vitalsPickerType === 'height'
-                  ? `${vitalsTempHeightCm} cm (${cmToFtIn(vitalsTempHeightCm)})`
-                  : `${vitalsTempWeightKg} kg (${Math.round(vitalsTempWeightKg / 0.45359237)} lbs)`
-                }
-              </Text>
-              <Text style={{ fontSize: 13, color: '#64748B', marginBottom: 16 }}>
-                Scroll wheel to select exact measurement
-              </Text>
-
-              <TactileWheelPicker
-                data={vitalsPickerType === 'height'
-                  ? Array.from({ length: 101 }, (_, i) => ({ label: `${120 + i} cm (${cmToFtIn(120 + i)})`, value: 120 + i }))
-                  : Array.from({ length: 151 }, (_, i) => ({ label: `${30 + i} kg (${Math.round((30 + i) / 0.45359237)} lbs)`, value: 30 + i }))
-                }
-                selectedValue={vitalsPickerType === 'height' ? vitalsTempHeightCm : vitalsTempWeightKg}
-                onValueChange={(val) => {
-                  if (vitalsPickerType === 'height') setVitalsTempHeightCm(val);
-                  else setVitalsTempWeightKg(val);
-                }}
-              />
-
-              <Pressable
-                style={{
-                  width: '100%',
-                  backgroundColor: '#7C3AED',
-                  paddingVertical: 14,
-                  borderRadius: 16,
-                  alignItems: 'center',
-                  marginTop: 20,
-                }}
-                onPress={() => {
-                  if (vitalsPickerType === 'height') {
-                    setFormState(prev => ({ ...prev, height_cm: String(vitalsTempHeightCm) }));
-                  } else {
-                    setFormState(prev => ({ ...prev, weight_kg: String(vitalsTempWeightKg) }));
-                  }
-                  setVitalsPickerVisible(false);
-                }}
-              >
-                <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '800' }}>Confirm {vitalsPickerType === 'height' ? 'Height' : 'Weight'}</Text>
-              </Pressable>
-            </View>
           </View>
         </Modal>
 
