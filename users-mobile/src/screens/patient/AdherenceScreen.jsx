@@ -1645,23 +1645,36 @@ export default function AdherenceScreen({ navigation }) {
     return { ...best, meta };
   }, [achievements]);
 
-  // Calculate REAL blood pressure improvement from actual dailyLog history — zero fake data!
+  // Calculate REAL blood pressure improvement over a robust 7-14 day clinical window — zero fake data!
   const realBpDiff = useMemo(() => {
-    if (!dailyLog || dailyLog.length < 4) return null; // Not enough real data — hide card!
+    if (!dailyLog || dailyLog.length < 7) return null; // Need at least 7 days of logs
 
     const logsWithBp = dailyLog.filter((d) => d.vitals?.systolic > 0);
-    if (logsWithBp.length < 4) return null; // Not enough real data — hide card!
+    if (logsWithBp.length < 6) return null; // Need at least 6 valid BP readings
 
-    const oldestLogs = logsWithBp.slice(-3);
-    const newestLogs = logsWithBp.slice(0, 3);
+    // Half-split chronological windows (last N days vs previous N days)
+    const midPoint = Math.floor(logsWithBp.length / 2);
+    const recentWindow = logsWithBp.slice(0, midPoint);
+    const previousWindow = logsWithBp.slice(midPoint);
 
-    const oldAvg = Math.round(oldestLogs.reduce((acc, curr) => acc + curr.vitals.systolic, 0) / oldestLogs.length);
-    const newAvg = Math.round(newestLogs.reduce((acc, curr) => acc + curr.vitals.systolic, 0) / newestLogs.length);
+    if (recentWindow.length === 0 || previousWindow.length === 0) return null;
 
-    const diff = oldAvg - newAvg;
-    if (diff <= 0) return null; // No real improvement — hide card!
+    const recentAvg = Math.round(
+      recentWindow.reduce((acc, curr) => acc + curr.vitals.systolic, 0) / recentWindow.length
+    );
+    const previousAvg = Math.round(
+      previousWindow.reduce((acc, curr) => acc + curr.vitals.systolic, 0) / previousWindow.length
+    );
 
-    return { oldAvg, newAvg, diff };
+    const diff = previousAvg - recentAvg;
+    if (diff <= 0) return null; // No real reduction — hide card!
+
+    return {
+      oldAvg: previousAvg,
+      newAvg: recentAvg,
+      diff,
+      daysWindow: logsWithBp.length,
+    };
   }, [dailyLog]);
 
   const recentUnlocks = useMemo(() => {
@@ -2567,10 +2580,61 @@ export default function AdherenceScreen({ navigation }) {
 
             {/* ── [6] Achievements ── */}
             <Animated.View style={[anim(6), { position: "relative" }]}>
-            {/* ── [6] Achievements ── */}
-            <Animated.View style={[anim(6), { position: "relative" }]}>
-              {/* Dynamic Next Milestone Hero Showcase (What's my next meaningful milestone?) */}
+              {/* Intelligent Hero Showcase (Health Score Momentum OR Actionable Next Milestone) */}
               {(() => {
+                const isScoreRising = score.weekly > score.monthly && score.weekly >= 70;
+
+                if (isScoreRising) {
+                  const diff = score.weekly - score.monthly;
+                  return (
+                    <View
+                      style={{
+                        marginBottom: 16,
+                        borderRadius: 24,
+                        backgroundColor: "#ECFDF5",
+                        borderWidth: 1,
+                        borderColor: "#A7F3D0",
+                        padding: 18,
+                        shadowColor: "#059669",
+                        shadowOffset: { width: 0, height: 6 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 16,
+                        elevation: 3,
+                      }}
+                    >
+                      <View style={{ flexDirection: "row", alignItems: "center" }}>
+                        <View
+                          style={{
+                            width: 60,
+                            height: 60,
+                            borderRadius: 20,
+                            backgroundColor: "#10B981",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <TrendingUp size={28} color="#FFFFFF" />
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 14 }}>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                            <Sparkles size={12} color="#059669" />
+                            <Text style={{ fontSize: 10.5, fontWeight: "800", color: "#059669", letterSpacing: 0.8, textTransform: "uppercase" }}>
+                              Health Score Momentum
+                            </Text>
+                          </View>
+                          <Text style={{ fontSize: 16, fontWeight: "900", color: "#065F46", marginTop: 2 }}>
+                            +{diff} Points Improvement
+                          </Text>
+                          <Text style={{ fontSize: 11, fontWeight: "500", color: "#047857", marginTop: 2 }}>
+                            Your adherence momentum is rising over the past week.
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                }
+
+                // Actionable Next Milestone Hero
                 const goal = nextGoal || {
                   key: 'streak_30',
                   meta: ACHIEVEMENTS.find(a => a.key === 'streak_30') || {},
@@ -2580,6 +2644,7 @@ export default function AdherenceScreen({ navigation }) {
                 const goalMeta = goal.meta || ACHIEVEMENTS.find(a => a.key === goal.key) || {};
                 const goalPct = Math.min(100, Math.round((goal.progress || 0) * 100));
                 const IconComp = Icons[goalMeta.iconName] || Icons.Trophy;
+                const remainingText = getRemainingLabel(goal, goalMeta);
 
                 return (
                   <Pressable
@@ -2659,7 +2724,7 @@ export default function AdherenceScreen({ navigation }) {
                           {goalMeta.title || goal.key}
                         </Text>
                         <Text style={{ fontSize: 11, fontWeight: "500", color: "#64748B", marginTop: 2, lineHeight: 15 }} numberOfLines={2}>
-                          {goalMeta.lore || goalMeta.description || "Maintain consistency to unlock"}
+                          {remainingText ? `Complete logging for ${remainingText} to unlock this milestone.` : (goalMeta.lore || goalMeta.description)}
                         </Text>
 
                         {/* Progress Bar */}
@@ -3504,57 +3569,32 @@ export default function AdherenceScreen({ navigation }) {
 
                       {/* Progress & Locked status banner */}
                       {isUnlocked ? (
-                        <View style={{ width: "100%", alignItems: "center" }}>
-                          <View
+                        <View
+                          style={[
+                            styles.badgeModalStatusBox,
+                            {
+                              backgroundColor: tierInfo.bgColor,
+                              borderColor: tierInfo.color + "20",
+                              borderWidth: 1,
+                              shadowColor: tierInfo.color,
+                              shadowOpacity: 0.1,
+                              shadowRadius: 8,
+                              elevation: 2,
+                              width: "100%",
+                            },
+                          ]}
+                        >
+                          <Sparkles size={15} color={tierInfo.color} />
+                          <Text
                             style={[
-                              styles.badgeModalStatusBox,
-                              {
-                                backgroundColor: tierInfo.bgColor,
-                                borderColor: tierInfo.color + "20",
-                                borderWidth: 1,
-                                shadowColor: tierInfo.color,
-                                shadowOpacity: 0.1,
-                                shadowRadius: 8,
-                                elevation: 2,
-                                width: "100%",
-                              },
+                              styles.badgeModalStatusTextUnlocked,
+                              { color: tierInfo.color, fontWeight: "950" },
                             ]}
                           >
-                            <Sparkles size={15} color={tierInfo.color} />
-                            <Text
-                              style={[
-                                styles.badgeModalStatusTextUnlocked,
-                                { color: tierInfo.color, fontWeight: "950" },
-                              ]}
-                            >
-                              {selectedBadge.unlockedTime
-                                ? `EARNED ${selectedBadge.unlockedTime.toUpperCase()}`
-                                : "UNLOCKED"}
-                            </Text>
-                          </View>
-
-                          {/* Family / Companion Encouragement & Reactions */}
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: 8,
-                              marginTop: 12,
-                              backgroundColor: "#F8FAFC",
-                              paddingHorizontal: 12,
-                              paddingVertical: 8,
-                              borderRadius: 14,
-                              width: "100%",
-                            }}
-                          >
-                            <Text style={{ fontSize: 11, fontWeight: "600", color: "#64748B" }}>
-                              ❤️ Caregiver & Family Reactions:
-                            </Text>
-                            <Text style={{ fontSize: 12, fontWeight: "800", color: "#0F172A" }}>
-                              ❤️ 👏 🎉
-                            </Text>
-                          </View>
+                            {selectedBadge.unlockedTime
+                              ? `EARNED ${selectedBadge.unlockedTime.toUpperCase()}`
+                              : "UNLOCKED"}
+                          </Text>
                         </View>
                       ) : (
                         <View style={styles.badgeModalProgressContainer}>
