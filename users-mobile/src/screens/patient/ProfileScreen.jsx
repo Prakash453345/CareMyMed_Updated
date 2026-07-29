@@ -2014,9 +2014,9 @@ const s = StyleSheet.create({
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
     modalTitle: { fontSize: 22, fontWeight: '800', color: colors.textPrimary },
     modalSubTxt: { fontSize: 14, color: colors.textMuted, marginBottom: 20 },
-    inputLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, marginBottom: 8, marginTop: 16, marginLeft: 2 },
+    inputLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, marginBottom: 4, marginTop: 6, marginLeft: 2 },
     input: { backgroundColor: '#FAFBFF', borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: radius.md, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: '#0F172A', fontWeight: '600', height: 48 },
-    saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: colors.primary, borderRadius: radius.button, paddingVertical: 16, marginTop: 32, shadowColor: colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8 },
+    saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: colors.primary, borderRadius: radius.button, paddingVertical: 16, marginTop: 24, shadowColor: colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8 },
     saveBtnTxt: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
 
     /* Detail Row */
@@ -2061,8 +2061,8 @@ const s = StyleSheet.create({
     addrCardLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 },
     addrLabel: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
     addrLine: { fontSize: 12, color: colors.textMuted, marginTop: 2, fontWeight: '500' },
-    labelRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-    labelChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.md, backgroundColor: colors.background },
+    labelRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2, marginBottom: 4 },
+    labelChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.md, backgroundColor: colors.background },
     labelChipActive: { backgroundColor: colors.primarySoft, borderWidth: 1.5, borderColor: colors.primary },
     labelChipTxt: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
     labelChipTxtActive: { color: colors.primary, fontWeight: '700' },

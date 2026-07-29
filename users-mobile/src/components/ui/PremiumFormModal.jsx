@@ -316,7 +316,7 @@ const PremiumFormModal = ({
                         {onSave && (
                             <View style={[
                                 styles.stickyFooter,
-                                androidKeyboardPad > 0 && { paddingBottom: 16 }
+                                keyboardHeight > 0 && { paddingBottom: 12, paddingTop: 10 }
                             ]}>
                                 <ScalePressable
                                     onPress={handleSave}
@@ -449,30 +449,30 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingHorizontal: 24,
-        paddingTop: 16,
-        paddingBottom: 40,
+        paddingTop: 12,
+        paddingBottom: 24,
         flexGrow: 1,
-        gap: 16,
+        gap: 12,
     },
     stickyFooter: {
         paddingHorizontal: 24,
-        paddingTop: 14,
-        paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+        paddingTop: 12,
+        paddingBottom: Platform.OS === 'ios' ? 34 : 16,
         borderTopWidth: 1,
         borderTopColor: '#F8FAFC',
         backgroundColor: '#FFFFFF',
     },
     saveBtn: {
-        height: 56,
+        height: 52,
         borderRadius: radius.lg || 16,
         backgroundColor: colors.primary || '#2563EB',
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: colors.primary || '#2563EB',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.2,
-        shadowRadius: 12,
-        elevation: 8,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.18,
+        shadowRadius: 10,
+        elevation: 6,
     },
     saveBtnPressed: {
         transform: [{ scale: 0.97 }],
