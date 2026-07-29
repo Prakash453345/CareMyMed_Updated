@@ -891,6 +891,7 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
 
   // 3D Sphere Gradients matching the design concept mockup
   const sphereGradients = {
+    Crown: ["#E9D5FF", "#A855F7", "#6B21A8"],
     Pill: ["#C084FC", "#9333EA", "#6B21A8"],
     Activity: ["#93C5FD", "#3B82F6", "#1E40AF"],
     HeartPulse: ["#F9A8D4", "#EC4899", "#9D174D"],
@@ -2497,126 +2498,8 @@ export default function AdherenceScreen({ navigation }) {
               </View>
             </Animated.View>
 
-            {/* ── [6] Achievements (Liquid Glass style) ── */}
+            {/* ── [6] Achievements ── */}
             <Animated.View style={[anim(6), { position: "relative" }]}>
-              <View style={{ marginBottom: 16 }}>
-                {/* Hero Featured Achievement Card (Consistency Master style) */}
-                <View
-                  style={{
-                    borderRadius: 24,
-                    backgroundColor: "#FFFFFF",
-                    borderWidth: 1,
-                    borderColor: "rgba(241, 245, 249, 0.9)",
-                    padding: 20,
-                    shadowColor: "#7C3AED",
-                    shadowOffset: { width: 0, height: 6 },
-                    shadowOpacity: 0.05,
-                    shadowRadius: 16,
-                    elevation: 3,
-                    position: "relative",
-                    overflow: "hidden",
-                  }}
-                >
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    {/* Left 3D Hexagonal / Shield Emblem */}
-                    <View
-                      style={{
-                        width: 76,
-                        height: 76,
-                        borderRadius: 24,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        position: "relative",
-                        shadowColor: "#7C3AED",
-                        shadowOffset: { width: 0, height: 6 },
-                        shadowOpacity: 0.2,
-                        shadowRadius: 10,
-                        elevation: 4,
-                      }}
-                    >
-                      <LinearGradient
-                        colors={["#F3E8FF", "#DDD6FE", "#C084FC"]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          borderRadius: 24,
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Crown size={34} color="#7C3AED" fill="#7C3AED" />
-                      </LinearGradient>
-
-                      {/* Lock / Unlocked Overlay Badge */}
-                      <View
-                        style={{
-                          position: "absolute",
-                          top: -2,
-                          right: -2,
-                          backgroundColor: "#64748B",
-                          width: 20,
-                          height: 20,
-                          borderRadius: 10,
-                          alignItems: "center",
-                          justifyContent: "center",
-                          borderWidth: 2,
-                          borderColor: "#FFFFFF",
-                        }}
-                      >
-                        <Lock size={10} color="#FFFFFF" strokeWidth={2.5} />
-                      </View>
-                    </View>
-
-                    {/* Middle Info Column */}
-                    <View style={{ flex: 1, marginLeft: 16 }}>
-                      <Text
-                        style={{
-                          fontSize: 17,
-                          fontWeight: "800",
-                          color: "#0F172A",
-                          letterSpacing: -0.2,
-                        }}
-                      >
-                        Consistency Master
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          fontWeight: "500",
-                          color: "#64748B",
-                          marginTop: 4,
-                          marginBottom: 8,
-                          lineHeight: 16,
-                        }}
-                      >
-                        Maintain perfect consistency for 4 weeks
-                      </Text>
-
-                      <View style={{ alignSelf: "flex-start" }}>
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 4,
-                            backgroundColor: "#F3E8FF",
-                            paddingHorizontal: 10,
-                            paddingVertical: 4,
-                            borderRadius: 10,
-                          }}
-                        >
-                          <Lock size={11} color="#9333EA" strokeWidth={2.5} />
-                          <Text style={{ fontSize: 11, fontWeight: "800", color: "#9333EA" }}>
-                            Locked
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              </View>
-
               {/* Category Sections */}
               {Object.keys(CATEGORY_CONFIG).map((categoryKey, idx) => {
                 const catConfig = CATEGORY_CONFIG[categoryKey];
