@@ -511,20 +511,6 @@ export default function HealthProfileScreen({ navigation }) {
   const getProfileTourSteps = () => {
     return [
       {
-        title: t("health_profile.guide_title", {
-          defaultValue: "Medical Profile",
-        }),
-        desc: t("health_profile.guide_desc", {
-          defaultValue:
-            "Add medical conditions, allergies, and contact details so CareMyMed can personalize reminders and health insights for you.",
-        }),
-        icon: Activity,
-        iconColor: "#7C3AED",
-        ref: profileSetupCardRef,
-        scrollOffset: 0,
-        visible: true,
-      },
-      {
         title: t("health_profile.guide_score_title", {
           defaultValue: "Health Score",
         }),

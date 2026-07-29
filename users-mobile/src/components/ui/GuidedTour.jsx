@@ -23,6 +23,7 @@ export default function GuidedTour({
     const reduceMotion = useReduceMotion();
     const cardFade = useRef(new Animated.Value(1)).current;
     const cardContentFade = useRef(new Animated.Value(1)).current;
+    const cardTranslateY = useRef(new Animated.Value(0)).current;
     const timeoutsRef = useRef([]);
 
     // Animated values for continuous 60fps morphing between steps
@@ -73,8 +74,8 @@ export default function GuidedTour({
         const spotWidth = Math.min(screenWidth, Math.max(10, safeWidth + pad * 2));
         const spotHeight = Math.max(10, safeHeight + pad * 2);
 
-        // Compact tooltip width (~15% narrower to eliminate long horizontal eye travel)
-        const cardWidth = Math.min(screenWidth - 48, 290);
+        // Adaptive tooltip width (~86% on phones, capped at 340-360dp on tablets)
+        const cardWidth = Math.min(Math.round(screenWidth * 0.86), screenWidth > 600 ? 360 : 310);
         const targetCenterX = safeLeft + safeWidth / 2;
         const cardLeft = Math.max(16, Math.min(targetCenterX - cardWidth / 2, screenWidth - cardWidth - 16));
         const computedArrowLeft = Math.max(16, Math.min(targetCenterX - cardLeft - 8, cardWidth - 32));
@@ -107,15 +108,16 @@ export default function GuidedTour({
             animOpacity.setValue(1);
             isFirstMeasureRef.current = false;
         } else {
+            // Smooth 240ms gliding animation across screen targets
             Animated.parallel([
-                Animated.timing(animSpotTop, { toValue: finalSpotTop, duration: 300, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animSpotLeft, { toValue: finalSpotLeft, duration: 300, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animSpotWidth, { toValue: finalSpotWidth, duration: 300, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animSpotHeight, { toValue: finalSpotHeight, duration: 300, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animCardTop, { toValue: finalCardTop, duration: 300, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animCardLeft, { toValue: finalCardLeft, duration: 300, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animArrowLeft, { toValue: finalArrowLeft, duration: 300, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animOpacity, { toValue: 1, duration: 200, useNativeDriver: false }),
+                Animated.timing(animSpotTop, { toValue: finalSpotTop, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animSpotLeft, { toValue: finalSpotLeft, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animSpotWidth, { toValue: finalSpotWidth, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animSpotHeight, { toValue: finalSpotHeight, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animCardTop, { toValue: finalCardTop, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animCardLeft, { toValue: finalCardLeft, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animArrowLeft, { toValue: finalArrowLeft, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animOpacity, { toValue: 1, duration: 180, useNativeDriver: false }),
             ]).start();
         }
     }, [animSpotTop, animSpotLeft, animSpotWidth, animSpotHeight, animCardTop, animCardLeft, animArrowLeft, animOpacity, reduceMotion]);
@@ -242,16 +244,25 @@ export default function GuidedTour({
             setIsTransitioning(true);
             Animated.timing(cardContentFade, {
                 toValue: 0,
-                duration: 120,
+                duration: 100,
                 useNativeDriver: true,
             }).start(() => {
                 const nextStep = activeStep + 1;
                 setActiveStep(nextStep);
-                Animated.timing(cardContentFade, {
-                    toValue: 1,
-                    duration: 180,
-                    useNativeDriver: true,
-                }).start(() => setIsTransitioning(false));
+                cardTranslateY.setValue(8);
+                Animated.parallel([
+                    Animated.timing(cardContentFade, {
+                        toValue: 1,
+                        duration: 180,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(cardTranslateY, {
+                        toValue: 0,
+                        duration: 180,
+                        easing: Easing.out(Easing.quad),
+                        useNativeDriver: true,
+                    }),
+                ]).start(() => setIsTransitioning(false));
             });
         } else {
             if (tourKey) {
@@ -325,11 +336,11 @@ export default function GuidedTour({
                             position: 'absolute',
                             top: animCardTop,
                             left: animCardLeft,
-                            width: Math.min(Dimensions.get('window').width - 48, 290),
+                            width: Math.min(Math.round(Dimensions.get('window').width * 0.86), Dimensions.get('window').width > 600 ? 360 : 310),
                         } : {
                             position: 'relative',
                             alignSelf: 'center',
-                            width: Dimensions.get('window').width - 48,
+                            width: Math.min(Math.round(Dimensions.get('window').width * 0.86), Dimensions.get('window').width > 600 ? 360 : 310),
                         },
                         { opacity: cardFade }
                     ]}
@@ -345,7 +356,7 @@ export default function GuidedTour({
                         />
                     )}
 
-                    <Animated.View style={{ opacity: cardContentFade }}>
+                    <Animated.View style={{ opacity: cardContentFade, transform: [{ translateY: cardTranslateY }] }}>
                         <View style={s.wtCardHeader}>
                             <View style={s.wtIconWrap}>
                                 {Icon && <Icon size={18} color="#475569" strokeWidth={2.2} />}
