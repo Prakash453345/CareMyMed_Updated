@@ -782,45 +782,48 @@ function ProgressRing({ percent, size = 84, stroke = 8 }) {
 }
 
 function CategoryHeaderUi({ category, unlockedCount, totalCount }) {
-  const IconComponent = Icons[category.iconName] || Icons.Star;
-  const accent = category.accent || ["#3B82F6", "#60A5FA"];
+  const IconComponent = Icons[category.iconName] || Icons.BarChart2;
+  const accent = category.accent || ["#8B5CF6", "#7C3AED"];
   return (
     <View
       style={{
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        marginBottom: 14,
+        marginBottom: 16,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <LinearGradient
-          colors={accent}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+        <View
           style={{
-            width: 32,
-            height: 32,
+            width: 34,
+            height: 34,
             borderRadius: 10,
+            backgroundColor: "#F3E8FF",
             alignItems: "center",
             justifyContent: "center",
           }}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
         >
-          <IconComponent size={16} color="white" />
-        </LinearGradient>
-        <Text style={{ fontSize: 15, fontWeight: "800", color: "#0F172A" }}>
-          {category.title}
-        </Text>
+          <IconComponent size={18} color="#7C3AED" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 16, fontWeight: "800", color: "#0F172A" }}>
+            {category.title}
+          </Text>
+          <Text style={{ fontSize: 12, fontWeight: "500", color: "#94A3B8", marginTop: 1 }}>
+            Complete activities to unlock achievements
+          </Text>
+        </View>
       </View>
       <View
         style={{
-          backgroundColor: accent[0] + "14",
-          paddingHorizontal: 10,
-          paddingVertical: 4,
-          borderRadius: 999,
+          backgroundColor: "#F3E8FF",
+          paddingHorizontal: 12,
+          paddingVertical: 5,
+          borderRadius: 12,
         }}
       >
-        <Text style={{ fontSize: 12, fontWeight: "700", color: accent[0] }}>
+        <Text style={{ fontSize: 12, fontWeight: "800", color: "#7C3AED" }}>
           {unlockedCount}/{totalCount}
         </Text>
       </View>
@@ -860,26 +863,19 @@ const getUnlockedLabel = (data) => {
 
 function PremiumBadge({ data, size = "normal", onPress, style }) {
   const isSmall = size === "small";
-  const itemWidth = style?.width || (isSmall ? 70 : (SCREEN_WIDTH - 88) / 2);
-  const dim = isSmall ? 50 : 62;
+  const itemWidth = style?.width || (isSmall ? 70 : (SCREEN_WIDTH - 68) / 2);
 
   const target = data.meta.target || 1;
-  const current =
-    data.progress >= 1 ? target : Math.floor((data.progress || 0) * target);
+  const current = data.progress >= 1 ? target : Math.floor((data.progress || 0) * target);
   const pct = Math.min(100, Math.max(0, (data.progress || 0) * 100));
   const tier = data.meta.tier || "bronze";
-  const tierConfig = TIER_CONFIG[tier] || TIER_CONFIG.bronze;
-  const tierColor = tierConfig.color;
-  const isLegendary = tier === "legendary";
 
   const pressScale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
     Animated.spring(pressScale, {
-      toValue: 0.94,
+      toValue: 0.96,
       useNativeDriver: true,
-      tension: 60,
-      friction: 8,
     }).start();
   };
 
@@ -887,29 +883,45 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
     Animated.spring(pressScale, {
       toValue: 1,
       useNativeDriver: true,
-      tension: 60,
-      friction: 8,
     }).start();
   };
 
   const IconComponent = Icons[data.meta.iconName] || Icons.Award;
   const label = getUnlockedLabel(data);
 
-  // Metallic 3D Sheen Gradients
-  const metallicGradients = {
-    bronze: ["#F6C89F", "#D98242", "#8C4315"],
-    silver: ["#FFFFFF", "#CBD5E1", "#64748B"],
-    gold: ["#FEF08A", "#F59E0B", "#B45309"],
-    legendary: ["#F3E8FF", "#A855F7", "#581C87"],
+  // 3D Sphere Gradients matching the design concept mockup
+  const sphereGradients = {
+    Pill: ["#C084FC", "#9333EA", "#6B21A8"],
+    Activity: ["#93C5FD", "#3B82F6", "#1E40AF"],
+    HeartPulse: ["#F9A8D4", "#EC4899", "#9D174D"],
+    Medal: ["#FDE047", "#EAB308", "#854D0E"],
+    Trophy: ["#FDE047", "#F59E0B", "#9A3412"],
+    Award: ["#A5B4FC", "#6366F1", "#3730A3"],
   };
-  const gradientColors = metallicGradients[tier] || metallicGradients.bronze;
+  const gradientColors = sphereGradients[data.meta.iconName] || sphereGradients.Award;
 
-  const shadowColors = {
-    bronze: "#D97706",
-    silver: "#64748B",
-    gold: "#F59E0B",
-    legendary: "#8B5CF6",
-  };
+  if (isSmall) {
+    return (
+      <Pressable
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={[{ width: itemWidth, alignItems: "center" }, style]}
+      >
+        <Animated.View style={{ transform: [{ scale: pressScale }], alignItems: "center" }}>
+          <LinearGradient
+            colors={data.unlocked ? gradientColors : ["#E2E8F0", "#94A3B8"]}
+            style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" }}
+          >
+            <IconComponent size={20} color="#FFF" />
+          </LinearGradient>
+          <Text style={{ fontSize: 10, fontWeight: "700", color: "#64748B", marginTop: 4, textAlign: "center" }} numberOfLines={1}>
+            {data.meta.title || data.key}
+          </Text>
+        </Animated.View>
+      </Pressable>
+    );
+  }
 
   return (
     <Pressable
@@ -917,263 +929,115 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       style={[
-        !isSmall && {
+        {
           width: itemWidth,
-          height: 154,
-          backgroundColor: data.unlocked ? "#FFFFFF" : "#F8FAFC",
-          borderRadius: 22,
+          backgroundColor: "#FFFFFF",
+          borderRadius: 20,
           borderWidth: 1,
-          borderColor: data.unlocked ? tierColor + "40" : "rgba(226, 232, 240, 0.7)",
-          paddingVertical: 12,
-          paddingHorizontal: 6,
-          alignItems: "center",
-          justifyContent: "space-between",
-          shadowColor: data.unlocked ? shadowColors[tier] : "#0F172A",
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: data.unlocked ? 0.2 : 0.04,
-          shadowRadius: 12,
-          elevation: data.unlocked ? 4 : 1,
+          borderColor: data.unlocked ? "rgba(241, 245, 249, 0.9)" : "rgba(226, 232, 240, 0.8)",
+          padding: 12,
+          shadowColor: "#0F172A",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.04,
+          shadowRadius: 10,
+          elevation: 2,
           position: "relative",
           overflow: "hidden",
         },
-        isSmall && { width: itemWidth, alignItems: "center" },
         style,
       ]}
     >
       <Animated.View
         style={{
           transform: [{ scale: pressScale }],
-          width: "100%",
-          height: "100%",
+          flexDirection: "row",
           alignItems: "center",
-          justifyContent: "space-between",
         }}
       >
-        {/* Top Section: Metallic Emblem & Title */}
-        <View style={{ alignItems: "center", width: "100%" }}>
-          {/* Metallic 3D Emblem Container */}
-          <View
+        {/* Left 3D Spherical Badge */}
+        <View
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: 26,
+            alignItems: "center",
+            justifyContent: "center",
+            position: "relative",
+            shadowColor: gradientColors[1],
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: data.unlocked ? 0.35 : 0.05,
+            shadowRadius: 8,
+            elevation: data.unlocked ? 4 : 1,
+          }}
+        >
+          <LinearGradient
+            colors={data.unlocked ? gradientColors : ["#F1F5F9", "#CBD5E1"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
             style={{
-              width: dim,
-              height: dim,
-              borderRadius: dim / 2,
+              width: "100%",
+              height: "100%",
+              borderRadius: 26,
               alignItems: "center",
               justifyContent: "center",
-              position: "relative",
-              shadowColor: shadowColors[tier],
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: data.unlocked ? 0.35 : 0.08,
-              shadowRadius: 8,
-              elevation: data.unlocked ? 5 : 2,
+              overflow: "hidden",
             }}
           >
-            {/* Outer Metallic Bezel Gradient */}
+            {/* Glossy Sheen Highlight */}
             <LinearGradient
-              colors={data.unlocked ? gradientColors : ["#E2E8F0", "#94A3B8"]}
+              colors={["rgba(255, 255, 255, 0.65)", "rgba(255, 255, 255, 0)"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={{
-                width: "100%",
-                height: "100%",
-                borderRadius: dim / 2,
-                padding: 2.5,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {/* Inner Core Gradient */}
-              <LinearGradient
-                colors={
-                  data.unlocked
-                    ? [gradientColors[1], gradientColors[2] || gradientColors[0]]
-                    : ["#F8FAFC", "#CBD5E1"]
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  borderRadius: (dim - 5) / 2,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderWidth: 1,
-                  borderColor: "rgba(255, 255, 255, 0.65)",
-                  position: "relative",
-                  overflow: "hidden",
-                }}
-              >
-                {/* Glossy Sheen Highlight Overlay */}
-                <LinearGradient
-                  colors={["rgba(255, 255, 255, 0.75)", "rgba(255, 255, 255, 0)"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: "55%",
-                  }}
-                />
+              style={{ position: "absolute", top: 0, left: 0, right: 0, height: "50%" }}
+            />
+            <IconComponent size={24} color={data.unlocked ? "#FFFFFF" : "#94A3B8"} />
+          </LinearGradient>
+        </View>
 
-                {/* Inner Icon */}
-                <IconComponent
-                  size={isSmall ? 18 : 24}
-                  color={data.unlocked ? "#FFFFFF" : "#64748B"}
-                  style={{
-                    textShadowColor: data.unlocked ? "rgba(0, 0, 0, 0.25)" : "transparent",
-                    textShadowOffset: { width: 0, height: 1 },
-                    textShadowRadius: 2,
-                  }}
-                />
-              </LinearGradient>
-            </LinearGradient>
-
-            {/* Unlocked Checkmark Badge */}
-            {data.unlocked && !isLegendary && (
-              <View
-                style={{
-                  position: "absolute",
-                  top: -2,
-                  right: -2,
-                  backgroundColor: "#10B981",
-                  width: 18,
-                  height: 18,
-                  borderRadius: 9,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderWidth: 1.5,
-                  borderColor: "#FFFFFF",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 2,
-                  elevation: 3,
-                  zIndex: 10,
-                }}
-              >
-                <Check size={10} color="white" strokeWidth={3.5} />
-              </View>
-            )}
-
-            {/* Legendary Crown Badge */}
-            {data.unlocked && isLegendary && (
-              <View
-                style={{
-                  position: "absolute",
-                  top: -4,
-                  right: -4,
-                  backgroundColor: "#F59E0B",
-                  borderRadius: 10,
-                  width: 19,
-                  height: 19,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderWidth: 1.5,
-                  borderColor: "#FFFFFF",
-                  shadowColor: "#F59E0B",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 4,
-                  elevation: 3,
-                  zIndex: 10,
-                }}
-              >
-                <Icons.Crown size={10} color="#FFFFFF" fill="#FFFFFF" />
-              </View>
-            )}
-
-            {/* Locked Badge Lock Overlay */}
-            {!data.unlocked && (
-              <View
-                style={{
-                  position: "absolute",
-                  top: -2,
-                  right: -2,
-                  backgroundColor: "#64748B",
-                  width: 17,
-                  height: 17,
-                  borderRadius: 8.5,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderWidth: 1.5,
-                  borderColor: "#FFFFFF",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 2,
-                  elevation: 2,
-                  zIndex: 10,
-                }}
-              >
-                <Lock size={9} color="#FFFFFF" strokeWidth={2.5} />
-              </View>
-            )}
-          </View>
-
-          {/* Title Text (Fixed Height & Line Alignment) */}
+        {/* Center Details Column */}
+        <View style={{ flex: 1, marginLeft: 10, paddingRight: 14 }}>
           <Text
             style={{
-              fontSize: 11,
+              fontSize: 13,
               fontWeight: "800",
               color: data.unlocked ? "#0F172A" : "#64748B",
-              marginTop: 8,
-              textAlign: "center",
-              lineHeight: 13.5,
-              minHeight: 27,
-              paddingHorizontal: 2,
+              lineHeight: 16,
             }}
-            numberOfLines={2}
+            numberOfLines={1}
           >
             {data.meta.title || data.key}
           </Text>
-        </View>
+          <Text
+            style={{
+              fontSize: 10.5,
+              fontWeight: "500",
+              color: "#64748B",
+              marginTop: 2,
+              marginBottom: 6,
+              lineHeight: 14,
+            }}
+            numberOfLines={2}
+          >
+            {data.meta.description || "Complete activity to unlock"}
+          </Text>
 
-        {/* Bottom Status / Progress Section (Always 100% enclosed within Card) */}
-        {!isSmall && (
-          <View style={{ alignItems: "center", width: "100%", marginTop: 6 }}>
+          {/* Status Badge Pill */}
+          <View style={{ alignSelf: "flex-start" }}>
             {data.unlocked ? (
               <View
                 style={{
                   backgroundColor: "#ECFDF5",
                   borderColor: "#A7F3D0",
                   borderWidth: 1,
-                  borderRadius: 12,
+                  borderRadius: 10,
                   paddingHorizontal: 8,
-                  paddingVertical: 3,
-                  alignItems: "center",
-                  justifyContent: "center",
+                  paddingVertical: 2,
                 }}
               >
-                <Text
-                  style={{
-                    fontSize: 9.5,
-                    fontWeight: "800",
-                    color: "#059669",
-                    textTransform: "capitalize",
-                  }}
-                >
+                <Text style={{ fontSize: 9.5, fontWeight: "800", color: "#059669" }}>
                   {label}
                 </Text>
               </View>
-            ) : target > 1 ? (
-              <View style={{ width: "90%", alignItems: "center" }}>
-                <View
-                  style={{
-                    backgroundColor: "#F1F5F9",
-                    borderColor: "#E2E8F0",
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    paddingHorizontal: 7,
-                    paddingVertical: 2,
-                    marginBottom: 4,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 9.5,
-                      fontWeight: "800",
-                      color: "#64748B",
                     }}
                   >
                     {current}/{target}
@@ -2636,172 +2500,120 @@ export default function AdherenceScreen({ navigation }) {
             {/* ── [6] Achievements (Liquid Glass style) ── */}
             <Animated.View style={[anim(6), { position: "relative" }]}>
               <View style={{ marginBottom: 16 }}>
-                {/* Hero Achievement Journey card */}
+                {/* Hero Featured Achievement Card (Consistency Master style) */}
                 <View
                   style={{
                     borderRadius: 24,
-                    shadowColor: "#6A5AF9",
-                    shadowOffset: { width: 0, height: 8 },
-                    shadowOpacity: 0.08,
-                    shadowRadius: 18,
-                    elevation: 1,
-                    backgroundColor: "transparent",
+                    backgroundColor: "#FFFFFF",
+                    borderWidth: 1,
+                    borderColor: "rgba(241, 245, 249, 0.9)",
+                    padding: 20,
+                    shadowColor: "#7C3AED",
+                    shadowOffset: { width: 0, height: 6 },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 16,
+                    elevation: 3,
                     position: "relative",
+                    overflow: "hidden",
                   }}
                 >
-                  <LinearGradient
-                    colors={[
-                      "#4F46E5",
-                      "#6366F1",
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={{
-                      borderRadius: 24,
-                      padding: 20,
-                      overflow: "hidden",
-                      borderWidth: 1,
-                      borderColor: "rgba(255, 255, 255, 0.22)",
-                    }}
-                  >
-                    {/* Ambient Back-Glow Circles (Inside overflow: 'hidden' to prevent leakage) */}
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    {/* Left 3D Hexagonal / Shield Emblem */}
                     <View
                       style={{
-                        position: "absolute",
-                        top: -10,
-                        left: 14,
-                        width: 120,
-                        height: 120,
-                        borderRadius: 60,
-                        backgroundColor: "#8B5CF6",
-                        opacity: 0.35,
-                        transform: [{ scale: 1.2 }],
-                      }}
-                    />
-
-                    {/* Glass reflection highlight overlay */}
-                    <LinearGradient
-                      colors={[
-                        "rgba(255, 255, 255, 0.22)",
-                        "rgba(255, 255, 255, 0)",
-                      ]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={StyleSheet.absoluteFillObject}
-                    />
-                    <View
-                      style={{
-                        flexDirection: "row",
+                        width: 76,
+                        height: 76,
+                        borderRadius: 24,
                         alignItems: "center",
-                        justifyContent: "space-between",
+                        justifyContent: "center",
+                        position: "relative",
+                        shadowColor: "#7C3AED",
+                        shadowOffset: { width: 0, height: 6 },
+                        shadowOpacity: 0.2,
+                        shadowRadius: 10,
+                        elevation: 4,
                       }}
                     >
-                      <View style={{ flex: 1, paddingRight: 12 }}>
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 6,
-                          }}
-                        >
-                          <Trophy size={14} color="#FFF" />
-                          <Text
-                            style={{
-                              fontSize: 11,
-                              fontWeight: "800",
-                              color: "#E0E7FF",
-                              letterSpacing: 0.8,
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            Achievement Journey
-                          </Text>
-                        </View>
-                        <Text
-                          style={{
-                            fontSize: 22,
-                            fontWeight: "900",
-                            color: "white",
-                            marginTop: 6,
-                            letterSpacing: -0.5,
-                          }}
-                        >
-                          {unlockedCount}/{totalAchievementsCount} Unlocked
-                        </Text>
-
-                        {nextGoal && (
-                          <View
-                            style={{
-                              marginTop: 10,
-                              backgroundColor: "rgba(255, 255, 255, 0.08)",
-                              paddingHorizontal: 10,
-                              paddingVertical: 8,
-                              borderRadius: 10,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 11,
-                                color: "#E0E7FF",
-                                fontWeight: "700",
-                              }}
-                            >
-                              Next:{" "}
-                              <Text
-                                style={{ color: "white", fontWeight: "800" }}
-                              >
-                                {nextGoal.meta.title || nextGoal.key}
-                              </Text>
-                            </Text>
-                            <Text
-                              style={{
-                                fontSize: 11,
-                                color: "#C7D2FE",
-                                fontWeight: "600",
-                                marginTop: 1,
-                              }}
-                            >
-                              {getRemainingLabel(nextGoal, nextGoal.meta)}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-
-                      <View
+                      <LinearGradient
+                        colors={["#F3E8FF", "#DDD6FE", "#C084FC"]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
                         style={{
-                          position: "relative",
-                          width: 84,
-                          height: 84,
+                          width: "100%",
+                          height: "100%",
+                          borderRadius: 24,
                           alignItems: "center",
                           justifyContent: "center",
                         }}
                       >
-                        <ProgressRing percent={completionPercentage} />
+                        <Crown size={34} color="#7C3AED" fill="#7C3AED" />
+                      </LinearGradient>
+
+                      {/* Lock / Unlocked Overlay Badge */}
+                      <View
+                        style={{
+                          position: "absolute",
+                          top: -2,
+                          right: -2,
+                          backgroundColor: "#64748B",
+                          width: 20,
+                          height: 20,
+                          borderRadius: 10,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          borderWidth: 2,
+                          borderColor: "#FFFFFF",
+                        }}
+                      >
+                        <Lock size={10} color="#FFFFFF" strokeWidth={2.5} />
+                      </View>
+                    </View>
+
+                    {/* Middle Info Column */}
+                    <View style={{ flex: 1, marginLeft: 16 }}>
+                      <Text
+                        style={{
+                          fontSize: 17,
+                          fontWeight: "800",
+                          color: "#0F172A",
+                          letterSpacing: -0.2,
+                        }}
+                      >
+                        Consistency Master
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontWeight: "500",
+                          color: "#64748B",
+                          marginTop: 4,
+                          marginBottom: 8,
+                          lineHeight: 16,
+                        }}
+                      >
+                        Maintain perfect consistency for 4 weeks
+                      </Text>
+
+                      <View style={{ alignSelf: "flex-start" }}>
                         <View
                           style={{
-                            position: "absolute",
-                            top: 0,
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
+                            flexDirection: "row",
                             alignItems: "center",
-                            justifyContent: "center",
+                            gap: 4,
+                            backgroundColor: "#F3E8FF",
+                            paddingHorizontal: 10,
+                            paddingVertical: 4,
+                            borderRadius: 10,
                           }}
                         >
-                          <Text
-                            style={{
-                              fontSize: 18,
-                              fontWeight: "900",
-                              color: "white",
-                              letterSpacing: -0.5,
-                            }}
-                          >
-                            {completionPercentage}%
+                          <Lock size={11} color="#9333EA" strokeWidth={2.5} />
+                          <Text style={{ fontSize: 11, fontWeight: "800", color: "#9333EA" }}>
+                            Locked
                           </Text>
                         </View>
                       </View>
                     </View>
-                  </LinearGradient>
+                  </View>
                 </View>
               </View>
 
@@ -2943,6 +2755,54 @@ export default function AdherenceScreen({ navigation }) {
                   </View>
                 );
               })}
+
+              {/* Bottom Motivational Callout Banner */}
+              <View
+                style={{
+                  backgroundColor: "#F5F3FF",
+                  borderRadius: 20,
+                  padding: 16,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginTop: 4,
+                  marginBottom: 24,
+                  borderWidth: 1,
+                  borderColor: "rgba(233, 213, 255, 0.6)",
+                }}
+              >
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: "#E9D5FF",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Sparkles size={18} color="#7C3AED" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12, paddingRight: 8 }}>
+                  <Text style={{ fontSize: 14, fontWeight: "800", color: "#0F172A" }}>
+                    Keep it up!
+                  </Text>
+                  <Text style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
+                    Small steps today, stronger health tomorrow.
+                  </Text>
+                </View>
+                <View
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: "#EDE9FE",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <ChevronRight size={16} color="#7C3AED" />
+                </View>
+              </View>
             </Animated.View>
           </ScrollView>
         </SafeAreaView>
