@@ -41,12 +41,12 @@ export const ACHIEVEMENTS = [
     target: 1,
   },
 
-  // 🏃 Building Habits Chapter
+  // 📅 Daily Habits Chapter
   {
     key: '3_day_consistent',
     title: 'Consistency Hero',
     tier: 'rare',
-    category: 'building_habits',
+    category: 'daily_habits',
     description: 'Maintain an 80%+ medication log rate for 3 consecutive days',
     lore: 'Three days in a row. Momentum is building.',
     iconName: 'Zap',
@@ -56,7 +56,7 @@ export const ACHIEVEMENTS = [
     key: 'never_missed_morning',
     title: 'Morning Guardian',
     tier: 'rare',
-    category: 'building_habits',
+    category: 'daily_habits',
     description: 'Take morning medications on time for 3 days',
     lore: 'Starting every morning with purpose and precision.',
     iconName: 'Sunrise',
@@ -66,7 +66,7 @@ export const ACHIEVEMENTS = [
     key: 'weekly_90',
     title: 'Weekly Adherence Champion',
     tier: 'rare',
-    category: 'building_habits',
+    category: 'daily_habits',
     description: 'Maintain 90%+ medication adherence for a full week',
     lore: 'A full week of 90%+ compliance. Consistency is becoming second nature.',
     iconName: 'Target',
@@ -77,31 +77,17 @@ export const ACHIEVEMENTS = [
     key: 'streak_7',
     title: 'Consistency Champion',
     tier: 'rare',
-    category: 'building_habits',
+    category: 'daily_habits',
     description: 'Log your vitals or medications for 7 consecutive days',
     lore: 'Seven consecutive days without missing a single beat.',
     iconName: 'Flame',
     target: 7,
   },
   {
-    key: 'early_bird',
-    title: '???',
-    unlockedTitle: 'Early Bird',
-    tier: 'rare',
-    category: 'building_habits',
-    isHidden: true,
-    description: 'Log vitals or medication before 7:00 AM for 7 days',
-    lore: 'Sunrise dedication. Taking charge of your health before the world wakes up.',
-    iconName: 'Sun',
-    target: 7,
-  },
-
-  // 🩺 Taking Control Chapter
-  {
     key: 'bp_stabilized',
     title: 'Vitals Guardian',
     tier: 'epic',
-    category: 'taking_control',
+    category: 'daily_habits',
     description: 'Maintain stable blood pressure logs for 14 days',
     lore: '14 days of steady blood pressure logs. Your heart thanks you.',
     iconName: 'HeartPulse',
@@ -111,7 +97,7 @@ export const ACHIEVEMENTS = [
     key: 'profile_complete',
     title: 'Health Profile Champion',
     tier: 'rare',
-    category: 'taking_control',
+    category: 'daily_habits',
     description: 'Fill in 100% of your health profile information',
     lore: 'A complete profile allows emergency response & care team optimization.',
     iconName: 'CheckCircle2',
@@ -119,31 +105,23 @@ export const ACHIEVEMENTS = [
     isPercentage: true,
   },
   {
-    key: 'hydration_hero',
-    title: 'Hydration Champion',
+    key: 'early_bird',
+    title: '???',
+    unlockedTitle: 'Early Bird',
     tier: 'rare',
-    category: 'taking_control',
-    description: 'Log your hydration levels on 5 different days',
-    lore: 'Proper hydration regulates vital organs and speeds recovery.',
-    iconName: 'Droplet',
-    target: 5,
-  },
-  {
-    key: 'mindful_week',
-    title: 'Mindful Champion',
-    tier: 'rare',
-    category: 'taking_control',
-    description: 'Log your mood for 7 days',
-    lore: 'A full week of emotional mindfulness and self-checkins.',
-    iconName: 'Brain',
+    category: 'daily_habits',
+    isHidden: true,
+    description: 'Log vitals or medication before 7:00 AM for 7 days',
+    lore: 'Sunrise dedication. Taking charge of your health before the world wakes up.',
+    iconName: 'Sun',
     target: 7,
   },
 
-  // 🏆 Major Milestones Chapter
+  // 🏆 Milestones Chapter
   {
     key: '7_perfect_days',
     title: 'Perfect Week Champion',
-    tier: 'legendary',
+    tier: 'rare',
     category: 'milestones',
     description: 'Log 7 perfect days of 100% medication adherence',
     lore: 'Seven consecutive days of 100% adherence. A flawless week of self-care.',
@@ -223,7 +201,7 @@ export const ACHIEVEMENTS = [
     target: 100,
   },
 
-  // ✨ Legacy & Mastery Chapter
+  // ✨ Mastery Chapter
   {
     key: 'streak_30',
     title: 'Consistency Master',
@@ -261,43 +239,43 @@ export const ACHIEVEMENTS = [
 export const TIER_CONFIG = {
   common: {
     color: '#64748B',
-    label: 'White Ceramic',
+    label: 'Everyday',
     bgColor: '#F8FAFC',
     borderColor: '#E2E8F0',
     gradient: ['#FFFFFF', '#F1F5F9', '#E2E8F0'],
   },
   rare: {
     color: '#7C3AED',
-    label: 'Purple Crystal',
+    label: 'Milestone',
     bgColor: '#F5F3FF',
     borderColor: '#DDD6FE',
     gradient: ['#F3E8FF', '#C084FC', '#9333EA'],
   },
   epic: {
     color: '#4F46E5',
-    label: 'Deep Violet Metal',
+    label: 'Elite',
     bgColor: '#EEF2FF',
     borderColor: '#C7D2FE',
     gradient: ['#818CF8', '#4F46E5', '#312E81'],
   },
   legendary: {
     color: '#D97706',
-    label: 'Royal Gold',
+    label: 'Master',
     bgColor: '#FFFBEB',
     borderColor: '#FDE68A',
     gradient: ['#FEF08A', '#F59E0B', '#B45309'],
   },
   mythic: {
     color: '#A855F7',
-    label: 'Black Obsidian',
+    label: 'Legacy',
     bgColor: '#0F172A',
     borderColor: 'rgba(168, 85, 247, 0.5)',
     gradient: ['#1E293B', '#0F172A', '#581C87'],
   },
   // Backward compatibility mappings
-  bronze: { color: '#64748B', label: 'Common', bgColor: '#F8FAFC', gradient: ['#FFFFFF', '#F1F5F9'] },
-  silver: { color: '#7C3AED', label: 'Rare', bgColor: '#F5F3FF', gradient: ['#F3E8FF', '#C084FC'] },
-  gold: { color: '#D97706', label: 'Legendary', bgColor: '#FFFBEB', gradient: ['#FEF08A', '#F59E0B'] },
+  bronze: { color: '#64748B', label: 'Everyday', bgColor: '#F8FAFC', gradient: ['#FFFFFF', '#F1F5F9'] },
+  silver: { color: '#7C3AED', label: 'Milestone', bgColor: '#F5F3FF', gradient: ['#F3E8FF', '#C084FC'] },
+  gold: { color: '#D97706', label: 'Master', bgColor: '#FFFBEB', gradient: ['#FEF08A', '#F59E0B'] },
 };
 
 export const CATEGORY_CONFIG = {
@@ -307,34 +285,30 @@ export const CATEGORY_CONFIG = {
     iconName: 'Sprout',
     accent: ['#7C3AED', '#C084FC'],
   },
-  building_habits: {
-    title: '🏃 Building Habits',
-    description: 'Daily consistency and routine logging',
+  daily_habits: {
+    title: '📅 Daily Habits',
+    description: 'Daily consistency and active vital tracking',
     iconName: 'Zap',
     accent: ['#6366F1', '#818CF8'],
   },
-  taking_control: {
-    title: '🩺 Taking Control',
-    description: 'Active health improvements & vital stability',
-    iconName: 'Activity',
-    accent: ['#0891B2', '#22D3EE'],
-  },
   milestones: {
-    title: '🏆 Major Milestones',
-    description: 'Significant logging achievements and perfect weeks',
+    title: '🏆 Milestones',
+    description: 'Significant achievements and perfect weeks',
     iconName: 'Trophy',
     accent: ['#D97706', '#FBBF24'],
   },
   mastery: {
-    title: '✨ Legacy & Mastery',
+    title: '✨ Mastery',
     description: 'Long-term commitment to lifetime wellness',
     iconName: 'Crown',
     accent: ['#7C3AED', '#A855F7'],
   },
-  // Legacy mappings fallback
-  doses: { title: 'Logging Volume', description: 'Total medication and vitals entries logged', iconName: 'Pill', accent: ['#6D28D9', '#A78BFA'] },
-  streaks: { title: 'Consistency & Streaks', description: 'Maintain logs over consecutive days', iconName: 'Flame', accent: ['#9F1239', '#F43F5E'] },
-  routine: { title: 'Routine & Adherence', description: 'Time-of-day accuracy and compliance rates', iconName: 'Clock', accent: ['#5B21B6', '#C084FC'] },
-  wellbeing: { title: 'Holistic Wellbeing', description: 'Mood, hydration, and overall health tracking', iconName: 'Activity', accent: ['#7C3AED', '#F3E8FF'] },
-  perfect_days: { title: 'Perfect Days Progression', description: 'Complete all scheduled medication doses', iconName: 'Star', accent: ['#7C3AED', '#C084FC'] },
+  // Category fallbacks
+  building_habits: { title: '📅 Daily Habits', description: 'Daily consistency', iconName: 'Zap', accent: ['#6366F1', '#818CF8'] },
+  taking_control: { title: '📅 Daily Habits', description: 'Vital stability', iconName: 'Activity', accent: ['#0891B2', '#22D3EE'] },
+  doses: { title: 'Daily Habits', description: 'Doses logged', iconName: 'Pill', accent: ['#6D28D9', '#A78BFA'] },
+  streaks: { title: 'Daily Habits', description: 'Streaks', iconName: 'Flame', accent: ['#9F1239', '#F43F5E'] },
+  routine: { title: 'Daily Habits', description: 'Routine', iconName: 'Clock', accent: ['#5B21B6', '#C084FC'] },
+  wellbeing: { title: 'Daily Habits', description: 'Wellbeing', iconName: 'Activity', accent: ['#7C3AED', '#F3E8FF'] },
+  perfect_days: { title: 'First Steps', description: 'Perfect Days', iconName: 'Star', accent: ['#7C3AED', '#C084FC'] },
 };

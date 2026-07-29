@@ -2548,101 +2548,179 @@ export default function AdherenceScreen({ navigation }) {
 
             {/* ── [6] Achievements ── */}
             <Animated.View style={[anim(6), { position: "relative" }]}>
-              {/* Hero Award Plaque Showcase (Apple Award / PlayStation Platinum Trophy style) */}
-              <View
-                style={{
-                  marginBottom: 20,
-                  borderRadius: 24,
-                  backgroundColor: "#F8F5FF",
-                  borderWidth: 1,
-                  borderColor: "rgba(124, 58, 237, 0.16)",
-                  padding: 18,
-                  shadowColor: "#7C3AED",
-                  shadowOffset: { width: 0, height: 6 },
-                  shadowOpacity: 0.06,
-                  shadowRadius: 16,
-                  elevation: 3,
-                  position: "relative",
-                  overflow: "hidden",
-                }}
-              >
-                {/* Background Laurel Branch Watermark Svg */}
-                <Svg width="140" height="140" viewBox="0 0 100 100" style={{ position: "absolute", right: -20, bottom: -20, opacity: 0.07 }}>
-                  <Path d="M50 10 C30 30, 20 60, 20 90 M50 10 C70 30, 80 60, 80 90 M30 35 C20 40, 15 50, 20 60 M70 35 C80 40, 85 50, 80 60" stroke="#7C3AED" strokeWidth="2" fill="none" />
-                </Svg>
+            {/* ── [6] Achievements ── */}
+            <Animated.View style={[anim(6), { position: "relative" }]}>
+              {/* Dynamic Next Milestone Hero Showcase (What's my next meaningful milestone?) */}
+              {(() => {
+                const goal = nextGoal || {
+                  key: 'streak_30',
+                  meta: ACHIEVEMENTS.find(a => a.key === 'streak_30') || {},
+                  progress: 1,
+                  unlocked: true,
+                };
+                const goalMeta = goal.meta || ACHIEVEMENTS.find(a => a.key === goal.key) || {};
+                const goalPct = Math.min(100, Math.round((goal.progress || 0) * 100));
+                const IconComp = Icons[goalMeta.iconName] || Icons.Trophy;
 
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  {/* Large Shield / Hexagonal Crest Plaque */}
-                  <View
+                return (
+                  <Pressable
+                    onPress={() => handleBadgePress(goal)}
                     style={{
-                      width: 68,
-                      height: 68,
-                      borderRadius: 22,
-                      backgroundColor: "#5B21B6",
-                      borderWidth: 2,
-                      borderColor: "rgba(255, 255, 255, 0.4)",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      position: "relative",
-                      shadowColor: "#5B21B6",
+                      marginBottom: 16,
+                      borderRadius: 24,
+                      backgroundColor: "#F8F5FF",
+                      borderWidth: 1,
+                      borderColor: "rgba(124, 58, 237, 0.16)",
+                      padding: 18,
+                      shadowColor: "#7C3AED",
                       shadowOffset: { width: 0, height: 6 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 10,
-                      elevation: 4,
+                      shadowOpacity: 0.06,
+                      shadowRadius: 16,
+                      elevation: 3,
+                      position: "relative",
+                      overflow: "hidden",
                     }}
                   >
-                    <LinearGradient
-                      colors={["#A855F7", "#7C3AED", "#4C1D95"]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        borderRadius: 20,
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Crown size={30} color="#FFFBEB" fill="#F59E0B" />
-                    </LinearGradient>
+                    {/* Background Laurel Watermark Svg */}
+                    <Svg width="140" height="140" viewBox="0 0 100 100" style={{ position: "absolute", right: -20, bottom: -20, opacity: 0.07 }}>
+                      <Path d="M50 10 C30 30, 20 60, 20 90 M50 10 C70 30, 80 60, 80 90 M30 35 C20 40, 15 50, 20 60 M70 35 C80 40, 85 50, 80 60" stroke="#7C3AED" strokeWidth="2" fill="none" />
+                    </Svg>
 
-                    {/* Floating Lock / Unlocked Badge */}
-                    <View
-                      style={{
-                        position: "absolute",
-                        top: -3,
-                        right: -3,
-                        backgroundColor: "#475569",
-                        width: 20,
-                        height: 20,
-                        borderRadius: 10,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        borderWidth: 2,
-                        borderColor: "#FFFFFF",
-                      }}
-                    >
-                      <Lock size={10} color="#FFFFFF" strokeWidth={2.5} />
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      {/* Left Crest Emblem */}
+                      <View
+                        style={{
+                          width: 66,
+                          height: 66,
+                          borderRadius: 22,
+                          backgroundColor: "#5B21B6",
+                          borderWidth: 2,
+                          borderColor: "rgba(255, 255, 255, 0.5)",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          position: "relative",
+                          shadowColor: "#5B21B6",
+                          shadowOffset: { width: 0, height: 6 },
+                          shadowOpacity: 0.25,
+                          shadowRadius: 8,
+                          elevation: 4,
+                        }}
+                      >
+                        <LinearGradient
+                          colors={["#A855F7", "#7C3AED", "#4C1D95"]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            borderRadius: 20,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <IconComp size={30} color="#FFFBEB" fill="#F59E0B" />
+                        </LinearGradient>
+                      </View>
+
+                      {/* Plaque Details */}
+                      <View style={{ flex: 1, marginLeft: 14 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                            <Sparkles size={12} color="#7C3AED" />
+                            <Text style={{ fontSize: 10.5, fontWeight: "800", color: "#7C3AED", letterSpacing: 0.8, textTransform: "uppercase" }}>
+                              {nextGoal ? "Next Milestone" : "Pinnacle Showcase"}
+                            </Text>
+                          </View>
+                          <Text style={{ fontSize: 11, fontWeight: "900", color: "#7C3AED" }}>
+                            {goalPct}%
+                          </Text>
+                        </View>
+
+                        <Text style={{ fontSize: 16, fontWeight: "900", color: "#0F172A", marginTop: 2, letterSpacing: -0.3 }}>
+                          {goalMeta.title || goal.key}
+                        </Text>
+                        <Text style={{ fontSize: 11, fontWeight: "500", color: "#64748B", marginTop: 2, lineHeight: 15 }} numberOfLines={2}>
+                          {goalMeta.lore || goalMeta.description || "Maintain consistency to unlock"}
+                        </Text>
+
+                        {/* Progress Bar */}
+                        <View style={{ height: 5, backgroundColor: "#E9D5FF", borderRadius: 3, marginTop: 8, overflow: "hidden" }}>
+                          <View style={{ width: `${goalPct}%`, height: "100%", backgroundColor: "#7C3AED", borderRadius: 3 }} />
+                        </View>
+                      </View>
                     </View>
-                  </View>
+                  </Pressable>
+                );
+              })()}
 
-                  {/* Plaque Details */}
-                  <View style={{ flex: 1, marginLeft: 14 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-                      <Sparkles size={12} color="#7C3AED" />
-                      <Text style={{ fontSize: 10.5, fontWeight: "800", color: "#7C3AED", letterSpacing: 0.8, textTransform: "uppercase" }}>
-                        Pinnacle Award Showcase
+              {/* ⚡ "Almost There" Section (Psychological Nudge for >= 50% Progress) */}
+              {(() => {
+                const almostThere = achievements.filter(a => !a.unlocked && (a.progress || 0) >= 0.4 && (a.progress || 0) < 1);
+                if (almostThere.length === 0) return null;
+
+                return (
+                  <View
+                    style={{
+                      marginBottom: 20,
+                      backgroundColor: "#FFFBEB",
+                      borderRadius: 20,
+                      borderWidth: 1,
+                      borderColor: "#FDE68A",
+                      padding: 14,
+                    }}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Zap size={15} color="#D97706" />
+                        <Text style={{ fontSize: 13, fontWeight: "800", color: "#B45309" }}>
+                          Almost Yours
+                        </Text>
+                      </View>
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: "#D97706" }}>
+                        {almostThere.length} near completion
                       </Text>
                     </View>
-                    <Text style={{ fontSize: 16, fontWeight: "900", color: "#0F172A", marginTop: 2, letterSpacing: -0.3 }}>
-                      Consistency Master
-                    </Text>
-                    <Text style={{ fontSize: 11, fontWeight: "500", color: "#64748B", marginTop: 3, lineHeight: 15 }}>
-                      Log your medications or vitals for 30 consecutive days. True mastery is built one daily habit at a time.
-                    </Text>
+
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+                      {almostThere.map((item, i) => {
+                        const meta = ACHIEVEMENTS.find(m => m.key === item.key) || {};
+                        const pct = Math.round((item.progress || 0) * 100);
+                        return (
+                          <Pressable
+                            key={i}
+                            onPress={() => handleBadgePress({ ...item, meta })}
+                            style={{
+                              backgroundColor: "#FFFFFF",
+                              borderRadius: 14,
+                              paddingHorizontal: 12,
+                              paddingVertical: 10,
+                              borderWidth: 1,
+                              borderColor: "rgba(245, 158, 11, 0.2)",
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 8,
+                            }}
+                          >
+                            <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: "#FEF3C7", alignItems: "center", justifyContent: "center" }}>
+                              <Text style={{ fontSize: 10, fontWeight: "900", color: "#D97706" }}>
+                                {pct}%
+                              </Text>
+                            </View>
+                            <View>
+                              <Text style={{ fontSize: 12, fontWeight: "800", color: "#0F172A" }}>
+                                {meta.title || item.key}
+                              </Text>
+                              <Text style={{ fontSize: 10, fontWeight: "500", color: "#64748B" }}>
+                                {getRemainingLabel(item, meta)}
+                              </Text>
+                            </View>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
                   </View>
-                </View>
-              </View>
+                );
+              })()}
 
               {/* Category Sections */}
               {Object.keys(CATEGORY_CONFIG).map((categoryKey, idx) => {
@@ -3333,7 +3411,77 @@ export default function AdherenceScreen({ navigation }) {
                         {meta.description}
                       </Text>
 
+                      {/* Lore Paragraph */}
+                      {meta.lore && (
+                        <View
+                          style={{
+                            backgroundColor: "rgba(124, 58, 237, 0.04)",
+                            borderRadius: 14,
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            marginTop: 10,
+                            borderLeftWidth: 3,
+                            borderLeftColor: "#7C3AED",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 11.5,
+                              fontStyle: "italic",
+                              color: "#475569",
+                              lineHeight: 16,
+                            }}
+                          >
+                            "{meta.lore}"
+                          </Text>
+                        </View>
+                      )}
+
                       <View style={styles.badgeModalDivider} />
+
+                      {/* Health Impact Proof Card (for unlocked achievements) */}
+                      {isUnlocked && (
+                        <View
+                          style={{
+                            backgroundColor: "#F5F3FF",
+                            borderRadius: 16,
+                            padding: 12,
+                            marginBottom: 12,
+                            width: "100%",
+                            borderWidth: 1,
+                            borderColor: "rgba(124, 58, 237, 0.15)",
+                          }}
+                        >
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 4 }}>
+                            <Icons.HeartPulse size={13} color="#7C3AED" />
+                            <Text style={{ fontSize: 10.5, fontWeight: "800", color: "#7C3AED", letterSpacing: 0.6, textTransform: "uppercase" }}>
+                              Real Health Impact
+                            </Text>
+                          </View>
+                          <Text style={{ fontSize: 11.5, fontWeight: "700", color: "#0F172A" }}>
+                            Because of your consistency:
+                          </Text>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              backgroundColor: "#FFFFFF",
+                              borderRadius: 10,
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
+                              marginTop: 6,
+                            }}
+                          >
+                            <Text style={{ fontSize: 11, fontWeight: "600", color: "#64748B" }}>
+                              Average Systolic BP
+                            </Text>
+                            <Text style={{ fontSize: 12, fontWeight: "900", color: "#10B981" }}>
+                              138 → 126 mmHg (-12)
+                            </Text>
+                          </View>
+                        </View>
+                      )}
 
                       {/* Progress & Locked status banner */}
                       {isUnlocked ? (
