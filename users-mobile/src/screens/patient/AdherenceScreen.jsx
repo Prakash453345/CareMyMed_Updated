@@ -1645,19 +1645,35 @@ export default function AdherenceScreen({ navigation }) {
     return { ...best, meta };
   }, [achievements]);
 
-  // Calculate REAL blood pressure improvement over a robust 7-14 day clinical window — zero fake data!
+  // Calculate REAL blood pressure improvement over an explicit 7-to-14 day calendar window — zero fake data!
   const realBpDiff = useMemo(() => {
-    if (!dailyLog || dailyLog.length < 7) return null; // Need at least 7 days of logs
+    if (!dailyLog || dailyLog.length === 0) return null;
 
-    const logsWithBp = dailyLog.filter((d) => d.vitals?.systolic > 0);
-    if (logsWithBp.length < 6) return null; // Need at least 6 valid BP readings
+    const now = new Date();
+    const logsWithBp = dailyLog.filter((d) => d.vitals?.systolic > 0 && d.date);
 
-    // Half-split chronological windows (last N days vs previous N days)
-    const midPoint = Math.floor(logsWithBp.length / 2);
-    const recentWindow = logsWithBp.slice(0, midPoint);
-    const previousWindow = logsWithBp.slice(midPoint);
+    if (logsWithBp.length === 0) return null;
 
-    if (recentWindow.length === 0 || previousWindow.length === 0) return null;
+    // Filter last 7 days vs. previous 7-14 days
+    const recentWindow = logsWithBp.filter((d) => {
+      try {
+        const days = differenceInDays(now, parseISO(d.date));
+        return days >= 0 && days < 7;
+      } catch (e) {
+        return false;
+      }
+    });
+
+    const previousWindow = logsWithBp.filter((d) => {
+      try {
+        const days = differenceInDays(now, parseISO(d.date));
+        return days >= 7 && days <= 14;
+      } catch (e) {
+        return false;
+      }
+    });
+
+    if (recentWindow.length < 2 || previousWindow.length < 2) return null;
 
     const recentAvg = Math.round(
       recentWindow.reduce((acc, curr) => acc + curr.vitals.systolic, 0) / recentWindow.length
@@ -1673,7 +1689,6 @@ export default function AdherenceScreen({ navigation }) {
       oldAvg: previousAvg,
       newAvg: recentAvg,
       diff,
-      daysWindow: logsWithBp.length,
     };
   }, [dailyLog]);
 
@@ -3569,32 +3584,78 @@ export default function AdherenceScreen({ navigation }) {
 
                       {/* Progress & Locked status banner */}
                       {isUnlocked ? (
-                        <View
-                          style={[
-                            styles.badgeModalStatusBox,
-                            {
-                              backgroundColor: tierInfo.bgColor,
-                              borderColor: tierInfo.color + "20",
-                              borderWidth: 1,
-                              shadowColor: tierInfo.color,
-                              shadowOpacity: 0.1,
-                              shadowRadius: 8,
-                              elevation: 2,
-                              width: "100%",
-                            },
-                          ]}
-                        >
-                          <Sparkles size={15} color={tierInfo.color} />
-                          <Text
+                        <View style={{ width: "100%" }}>
+                          <View
                             style={[
-                              styles.badgeModalStatusTextUnlocked,
-                              { color: tierInfo.color, fontWeight: "950" },
+                              styles.badgeModalStatusBox,
+                              {
+                                backgroundColor: tierInfo.bgColor,
+                                borderColor: tierInfo.color + "20",
+                                borderWidth: 1,
+                                shadowColor: tierInfo.color,
+                                shadowOpacity: 0.1,
+                                shadowRadius: 8,
+                                elevation: 2,
+                                width: "100%",
+                              },
                             ]}
                           >
-                            {selectedBadge.unlockedTime
-                              ? `EARNED ${selectedBadge.unlockedTime.toUpperCase()}`
-                              : "UNLOCKED"}
-                          </Text>
+                            <Sparkles size={15} color={tierInfo.color} />
+                            <Text
+                              style={[
+                                styles.badgeModalStatusTextUnlocked,
+                                { color: tierInfo.color, fontWeight: "950" },
+                              ]}
+                            >
+                              {selectedBadge.unlockedTime
+                                ? `EARNED ${selectedBadge.unlockedTime.toUpperCase()}`
+                                : "UNLOCKED"}
+                            </Text>
+                          </View>
+
+                          {/* "What's Next?" Continuous Progression (Prevents dead-ends after unlock) */}
+                          {(() => {
+                            const lockedInCat = achievements.filter(
+                              (a) => !a.unlocked && (ACHIEVEMENTS.find(m => m.key === a.key)?.category === meta.category)
+                            );
+                            const nextTarget = lockedInCat[0] || achievements.find((a) => !a.unlocked);
+                            if (!nextTarget) return null;
+
+                            const nextMeta = ACHIEVEMENTS.find((a) => a.key === nextTarget.key) || {};
+                            const pct = Math.min(100, Math.round((nextTarget.progress || 0) * 100));
+
+                            return (
+                              <View
+                                style={{
+                                  backgroundColor: "#F8FAFC",
+                                  borderRadius: 16,
+                                  padding: 12,
+                                  marginTop: 10,
+                                  width: "100%",
+                                  borderWidth: 1,
+                                  borderColor: "#E2E8F0",
+                                }}
+                              >
+                                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                                  <Text style={{ fontSize: 10.5, fontWeight: "800", color: "#64748B", letterSpacing: 0.6, textTransform: "uppercase" }}>
+                                    What's Next?
+                                  </Text>
+                                  <Text style={{ fontSize: 11, fontWeight: "800", color: "#7C3AED" }}>
+                                    {pct}%
+                                  </Text>
+                                </View>
+                                <Text style={{ fontSize: 12.5, fontWeight: "800", color: "#0F172A" }}>
+                                  {nextMeta.title || nextTarget.key}
+                                </Text>
+                                <Text style={{ fontSize: 11, fontWeight: "500", color: "#64748B", marginTop: 2 }} numberOfLines={1}>
+                                  {nextMeta.lore || nextMeta.description}
+                                </Text>
+                                <View style={{ height: 4, backgroundColor: "#E2E8F0", borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
+                                  <View style={{ width: `${pct}%`, height: "100%", backgroundColor: "#7C3AED", borderRadius: 2 }} />
+                                </View>
+                              </View>
+                            );
+                          })()}
                         </View>
                       ) : (
                         <View style={styles.badgeModalProgressContainer}>
