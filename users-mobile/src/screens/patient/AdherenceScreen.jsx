@@ -1645,6 +1645,25 @@ export default function AdherenceScreen({ navigation }) {
     return { ...best, meta };
   }, [achievements]);
 
+  // Calculate REAL blood pressure improvement from actual dailyLog history — zero fake data!
+  const realBpDiff = useMemo(() => {
+    if (!dailyLog || dailyLog.length < 4) return null; // Not enough real data — hide card!
+
+    const logsWithBp = dailyLog.filter((d) => d.vitals?.systolic > 0);
+    if (logsWithBp.length < 4) return null; // Not enough real data — hide card!
+
+    const oldestLogs = logsWithBp.slice(-3);
+    const newestLogs = logsWithBp.slice(0, 3);
+
+    const oldAvg = Math.round(oldestLogs.reduce((acc, curr) => acc + curr.vitals.systolic, 0) / oldestLogs.length);
+    const newAvg = Math.round(newestLogs.reduce((acc, curr) => acc + curr.vitals.systolic, 0) / newestLogs.length);
+
+    const diff = oldAvg - newAvg;
+    if (diff <= 0) return null; // No real improvement — hide card!
+
+    return { oldAvg, newAvg, diff };
+  }, [dailyLog]);
+
   const recentUnlocks = useMemo(() => {
     const unlocked = achievements.filter((a) => a.unlocked);
     if (unlocked.length === 0) return [];
@@ -3439,8 +3458,8 @@ export default function AdherenceScreen({ navigation }) {
 
                       <View style={styles.badgeModalDivider} />
 
-                      {/* Health Impact Proof Card (for unlocked achievements) */}
-                      {isUnlocked && (
+                      {/* Health Impact Proof Card (ONLY rendered when REAL vital history exists — zero fake data!) */}
+                      {isUnlocked && realBpDiff && (
                         <View
                           style={{
                             backgroundColor: "#F5F3FF",
@@ -3477,7 +3496,7 @@ export default function AdherenceScreen({ navigation }) {
                               Average Systolic BP
                             </Text>
                             <Text style={{ fontSize: 12, fontWeight: "900", color: "#10B981" }}>
-                              138 → 126 mmHg (-12)
+                              {realBpDiff.oldAvg} → {realBpDiff.newAvg} mmHg (-{realBpDiff.diff})
                             </Text>
                           </View>
                         </View>
@@ -3485,31 +3504,57 @@ export default function AdherenceScreen({ navigation }) {
 
                       {/* Progress & Locked status banner */}
                       {isUnlocked ? (
-                        <View
-                          style={[
-                            styles.badgeModalStatusBox,
-                            {
-                              backgroundColor: tierInfo.bgColor,
-                              borderColor: tierInfo.color + "20",
-                              borderWidth: 1,
-                              shadowColor: tierInfo.color,
-                              shadowOpacity: 0.1,
-                              shadowRadius: 8,
-                              elevation: 2,
-                            },
-                          ]}
-                        >
-                          <Sparkles size={15} color={tierInfo.color} />
-                          <Text
+                        <View style={{ width: "100%", alignItems: "center" }}>
+                          <View
                             style={[
-                              styles.badgeModalStatusTextUnlocked,
-                              { color: tierInfo.color, fontWeight: "950" },
+                              styles.badgeModalStatusBox,
+                              {
+                                backgroundColor: tierInfo.bgColor,
+                                borderColor: tierInfo.color + "20",
+                                borderWidth: 1,
+                                shadowColor: tierInfo.color,
+                                shadowOpacity: 0.1,
+                                shadowRadius: 8,
+                                elevation: 2,
+                                width: "100%",
+                              },
                             ]}
                           >
-                            {selectedBadge.unlockedTime
-                              ? selectedBadge.unlockedTime.toUpperCase()
-                              : "UNLOCKED"}
-                          </Text>
+                            <Sparkles size={15} color={tierInfo.color} />
+                            <Text
+                              style={[
+                                styles.badgeModalStatusTextUnlocked,
+                                { color: tierInfo.color, fontWeight: "950" },
+                              ]}
+                            >
+                              {selectedBadge.unlockedTime
+                                ? `EARNED ${selectedBadge.unlockedTime.toUpperCase()}`
+                                : "UNLOCKED"}
+                            </Text>
+                          </View>
+
+                          {/* Family / Companion Encouragement & Reactions */}
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 8,
+                              marginTop: 12,
+                              backgroundColor: "#F8FAFC",
+                              paddingHorizontal: 12,
+                              paddingVertical: 8,
+                              borderRadius: 14,
+                              width: "100%",
+                            }}
+                          >
+                            <Text style={{ fontSize: 11, fontWeight: "600", color: "#64748B" }}>
+                              ❤️ Caregiver & Family Reactions:
+                            </Text>
+                            <Text style={{ fontSize: 12, fontWeight: "800", color: "#0F172A" }}>
+                              ❤️ 👏 🎉
+                            </Text>
+                          </View>
                         </View>
                       ) : (
                         <View style={styles.badgeModalProgressContainer}>
