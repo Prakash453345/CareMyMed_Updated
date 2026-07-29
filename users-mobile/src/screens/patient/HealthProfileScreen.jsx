@@ -512,25 +512,25 @@ export default function HealthProfileScreen({ navigation }) {
     return [
       {
         title: t("health_profile.guide_title", {
-          defaultValue: "👋 One last step!",
+          defaultValue: "Medical Profile",
         }),
         desc: t("health_profile.guide_desc", {
           defaultValue:
-            "Add your medical conditions, allergies, and contact details so we can personalize reminders and health insights for you.",
+            "Add medical conditions, allergies, and contact details so CareMyMed can personalize reminders and health insights for you.",
         }),
         icon: Activity,
         iconColor: "#7C3AED",
-        ref: headerRef,
+        ref: profileSetupCardRef,
         scrollOffset: 0,
         visible: true,
       },
       {
         title: t("health_profile.guide_score_title", {
-          defaultValue: "❤️ Health Score",
+          defaultValue: "Health Score",
         }),
         desc: t("health_profile.guide_score_desc", {
           defaultValue:
-            "This computes your daily health grade based on active conditions, vitals, and habits. Tap it to see personalized coaching, warnings, and charts.",
+            "Calculates your daily health grade based on active conditions and vitals. Tap to view coaching and health breakdown.",
         }),
         icon: HeartPulse,
         iconColor: "#EF4444",
@@ -540,11 +540,11 @@ export default function HealthProfileScreen({ navigation }) {
       },
       {
         title: t("health_profile.guide_complete_title", {
-          defaultValue: "⚡ Profile Completion",
+          defaultValue: "Profile Completion",
         }),
         desc: t("health_profile.guide_complete_desc", {
           defaultValue:
-            "Track how close you are to finishing your profile. Keeping completeness above 50% unlocks advanced biological wellness analysis.",
+            "Complete your profile to unlock personalized reminders and biological wellness analysis.",
         }),
         icon: ShieldCheck,
         iconColor: "#10B981",
@@ -554,11 +554,11 @@ export default function HealthProfileScreen({ navigation }) {
       },
       {
         title: t("health_profile.guide_alerts_title", {
-          defaultValue: "⚠️ Emergency Alerts",
+          defaultValue: "Emergency Alerts",
         }),
         desc: t("health_profile.guide_alerts_desc", {
           defaultValue:
-            "All severe allergies and active conditions are grouped here. In an emergency, this ensures your caller or SOS contact is instantly aware.",
+            "Add severe allergies and active conditions so your SOS contact or caller is instantly aware in an emergency.",
         }),
         icon: AlertTriangle,
         iconColor: "#F59E0B",
@@ -568,11 +568,11 @@ export default function HealthProfileScreen({ navigation }) {
       },
       {
         title: t("health_profile.guide_records_title", {
-          defaultValue: "🩺 Medical Vault",
+          defaultValue: "Medical Vault",
         }),
         desc: t("health_profile.guide_records_desc", {
           defaultValue:
-            "Add active medications, vaccination records, appointments, and primary doctor details here to keep your records unified and secure.",
+            "Add active medications, vaccination records, appointments, and primary doctor details here to keep your records unified.",
         }),
         icon: FileText,
         iconColor: "#8B5CF6",

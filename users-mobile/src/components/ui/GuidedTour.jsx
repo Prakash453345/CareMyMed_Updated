@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-    Modal, View, Text, StyleSheet, Pressable, Animated, Platform, Dimensions, Easing
+    Modal, View, Text, StyleSheet, Pressable, Animated, Dimensions, Easing
 } from 'react-native';
 import Svg, { Defs, Mask, Rect as SvgRect } from 'react-native-svg';
 import { ChevronRight } from 'lucide-react-native';
@@ -51,16 +51,13 @@ export default function GuidedTour({
     /**
      * Animate spotlight cutout, card position, and arrow alignment to new target coordinates
      */
-    /**
-     * Animate spotlight cutout, card position, and arrow alignment to new target coordinates
-     */
-    const animateToCoords = useCallback((coords, isUp, arrowLeft) => {
+    const animateToCoords = useCallback((coords, isUp) => {
         if (!coords) return;
 
         const screenWidth = Dimensions.get('window').width || 360;
         const screenHeight = Dimensions.get('window').height || 640;
 
-        const pad = Number(coords.padding) || 8;
+        const pad = Number(coords.padding) || 6;
         const rawTop = Number(coords.top);
         const rawLeft = Number(coords.left);
         const rawWidth = Number(coords.width);
@@ -76,16 +73,17 @@ export default function GuidedTour({
         const spotWidth = Math.min(screenWidth, Math.max(10, safeWidth + pad * 2));
         const spotHeight = Math.max(10, safeHeight + pad * 2);
 
-        const cardWidth = Math.min(screenWidth - 32, 340);
+        // Compact tooltip width (~15% narrower to eliminate long horizontal eye travel)
+        const cardWidth = Math.min(screenWidth - 48, 290);
         const targetCenterX = safeLeft + safeWidth / 2;
         const cardLeft = Math.max(16, Math.min(targetCenterX - cardWidth / 2, screenWidth - cardWidth - 16));
-        const computedArrowLeft = Math.max(24, Math.min(targetCenterX - cardLeft - 8, cardWidth - 40));
+        const computedArrowLeft = Math.max(16, Math.min(targetCenterX - cardLeft - 8, cardWidth - 32));
 
         let cardTop;
         if (isUp) {
-            cardTop = spotTop + spotHeight + 14;
+            cardTop = spotTop + spotHeight + 12;
         } else {
-            cardTop = Math.max(20, spotTop - 160);
+            cardTop = Math.max(20, spotTop - 170);
         }
 
         const finalSpotTop = isNaN(spotTop) ? 0 : spotTop;
@@ -110,14 +108,14 @@ export default function GuidedTour({
             isFirstMeasureRef.current = false;
         } else {
             Animated.parallel([
-                Animated.timing(animSpotTop, { toValue: finalSpotTop, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animSpotLeft, { toValue: finalSpotLeft, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animSpotWidth, { toValue: finalSpotWidth, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animSpotHeight, { toValue: finalSpotHeight, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animCardTop, { toValue: finalCardTop, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animCardLeft, { toValue: finalCardLeft, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animArrowLeft, { toValue: finalArrowLeft, duration: 320, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animOpacity, { toValue: 1, duration: 250, useNativeDriver: false }),
+                Animated.timing(animSpotTop, { toValue: finalSpotTop, duration: 300, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animSpotLeft, { toValue: finalSpotLeft, duration: 300, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animSpotWidth, { toValue: finalSpotWidth, duration: 300, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animSpotHeight, { toValue: finalSpotHeight, duration: 300, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animCardTop, { toValue: finalCardTop, duration: 300, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animCardLeft, { toValue: finalCardLeft, duration: 300, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animArrowLeft, { toValue: finalArrowLeft, duration: 300, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animOpacity, { toValue: 1, duration: 200, useNativeDriver: false }),
             ]).start();
         }
     }, [animSpotTop, animSpotLeft, animSpotWidth, animSpotHeight, animCardTop, animCardLeft, animArrowLeft, animOpacity, reduceMotion]);
@@ -137,7 +135,7 @@ export default function GuidedTour({
                 width: screenWidth - 32
             };
             setSpotlightCoords(fallbackCoords);
-            animateToCoords(fallbackCoords, true, 48);
+            animateToCoords(fallbackCoords, true);
         };
 
         const doWindowMeasure = () => {
@@ -154,7 +152,7 @@ export default function GuidedTour({
                             setSpotlightCoords(coords);
                             const screenHeight = Dimensions.get('window').height;
                             const isUp = stepData.arrow === 'top' || (y < screenHeight / 2 - 20 && stepData.arrow !== 'bottom');
-                            animateToCoords(coords, isUp, 48);
+                            animateToCoords(coords, isUp);
                         } else if (attempt < 4) {
                             setTrackedTimeout(() => measureStep(stepData, attempt + 1), 60);
                         } else {
@@ -173,7 +171,7 @@ export default function GuidedTour({
                             setSpotlightCoords(coords);
                             const screenHeight = Dimensions.get('window').height;
                             const isUp = stepData.arrow === 'top' || (pageY < screenHeight / 2 - 20 && stepData.arrow !== 'bottom');
-                            animateToCoords(coords, isUp, 48);
+                            animateToCoords(coords, isUp);
                         } else {
                             applyStaticFallback(stepData);
                         }
@@ -274,17 +272,18 @@ export default function GuidedTour({
     return (
         <Modal transparent visible={visible} animationType="fade" statusBarTranslucent={true}>
             <View style={[s.wtOverlay, !spotlightCoords && s.wtOverlayCentered]}>
+                {/* Clean Cut-Out Overlay with 55% dimming so background remains visible & alive */}
                 {spotlightCoords ? (
                     <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
                         <Defs>
                             <Mask id="spotlightMask">
                                 <SvgRect width="100%" height="100%" fill="white" />
                                 <SvgRect
-                                    x={spotlightCoords.left - (stepData.padding || 8)}
-                                    y={spotlightCoords.top - (stepData.padding || 8)}
-                                    width={spotlightCoords.width + (stepData.padding || 8) * 2}
-                                    height={spotlightCoords.height + (stepData.padding || 8) * 2}
-                                    rx={stepData.borderRadius || 20}
+                                    x={spotlightCoords.left - (stepData.padding || 6)}
+                                    y={spotlightCoords.top - (stepData.padding || 6)}
+                                    width={spotlightCoords.width + (stepData.padding || 6) * 2}
+                                    height={spotlightCoords.height + (stepData.padding || 6) * 2}
+                                    rx={stepData.borderRadius || 16}
                                     fill="black"
                                 />
                             </Mask>
@@ -292,15 +291,15 @@ export default function GuidedTour({
                         <SvgRect
                             width="100%"
                             height="100%"
-                            fill="rgba(15, 23, 42, 0.75)"
+                            fill="rgba(15, 23, 42, 0.55)"
                             mask="url(#spotlightMask)"
                         />
                     </Svg>
                 ) : (
-                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(15, 23, 42, 0.75)' }]} pointerEvents="none" />
+                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(15, 23, 42, 0.55)' }]} pointerEvents="none" />
                 )}
 
-                {/* Animated Spotlight highlight border ring */}
+                {/* Subtle, non-glowing white edge line around target component (NO PURPLE HALO) */}
                 {spotlightCoords && (
                     <Animated.View
                         style={[
@@ -311,14 +310,14 @@ export default function GuidedTour({
                                 width: animSpotWidth,
                                 height: animSpotHeight,
                                 opacity: animOpacity,
-                                borderRadius: stepData.borderRadius || 20,
+                                borderRadius: stepData.borderRadius || 16,
                             }
                         ]}
                         pointerEvents="none"
                     />
                 )}
 
-                {/* Dynamic Tooltip Card */}
+                {/* Anchored Tooltip Card */}
                 <Animated.View
                     style={[
                         s.wtCard,
@@ -326,16 +325,17 @@ export default function GuidedTour({
                             position: 'absolute',
                             top: animCardTop,
                             left: animCardLeft,
-                            width: Math.min(Dimensions.get('window').width - 32, 340),
+                            width: Math.min(Dimensions.get('window').width - 48, 290),
                         } : {
                             position: 'relative',
                             alignSelf: 'center',
-                            width: Dimensions.get('window').width - 40,
+                            width: Dimensions.get('window').width - 48,
                         },
                         { opacity: cardFade }
                     ]}
                     pointerEvents={isTransitioning ? 'none' : 'auto'}
                 >
+                    {/* Anchored Arrow pointing to component center */}
                     {spotlightCoords && (
                         <Animated.View
                             style={[
@@ -347,8 +347,8 @@ export default function GuidedTour({
 
                     <Animated.View style={{ opacity: cardContentFade }}>
                         <View style={s.wtCardHeader}>
-                            <View style={[s.wtIconWrap, { backgroundColor: (stepData.iconColor || colors.primary) + '15' }]}>
-                                {Icon && <Icon size={22} color={stepData.iconColor || colors.primary} strokeWidth={2.5} />}
+                            <View style={s.wtIconWrap}>
+                                {Icon && <Icon size={18} color="#475569" strokeWidth={2.2} />}
                             </View>
                             <Text style={s.wtTitle}>{stepData.title}</Text>
                             <Pressable onPress={handleSkip} style={s.wtSkipBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -359,24 +359,19 @@ export default function GuidedTour({
                         <Text style={s.wtDesc}>{stepData.desc}</Text>
 
                         <View style={s.wtFooter}>
-                            <View style={s.wtDots}>
-                                {steps.map((_, i) => (
-                                    <View
-                                        key={i}
-                                        style={[
-                                            s.wtDot,
-                                            activeStep === i && s.wtDotActive,
-                                            { backgroundColor: activeStep === i ? colors.primary : '#CBD5E1' }
-                                        ]}
-                                    />
-                                ))}
+                            {/* Step Counter (1 / 5) for instant position clarity */}
+                            <View style={s.wtStepCounter}>
+                                <Text style={s.wtStepCounterText}>
+                                    {activeStep + 1} / {steps.length}
+                                </Text>
                             </View>
 
+                            {/* Vibrant Primary Action Button */}
                             <Pressable style={s.wtNextBtn} onPress={handleNext} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                                 <Text style={s.wtNextText}>
                                     {activeStep === steps.length - 1 ? 'Got It' : 'Next'}
                                 </Text>
-                                <ChevronRight size={14} color="#FFF" strokeWidth={3} />
+                                <ChevronRight size={13} color="#FFF" strokeWidth={2.8} />
                             </Pressable>
                         </View>
                     </Animated.View>
@@ -391,109 +386,109 @@ const s = StyleSheet.create({
         flex: 1,
     },
     wtOverlayCentered: {
-        justifyContent: 'center',
+        justify: 'center',
         alignItems: 'center',
         padding: 20,
     },
+    // Pure clean cut-out edge — NO purple glow, NO shadow, NO neon halo
     wtSpotlight: {
         position: 'absolute',
-        borderWidth: 2.5,
-        borderColor: colors.primary,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.25)',
         borderStyle: 'solid',
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.04)',
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.7,
-        shadowRadius: 12,
-        elevation: 10,
+        borderRadius: 16,
+        backgroundColor: 'transparent',
     },
     wtCard: {
         position: 'absolute',
         backgroundColor: '#FFFFFF',
-        borderRadius: 24,
-        padding: 20,
+        borderRadius: 22,
+        padding: 18,
         shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.18,
-        shadowRadius: 24,
-        elevation: 12,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.14,
+        shadowRadius: 20,
+        elevation: 8,
         borderWidth: 1,
         borderColor: '#E2E8F0',
     },
     wtCardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 10,
     },
     wtIconWrap: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
+        width: 34,
+        height: 34,
+        borderRadius: 10,
+        backgroundColor: '#F8FAFC',
         alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
+        justify: 'center',
+        marginRight: 10,
     },
     wtTitle: {
-        fontSize: 17,
+        fontSize: 15.5,
         fontWeight: '800',
-        color: colors.textPrimary,
+        color: '#0F172A',
         flex: 1,
     },
     wtSkipBtn: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 10,
-        backgroundColor: '#F1F5F9',
+        paddingHorizontal: 6,
+        paddingVertical: 4,
+        backgroundColor: 'transparent',
     },
     wtSkipText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: colors.textSecondary,
+        fontSize: 12.5,
+        fontWeight: '600',
+        color: '#94A3B8',
     },
     wtDesc: {
-        fontSize: 13.5,
+        fontSize: 13,
         fontWeight: '500',
-        color: colors.textMuted,
-        lineHeight: 21,
-        marginBottom: 18,
+        color: '#475569',
+        lineHeight: 19.5,
+        marginBottom: 16,
     },
     wtFooter: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        justify: 'space-between',
     },
-    wtDots: {
-        flexDirection: 'row',
-        gap: 6,
+    wtStepCounter: {
+        backgroundColor: '#F1F5F9',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 10,
     },
-    wtDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    wtDotActive: {
-        width: 18,
+    wtStepCounterText: {
+        fontSize: 11.5,
+        fontWeight: '700',
+        color: '#64748B',
     },
     wtNextBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
-        backgroundColor: colors.primary,
-        paddingHorizontal: 18,
-        paddingVertical: 10,
-        borderRadius: 100,
+        gap: 3,
+        backgroundColor: '#7C3AED',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 12,
+        shadowColor: '#7C3AED',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 2,
     },
     wtNextText: {
-        fontSize: 14,
-        fontWeight: '700',
+        fontSize: 13,
+        fontWeight: '800',
         color: '#FFF',
     },
     wtCardArrowUp: {
         position: 'absolute',
-        top: -8,
-        width: 16,
-        height: 16,
+        top: -7,
+        width: 14,
+        height: 14,
         backgroundColor: '#FFFFFF',
         borderLeftWidth: 1,
         borderTopWidth: 1,
@@ -503,9 +498,9 @@ const s = StyleSheet.create({
     },
     wtCardArrowDown: {
         position: 'absolute',
-        bottom: -8,
-        width: 16,
-        height: 16,
+        bottom: -7,
+        width: 14,
+        height: 14,
         backgroundColor: '#FFFFFF',
         borderRightWidth: 1,
         borderBottomWidth: 1,
@@ -514,4 +509,3 @@ const s = StyleSheet.create({
         zIndex: 5,
     },
 });
-
