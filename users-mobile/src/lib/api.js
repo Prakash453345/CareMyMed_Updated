@@ -311,6 +311,7 @@ export const apiService = {
         markNotificationRead: (id) => api.patch(`/users/patients/notifications/${id}/read`),
         markAllNotificationsRead: () => api.patch('/users/patients/notifications/read-all'),
         getAIPrediction: () => api.get('/users/patients/me/ai-prediction'),
+        getVitalsForecast: () => api.get('/users/patients/me/vitals/forecast'),
         syncVitals: (data) => api.post('/vitals/sync', data),
         getSyncStatus: () => api.get('/vitals/sync/status'),
         syncHealthData: (data) => api.post('/health/sync', data),

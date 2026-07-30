@@ -25,6 +25,7 @@ expo-env.d.ts
 # ── Native build artifacts ───────────────────────────────────
 /ios
 /android
+users-mobile/android/
 .kotlin/
 *.orig.*
 *.jks

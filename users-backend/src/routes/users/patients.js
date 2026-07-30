@@ -2272,9 +2272,8 @@ router.put(
 router.get('/me/ai-prediction', authenticateSession, async (req, res) => {
   try {
     const patient = await getOrCreatePatient(req);
-    const prediction = await AIVitalPrediction.findOne({
-      patient_id: patient._id,
-    });
+    const ForecastRepository = require('../../repositories/ForecastRepository');
+    const prediction = await ForecastRepository.getLatestForecast(patient._id);
     res.json({ prediction: prediction || null });
   } catch (error) {
     logger.error('Get AI Prediction error', {
@@ -2282,6 +2281,100 @@ router.get('/me/ai-prediction', authenticateSession, async (req, res) => {
       patientId: req.user?.id,
     });
     res.status(500).json({ error: 'Failed to fetch AI Prediction' });
+  }
+});
+
+/**
+ * GET /api/users/patients/me/vitals/forecast
+ * Clean status schema endpoint returning prediction, LLM explanation, and unlock progress.
+ */
+router.get('/me/vitals/forecast', authenticateSession, async (req, res) => {
+  try {
+    const patient = await getOrCreatePatient(req);
+    const date14DaysAgo = new Date();
+    date14DaysAgo.setDate(date14DaysAgo.getDate() - 14);
+
+    const vitals = await VitalLog.find({
+      patient_id: patient._id,
+      date: { $gte: date14DaysAgo },
+    }).lean();
+
+    const distinctDays = new Set(
+      vitals.map((v) => new Date(v.date).toISOString().slice(0, 10))
+    ).size;
+
+    const ForecastRepository = require('../../repositories/ForecastRepository');
+    const predictionDoc = await ForecastRepository.getLatestForecast(patient._id);
+
+    if (distinctDays < 7) {
+      return res.json({
+        status: 'building',
+        progress: {
+          loggedDays: distinctDays,
+          requiredDays: 7,
+          remainingDays: Math.max(0, 7 - distinctDays),
+          progressPercent: Math.round((distinctDays / 7) * 100),
+        },
+        forecast: null,
+        confidence: 'Low',
+        confidenceScore: 0.4,
+        explanation: null,
+        metadata: null,
+      });
+    }
+
+    if (!predictionDoc) {
+      return res.json({
+        status: 'building',
+        progress: {
+          loggedDays: distinctDays,
+          requiredDays: 7,
+          remainingDays: 0,
+          progressPercent: 100,
+        },
+        forecast: null,
+        confidence: 'Moderate',
+        explanation: 'Generating initial forecast in background...',
+        metadata: null,
+      });
+    }
+
+    // Check if forecast is stale (older than 7 days)
+    const isStale =
+      predictionDoc.updated_at &&
+      new Date() - new Date(predictionDoc.updated_at) > 7 * 24 * 60 * 60 * 1000;
+
+    const status = isStale ? 'stale' : predictionDoc.status || 'ready';
+
+    res.json({
+      status,
+      progress: {
+        loggedDays: Math.max(distinctDays, 7),
+        requiredDays: 7,
+        remainingDays: 0,
+        progressPercent: 100,
+      },
+      forecast: {
+        health_label: predictionDoc.health_label || 'Normal',
+        trend: predictionDoc.trend || 'stable',
+        predictions: predictionDoc.predictions || [],
+      },
+      confidence: predictionDoc.confidence_label || 'High',
+      confidenceScore: predictionDoc.confidence_score || 0.88,
+      explanation: predictionDoc.explanation,
+      metadata: {
+        model: predictionDoc.metadata?.model || 'prophet',
+        version: predictionDoc.metadata?.version || '1.2',
+        generatedBy: predictionDoc.metadata?.generatedBy || 'forecast-service',
+        generatedAt: predictionDoc.updated_at || predictionDoc.created_at,
+        historyWindowDays: predictionDoc.metadata?.historyWindowDays || 14,
+        predictionWindowDays: predictionDoc.metadata?.predictionWindowDays || 3,
+        trainingSamples: predictionDoc.metadata?.trainingSamples || distinctDays,
+      },
+    });
+  } catch (error) {
+    logger.error('Get vitals forecast error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch vitals forecast' });
   }
 });
 
@@ -2363,12 +2456,18 @@ router.post('/me/vitals', authenticateSession, async (req, res) => {
       source: vitalLog.source,
     });
 
-    // Trigger health state recomputation
+    // Trigger health score recomputation and debounced AI forecast generation
     refreshHealthScoreCache(patient._id).catch((e) =>
       logger.warn('Vitals trigger recompute state failed', {
         error: e.message,
       })
     );
+    try {
+      const AIPredictionService = require('../../services/aiPredictionService');
+      AIPredictionService.queuePatientForecast(patient._id);
+    } catch (forecastErr) {
+      logger.warn('Debounced AI forecast queue trigger warning:', forecastErr.message);
+    }
 
     res
       .status(201)
