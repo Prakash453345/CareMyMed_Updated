@@ -2107,99 +2107,18 @@ export default function PatientHomeScreen({ navigation }) {
             </Pressable>
           </Animated.View>
 
-          {/* ── HEADER ── */}
-          <View style={styles.header}>
-            <View style={styles.mainHeaderRow}>
-              <View style={{ flex: 1, paddingRight: 16 }}>
-                <Animated.Text
-                  style={[
-                    styles.greetingName,
-                    {
-                      opacity: heroTitleOpacity,
-                      transform: [{ translateY: heroTitleTranslateY }],
-                    },
-                  ]}
-                >
-                  {adaptiveGreeting}
-                </Animated.Text>
-                <Animated.Text
-                  style={[
-                    styles.headerSubtext,
-                    {
-                      opacity: heroSubtextOpacity,
-                      transform: [{ translateY: heroSubtextTranslateY }],
-                    },
-                  ]}
-                >
-                  {headerSubtitle}
-                </Animated.Text>
-              </View>
-              <Animated.View
-                style={[
-                  styles.headerActions,
-                  {
-                    opacity: heroTitleOpacity,
-                    transform: [{ translateY: heroTitleTranslateY }],
-                  },
-                ]}
-              >
-                <Pressable
-                  style={styles.headerIconBtn}
-                  onPress={() => {
-                    triggerHapticSelection();
-                    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-                    setShowVitalsTour(true);
-                  }}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <HelpCircle size={20} color="#7C3AED" strokeWidth={2.5} />
-                </Pressable>
-                <Pressable
-                  style={styles.headerIconBtn}
-                  onPress={() => navigation.navigate("Notifications")}
-                >
-                  <Bell size={20} color="#475569" strokeWidth={2.5} />
-                  {(unreadCount > 0 || hasContextualAlerts) && (
-                    <View style={styles.bellDot} />
-                  )}
-                </Pressable>
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  style={styles.avatarBtn}
-                  onPress={() => navigation.navigate("Profile")}
-                >
-                  <Text style={styles.avatarText}>
-                    {displayName?.charAt(0) || "U"}
-                  </Text>
-                </TouchableOpacity>
-              </Animated.View>
-            </View>
-          </View>
-
-          {/* ── Progressive Disclosure Guidance Banner (Inline Morphing Container) ── */}
-          <Animated.View
-            style={{
-              opacity: inlineBannerOpacity,
-              transform: [
-                { translateY: inlineBannerTranslateY },
-                { scale: inlineBannerScale },
-              ],
-            }}
-          >
-            <TurnByTurnBanner
-              stepTitle={nextAction.bannerTitle}
-              stepDescription={nextAction.bannerDescription}
-              iconType={nextAction.iconType}
-              onPress={() => navigation.navigate(nextAction.targetScreen)}
-            />
-          </Animated.View>
-
           {/* ── SCROLLABLE CONTAINER ── */}
           <Animated.ScrollView
             ref={scrollViewRef}
             style={{ flex: 1 }}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {
+                paddingTop: Platform.OS === "ios" ? 56 : (StatusBar.currentHeight ? StatusBar.currentHeight + 12 : 44),
+                paddingBottom: 130,
+              },
+            ]}
             keyboardShouldPersistTaps="handled"
             onScroll={Animated.event(
               [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -2214,6 +2133,61 @@ export default function PatientHomeScreen({ navigation }) {
               />
             }
           >
+            {/* ── HEADER ── */}
+            <View style={[styles.header, { paddingTop: 0, paddingBottom: 12 }]}>
+              <View style={styles.mainHeaderRow}>
+                <View style={{ flex: 1, paddingRight: 16 }}>
+                  <Text style={styles.greetingName}>
+                    {adaptiveGreeting}
+                  </Text>
+                  <Text style={styles.headerSubtext}>
+                    {headerSubtitle}
+                  </Text>
+                </View>
+                <View style={styles.headerActions}>
+                  <Pressable
+                    style={styles.headerIconBtn}
+                    onPress={() => {
+                      triggerHapticSelection();
+                      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+                      setShowVitalsTour(true);
+                    }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <HelpCircle size={20} color="#7C3AED" strokeWidth={2.5} />
+                  </Pressable>
+                  <Pressable
+                    style={styles.headerIconBtn}
+                    onPress={() => navigation.navigate("Notifications")}
+                  >
+                    <Bell size={20} color="#475569" strokeWidth={2.5} />
+                    {(unreadCount > 0 || hasContextualAlerts) && (
+                      <View style={styles.bellDot} />
+                    )}
+                  </Pressable>
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    style={styles.avatarBtn}
+                    onPress={() => navigation.navigate("Profile")}
+                  >
+                    <Text style={styles.avatarText}>
+                      {displayName?.charAt(0) || "U"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            {/* ── Progressive Disclosure Guidance Banner ── */}
+            <View style={{ marginBottom: 12 }}>
+              <TurnByTurnBanner
+                stepTitle={nextAction.bannerTitle}
+                stepDescription={nextAction.bannerDescription}
+                iconType={nextAction.iconType}
+                onPress={() => navigation.navigate(nextAction.targetScreen)}
+              />
+            </View>
+
             {/* Pills Row */}
             <Animated.View
               style={[
