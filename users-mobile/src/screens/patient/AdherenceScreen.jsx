@@ -1088,32 +1088,6 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
                   {label}
                 </Text>
               </View>
-                    }}
-                  >
-                    {current}/{target}
-                  </Text>
-                </View>
-
-                {/* Progress bar fill */}
-                <View
-                  style={{
-                    width: "100%",
-                    height: 4,
-                    borderRadius: 2,
-                    backgroundColor: "#E2E8F0",
-                    overflow: "hidden",
-                  }}
-                >
-                  <View
-                    style={{
-                      width: `${pct}%`,
-                      height: "100%",
-                      borderRadius: 2,
-                      backgroundColor: tierColor,
-                    }}
-                  />
-                </View>
-              </View>
             ) : (
               <View
                 style={{
@@ -1137,7 +1111,7 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
               </View>
             )}
           </View>
-        )}
+        </View>
       </Animated.View>
     </Pressable>
   );
