@@ -3806,56 +3806,42 @@ export default function HealthProfileScreen({ navigation }) {
           {editingType === "vitals" && (
             <>
               <View style={s.formGroup}>
-                <Pressable onPress={openHeightPicker}>
-                  <View pointerEvents="none">
-                    <SmartInput
-                      label={t("health_profile.height", {
-                        defaultValue: "Height",
-                      })}
-                      value={
-                        formState.height_cm
-                          ? (() => {
-                              const parsed = parseFloat(formState.height_cm);
-                              if (isNaN(parsed) || parsed <= 0) return String(formState.height_cm);
-                              return `${parsed} cm (${cmToFtIn(parsed)})`;
-                            })()
-                          : ""
-                      }
-                      placeholder={t("health_profile.select_height", {
-                        defaultValue: "Select height",
-                      })}
-                      rightAccessory={
-                        <ChevronDown size={18} color="#94A3B8" />
-                      }
-                    />
-                  </View>
-                </Pressable>
+                <SmartInput
+                  label={t("health_profile.height", {
+                    defaultValue: "Height (cm)",
+                  })}
+                  value={formState.height_cm ? String(formState.height_cm) : ""}
+                  onChangeText={(txt) => setFormState({ ...formState, height_cm: txt })}
+                  placeholder={t("health_profile.select_height", {
+                    defaultValue: "e.g. 182",
+                  })}
+                  keyboardType="decimal-pad"
+                  leftAccessory={inputLeftIcon(Activity, "#8B5CF6")}
+                />
+                {formState.height_cm && !isNaN(parseFloat(formState.height_cm)) && parseFloat(formState.height_cm) > 0 ? (
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#8B5CF6", marginTop: 4, marginLeft: 4 }}>
+                    ≈ {cmToFtIn(parseFloat(formState.height_cm))}
+                  </Text>
+                ) : null}
               </View>
               <View style={s.formGroup}>
-                <Pressable onPress={openWeightPicker}>
-                  <View pointerEvents="none">
-                    <SmartInput
-                      label={t("health_profile.weight", {
-                        defaultValue: "Weight",
-                      })}
-                      value={
-                        formState.weight_kg
-                          ? (() => {
-                              const parsed = parseFloat(formState.weight_kg);
-                              if (isNaN(parsed) || parsed <= 0) return String(formState.weight_kg);
-                              return `${parsed} kg (${Math.round(parsed / 0.45359237)} lbs)`;
-                            })()
-                          : ""
-                      }
-                      placeholder={t("health_profile.select_weight", {
-                        defaultValue: "Select weight",
-                      })}
-                      rightAccessory={
-                        <ChevronDown size={18} color="#94A3B8" />
-                      }
-                    />
-                  </View>
-                </Pressable>
+                <SmartInput
+                  label={t("health_profile.weight", {
+                    defaultValue: "Weight (kg)",
+                  })}
+                  value={formState.weight_kg ? String(formState.weight_kg) : ""}
+                  onChangeText={(txt) => setFormState({ ...formState, weight_kg: txt })}
+                  placeholder={t("health_profile.select_weight", {
+                    defaultValue: "e.g. 93",
+                  })}
+                  keyboardType="decimal-pad"
+                  leftAccessory={inputLeftIcon(Scale, "#10B981")}
+                />
+                {formState.weight_kg && !isNaN(parseFloat(formState.weight_kg)) && parseFloat(formState.weight_kg) > 0 ? (
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#10B981", marginTop: 4, marginLeft: 4 }}>
+                    ≈ {Math.round(parseFloat(formState.weight_kg) / 0.45359237)} lbs
+                  </Text>
+                ) : null}
               </View>
             </>
           )}

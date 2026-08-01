@@ -19,9 +19,47 @@ import {
     LayoutAnimation,
     UIManager,
 } from 'react-native';
-import { X, Save } from 'lucide-react-native';
+import { X, Save, AlertTriangle } from 'lucide-react-native';
 import { colors, radius, motion } from '../../theme';
 import ScalePressable from './ScalePressable';
+
+class ModalContentErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+    componentDidCatch(error, errorInfo) {
+        console.error('[ModalContentErrorBoundary] Caught inside modal:', error?.message);
+    }
+    handleRetry = () => {
+        this.setState({ hasError: false, error: null });
+    };
+    render() {
+        if (this.state.hasError) {
+            return (
+                <View style={{ padding: 24, alignItems: 'center', justifyContent: 'center' }}>
+                    <AlertTriangle size={36} color="#EF4444" style={{ marginBottom: 12 }} />
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 4, textAlign: 'center' }}>
+                        Form Encountered an Issue
+                    </Text>
+                    <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginBottom: 16, lineHeight: 18 }}>
+                        An unexpected error occurred loading this form section. The rest of your app remains safe.
+                    </Text>
+                    <Pressable
+                        style={{ backgroundColor: '#8B5CF6', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 }}
+                        onPress={this.handleRetry}
+                    >
+                        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Try Again</Text>
+                    </Pressable>
+                </View>
+            );
+        }
+        return this.props.children;
+    }
+}
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -309,7 +347,9 @@ const PremiumFormModal = ({
                             bounces={true}
                             nestedScrollEnabled={true}
                         >
-                            {children}
+                            <ModalContentErrorBoundary>
+                                {children}
+                            </ModalContentErrorBoundary>
                         </ScrollView>
 
                         {/* Sticky Save Button — anchored at sheet bottom */}
