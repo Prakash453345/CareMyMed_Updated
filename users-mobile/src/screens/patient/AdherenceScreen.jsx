@@ -868,6 +868,7 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
 
   const target = data.meta?.target || 1;
   const current = data.progress >= 1 ? target : Math.floor((data.progress || 0) * target);
+  const pct = Math.min(100, Math.round((data.progress || 0) * 100));
   const isHiddenLocked = data.meta?.isHidden && !data.unlocked;
 
   const pressScale = useRef(new Animated.Value(1)).current;
@@ -891,21 +892,21 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
     : Icons[data.meta?.iconName] || Icons.Award;
   const label = getUnlockedLabel(data);
 
-  // Material 3 / SF Symbols Subtle Radial Depth Gradients
-  const materialGradients = {
-    common: ["#F8FAFC", "#E2E8F0", "#CBD5E1"],
-    rare: ["#F3E8FF", "#C084FC", "#7C3AED"],
-    epic: ["#EEF2FF", "#818CF8", "#4338CA"],
-    legendary: ["#FEF3C7", "#F59E0B", "#B45309"],
-    mythic: ["#38BDF8", "#A855F7", "#0F172A"],
-  };
-
   const tierKey = data.meta?.tier || "common";
-  const gradientColors = materialGradients[tierKey] || materialGradients.rare;
+  const tierConfig = TIER_CONFIG[tierKey] || TIER_CONFIG.common;
+  const gradientColors = tierConfig.gradient || ["#7C3AED", "#C084FC"];
+  const accentColor = tierConfig.color || "#7C3AED";
+  const cardBgColors = data.unlocked
+    ? [tierConfig.bgColor || "#FAF5FF", "#FFFFFF"]
+    : ["#FFFFFF", "#FFFFFF"];
 
-  const displayTitle = isHiddenLocked
+  let rawTitle = isHiddenLocked
     ? "???"
     : data.meta?.unlockedTitle || data.meta?.title || data.key;
+  const displayTitle = rawTitle.includes("_") && !data.meta?.title
+    ? rawTitle.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
+    : rawTitle;
+
   const displayDesc = isHiddenLocked
     ? "Secret health milestone"
     : data.meta?.description || "Complete activity to unlock";
@@ -939,20 +940,20 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
     if (iconName === "Pill" || iconName === "Sprout") {
       return (
         <Svg width="50" height="50" viewBox="0 0 24 24" style={{ position: "absolute", right: -10, top: -10, opacity: 0.05 }}>
-          <Path d="M10.5 20.4l-6.9-6.9c-1.6-1.6-1.6-4.1 0-5.7l6.9-6.9c1.6-1.6 4.1-1.6 5.7 0l6.9 6.9c1.6 1.6 1.6 4.1 0 5.7l-6.9 6.9c-1.6 1.5-4.1 1.5-5.7 0z" stroke="#7C3AED" strokeWidth="1.5" fill="none" />
+          <Path d="M10.5 20.4l-6.9-6.9c-1.6-1.6-1.6-4.1 0-5.7l6.9-6.9c1.6-1.6 4.1-1.6 5.7 0l6.9 6.9c1.6 1.6 1.6 4.1 0 5.7l-6.9 6.9c-1.6 1.5-4.1 1.5-5.7 0z" stroke={accentColor} strokeWidth="1.5" fill="none" />
         </Svg>
       );
     }
     if (iconName === "Activity" || iconName === "HeartPulse") {
       return (
         <Svg width="50" height="50" viewBox="0 0 24 24" style={{ position: "absolute", right: -10, top: -10, opacity: 0.05 }}>
-          <Path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="#7C3AED" strokeWidth="1.5" fill="none" />
+          <Path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke={accentColor} strokeWidth="1.5" fill="none" />
         </Svg>
       );
     }
     return (
       <Svg width="50" height="50" viewBox="0 0 24 24" style={{ position: "absolute", right: -10, top: -10, opacity: 0.05 }}>
-        <Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="#7C3AED" strokeWidth="1.5" fill="none" />
+        <Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke={accentColor} strokeWidth="1.5" fill="none" />
       </Svg>
     );
   };
@@ -965,154 +966,175 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
       style={[
         {
           width: itemWidth,
-          backgroundColor: "#FFFFFF",
           borderRadius: 20,
-          borderWidth: 1,
-          borderColor: data.unlocked ? "rgba(124, 58, 237, 0.14)" : "rgba(226, 232, 240, 0.8)",
-          padding: 12,
-          shadowColor: "#7C3AED",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: data.unlocked ? 0.06 : 0.02,
-          shadowRadius: 10,
-          elevation: data.unlocked ? 2 : 1,
+          borderWidth: 1.5,
+          borderColor: data.unlocked ? accentColor + "33" : "rgba(226, 232, 240, 0.9)",
+          shadowColor: data.unlocked ? accentColor : "#0F172A",
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: data.unlocked ? 0.12 : 0.02,
+          shadowRadius: 12,
+          elevation: data.unlocked ? 4 : 1,
           position: "relative",
           overflow: "hidden",
         },
         style,
       ]}
     >
-      {renderWatermark()}
-      <Animated.View
-        style={{
-          transform: [{ scale: pressScale }],
-          flexDirection: "row",
-          alignItems: "center",
-        }}
+      <LinearGradient
+        colors={cardBgColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ padding: 12, width: "100%" }}
       >
-        {/* Left Material Depth Emblem */}
-        <View
+        {renderWatermark()}
+        <Animated.View
           style={{
-            width: 48,
-            height: 48,
-            borderRadius: 24,
+            transform: [{ scale: pressScale }],
+            flexDirection: "row",
             alignItems: "center",
-            justifyContent: "center",
-            position: "relative",
-            borderWidth: 1.5,
-            borderColor: data.unlocked ? "rgba(255, 255, 255, 0.6)" : "#E2E8F0",
-            shadowColor: gradientColors[1],
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: data.unlocked ? 0.25 : 0.05,
-            shadowRadius: 6,
-            elevation: data.unlocked ? 3 : 1,
           }}
         >
-          <LinearGradient
-            colors={data.unlocked ? gradientColors : ["#F8FAFC", "#E2E8F0"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+          {/* Left Material Depth Emblem */}
+          <View
             style={{
-              width: "100%",
-              height: "100%",
-              borderRadius: 24,
+              width: 46,
+              height: 46,
+              borderRadius: 23,
               alignItems: "center",
               justifyContent: "center",
+              position: "relative",
+              borderWidth: 1.5,
+              borderColor: data.unlocked ? "rgba(255, 255, 255, 0.7)" : "#E2E8F0",
+              shadowColor: gradientColors[1] || accentColor,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: data.unlocked ? 0.3 : 0.05,
+              shadowRadius: 6,
+              elevation: data.unlocked ? 3 : 1,
             }}
           >
-            <IconComponent size={22} color={data.unlocked ? "#FFFFFF" : "#94A3B8"} />
-          </LinearGradient>
-
-          {/* Top Right Checkmark Badge */}
-          {data.unlocked && (
-            <View
+            <LinearGradient
+              colors={data.unlocked ? gradientColors : ["#F8FAFC", "#E2E8F0"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
               style={{
-                position: "absolute",
-                top: -2,
-                right: -2,
-                backgroundColor: "#10B981",
-                borderRadius: 9,
-                width: 18,
-                height: 18,
+                width: "100%",
+                height: "100%",
+                borderRadius: 23,
                 alignItems: "center",
                 justifyContent: "center",
-                borderWidth: 1.5,
-                borderColor: "#FFFFFF",
               }}
             >
-              <CheckCircle2 size={11} color="#FFFFFF" strokeWidth={3} />
-            </View>
-          )}
-        </View>
+              <IconComponent size={21} color={data.unlocked ? "#FFFFFF" : "#94A3B8"} />
+            </LinearGradient>
 
-        {/* Center Details Column */}
-        <View style={{ flex: 1, marginLeft: 10, paddingRight: 4 }}>
-          <Text
-            style={{
-              fontSize: 12.5,
-              fontWeight: "800",
-              color: data.unlocked ? "#0F172A" : "#64748B",
-              lineHeight: 16,
-            }}
-            numberOfLines={1}
-          >
-            {displayTitle}
-          </Text>
-          <Text
-            style={{
-              fontSize: 10,
-              fontWeight: "500",
-              color: "#64748B",
-              marginTop: 2,
-              marginBottom: 6,
-              lineHeight: 14,
-            }}
-            numberOfLines={2}
-          >
-            {data.meta.description || "Complete activity to unlock"}
-          </Text>
-
-          {/* Status Badge Pill */}
-          <View style={{ alignSelf: "flex-start" }}>
-            {data.unlocked ? (
+            {/* Top Right Checkmark Badge */}
+            {data.unlocked && (
               <View
                 style={{
-                  backgroundColor: "#ECFDF5",
-                  borderColor: "#A7F3D0",
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  paddingHorizontal: 8,
-                  paddingVertical: 2,
+                  position: "absolute",
+                  top: -2,
+                  right: -2,
+                  backgroundColor: "#10B981",
+                  borderRadius: 9,
+                  width: 18,
+                  height: 18,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderWidth: 1.5,
+                  borderColor: "#FFFFFF",
                 }}
               >
-                <Text style={{ fontSize: 9.5, fontWeight: "800", color: "#059669" }}>
-                  {label}
-                </Text>
-              </View>
-            ) : (
-              <View
-                style={{
-                  backgroundColor: "#F8FAFC",
-                  borderColor: "#E2E8F0",
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  paddingHorizontal: 8,
-                  paddingVertical: 2,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 9,
-                    fontWeight: "800",
-                    color: "#94A3B8",
-                  }}
-                >
-                  LOCKED
-                </Text>
+                <CheckCircle2 size={11} color="#FFFFFF" strokeWidth={3} />
               </View>
             )}
           </View>
-        </View>
-      </Animated.View>
+
+          {/* Center Details Column */}
+          <View style={{ flex: 1, marginLeft: 10, paddingRight: 2 }}>
+            <Text
+              style={{
+                fontSize: 12.5,
+                fontWeight: "800",
+                color: data.unlocked ? "#0F172A" : "#475569",
+                lineHeight: 16,
+              }}
+              numberOfLines={1}
+            >
+              {displayTitle}
+            </Text>
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: "500",
+                color: "#64748B",
+                marginTop: 2,
+                marginBottom: 6,
+                lineHeight: 14,
+              }}
+              numberOfLines={2}
+            >
+              {displayDesc}
+            </Text>
+
+            {/* Status Badge Pill & Progress Bar */}
+            <View style={{ alignSelf: "flex-start", width: "100%" }}>
+              {data.unlocked ? (
+                <View
+                  style={{
+                    backgroundColor: "#ECFDF5",
+                    borderColor: "#A7F3D0",
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                    alignSelf: "flex-start",
+                  }}
+                >
+                  <Text style={{ fontSize: 9.5, fontWeight: "800", color: "#059669" }}>
+                    {label}
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ width: "100%", marginTop: 2 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 3,
+                    }}
+                  >
+                    <Text style={{ fontSize: 9, fontWeight: "800", color: "#94A3B8" }}>
+                      LOCKED
+                    </Text>
+                    <Text style={{ fontSize: 9, fontWeight: "800", color: accentColor }}>
+                      {pct}%
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      width: "100%",
+                      height: 4,
+                      borderRadius: 2,
+                      backgroundColor: "#E2E8F0",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: `${pct}%`,
+                        height: "100%",
+                        borderRadius: 2,
+                        backgroundColor: accentColor,
+                      }}
+                    />
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        </Animated.View>
+      </LinearGradient>
     </Pressable>
   );
 }
