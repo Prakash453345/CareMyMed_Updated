@@ -3288,16 +3288,27 @@ export default function AdherenceScreen({ navigation }) {
                           defaultValue: "SCHEDULED MEDICATIONS",
                         })}
                       </Text>
-                      {selectedDay.medicines.map((med, idx) => {
-                        const timeSlot = (med.time || "morning").toLowerCase();
-                        const timeEmoji =
-                          timeSlot === "morning"
-                            ? "🌅 Morning"
-                            : timeSlot === "afternoon"
-                              ? "☀️ Afternoon"
-                              : timeSlot === "night" || timeSlot === "evening"
-                                ? "🌙 Night"
-                                : `⏰ ${med.time}`;
+                      {(() => {
+                        const TIME_ORDER = { morning: 1, afternoon: 2, evening: 3, night: 4 };
+                        const sortedMeds = [...selectedDay.medicines].sort((a, b) => {
+                          const slotA = (a.time || "morning").toLowerCase();
+                          const slotB = (b.time || "morning").toLowerCase();
+                          const weightA = TIME_ORDER[slotA] || 99;
+                          const weightB = TIME_ORDER[slotB] || 99;
+                          if (weightA !== weightB) return weightA - weightB;
+                          return (a.name || "").localeCompare(b.name || "");
+                        });
+
+                        return sortedMeds.map((med, idx) => {
+                          const timeSlot = (med.time || "morning").toLowerCase();
+                          const timeEmoji =
+                            timeSlot === "morning"
+                              ? "🌅 Morning"
+                              : timeSlot === "afternoon"
+                                ? "☀️ Afternoon"
+                                : timeSlot === "night" || timeSlot === "evening"
+                                  ? "🌙 Night"
+                                  : `⏰ ${med.time}`;
 
                         const cardBg = med.taken ? "#FAF5FF" : "#FFF1F2";
                         const cardBorder = med.taken
@@ -3417,7 +3428,8 @@ export default function AdherenceScreen({ navigation }) {
                             </View>
                           </View>
                         );
-                      })}
+                      });
+                    })()}
                     </View>
                   ) : (
                     <View
