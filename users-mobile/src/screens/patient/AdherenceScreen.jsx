@@ -3481,59 +3481,7 @@ export default function AdherenceScreen({ navigation }) {
                     </View>
                   )}
 
-                  {/* Vitals Summary Card */}
-                  {selectedDay.vitals && (
-                    <View
-                      style={{
-                        backgroundColor: "#F0F9FF",
-                        borderRadius: 20,
-                        borderWidth: 1,
-                        borderColor: "#BAE6FD",
-                        padding: 16,
-                        marginBottom: 16,
-                      }}
-                    >
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          flexWrap: "wrap",
-                          gap: 10,
-                          marginTop: 8,
-                        }}
-                      >
-                        {selectedDay.vitals.heart_rate && (
-                          <View style={styles.sheetVitalChip}>
-                            <Text style={styles.sheetVitalText}>
-                              💓 {selectedDay.vitals.heart_rate} bpm
-                            </Text>
-                          </View>
-                        )}
-                        {selectedDay.vitals.systolic && (
-                          <View style={styles.sheetVitalChip}>
-                            <Text style={styles.sheetVitalText}>
-                              🩸 {selectedDay.vitals.systolic}/
-                              {selectedDay.vitals.diastolic}
-                            </Text>
-                          </View>
-                        )}
-                        {selectedDay.vitals.oxygen_saturation && (
-                          <View style={styles.sheetVitalChip}>
-                            <Text style={styles.sheetVitalText}>
-                              💨 {selectedDay.vitals.oxygen_saturation}%
-                            </Text>
-                          </View>
-                        )}
-                        {selectedDay.vitals.hydration && (
-                          <View style={styles.sheetVitalChip}>
-                            <Text style={styles.sheetVitalText}>
-                              💧 {selectedDay.vitals.hydration}%
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-                  )}
-                </>
+                </ScrollView>
               )}
             </View>
           </View>
