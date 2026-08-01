@@ -1452,77 +1452,60 @@ export default function HealthConnectSetupScreen({ navigation }) {
                     <View style={styles.optionalSection}>
                         <Text style={styles.sectionTitleLabel}>Optional Categories to Sync</Text>
                         
-                        <View style={styles.optCard}>
-                            <View style={styles.optCardHeader}>
-                                <Smartphone size={20} color={colors.primary} />
-                                <Text style={styles.optCardTitle}>Steps & Daily Activity</Text>
-                                <Pressable 
-                                    style={[styles.optToggle, syncActivityEnabled && styles.optToggleActive]} 
-                                    onPress={() => toggleOptionalCategory('activity')}
-                                >
-                                    <Text style={[styles.optToggleTxt, syncActivityEnabled && styles.optToggleTxtActive]}>
-                                        {syncActivityEnabled ? 'Enabled' : 'Enable'}
-                                    </Text>
-                                </Pressable>
+                        {[
+                            { key: 'activity', title: 'Steps & Daily Activity', desc: 'Sync daily steps, distance, active calories burned, and flights climbed.', icon: <Smartphone size={20} color={colors.primary} />, enabled: syncActivityEnabled },
+                            { key: 'body', title: 'Weight & Body Composition', desc: 'Sync weight, height, and body fat percentage snapshots.', icon: <Scale size={20} color={colors.primary} />, enabled: syncBodyEnabled },
+                            { key: 'glucose', title: 'Blood Glucose Monitoring', desc: 'Sync continuous/manual blood glucose metrics.', icon: <Droplet size={20} color={colors.primary} />, enabled: syncGlucoseEnabled },
+                            { key: 'extvitals', title: 'VO₂ Max & Respiratory Rate', desc: 'Sync cardiovascular efficiency (VO₂ max) and sleep breathing rates.', icon: <Activity size={20} color={colors.primary} />, enabled: syncExtVitalsEnabled },
+                        ].map((cat) => (
+                            <View key={cat.key} style={styles.optCard}>
+                                <View style={styles.optCardHeader}>
+                                    {cat.icon}
+                                    <Text style={styles.optCardTitle}>{cat.title}</Text>
+                                    <Pressable 
+                                        style={({ pressed }) => [
+                                            {
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                gap: 6,
+                                                paddingHorizontal: 12,
+                                                paddingVertical: 7,
+                                                borderRadius: 20,
+                                                backgroundColor: cat.enabled ? '#ECFDF5' : '#F1F5F9',
+                                                borderWidth: 1.5,
+                                                borderColor: cat.enabled ? '#A7F3D0' : '#E2E8F0',
+                                                shadowColor: cat.enabled ? '#10B981' : '#0F172A',
+                                                shadowOffset: { width: 0, height: 2 },
+                                                shadowOpacity: cat.enabled ? 0.12 : 0,
+                                                shadowRadius: 6,
+                                                elevation: cat.enabled ? 2 : 0,
+                                            },
+                                            pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }
+                                        ]} 
+                                        onPress={() => toggleOptionalCategory(cat.key)}
+                                    >
+                                        {cat.enabled ? (
+                                            <CheckCircle2 size={15} color="#059669" strokeWidth={2.5} />
+                                        ) : (
+                                            <View style={{ width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: '#94A3B8' }} />
+                                        )}
+                                        <Text
+                                            style={{
+                                                fontSize: 11,
+                                                fontWeight: "800",
+                                                color: cat.enabled ? '#059669' : '#64748B',
+                                                letterSpacing: 0.3,
+                                            }}
+                                        >
+                                            {cat.enabled ? 'SYNCING ON' : 'OFF · TAP TO SYNC'}
+                                        </Text>
+                                    </Pressable>
+                                </View>
+                                <Text style={styles.optCardDesc}>
+                                    {cat.desc}
+                                </Text>
                             </View>
-                            <Text style={styles.optCardDesc}>
-                                Sync daily steps, distance, active calories burned, and flights climbed.
-                            </Text>
-                        </View>
-
-                        <View style={styles.optCard}>
-                            <View style={styles.optCardHeader}>
-                                <Scale size={20} color={colors.primary} />
-                                <Text style={styles.optCardTitle}>Weight & Body Composition</Text>
-                                <Pressable 
-                                    style={[styles.optToggle, syncBodyEnabled && styles.optToggleActive]} 
-                                    onPress={() => toggleOptionalCategory('body')}
-                                >
-                                    <Text style={[styles.optToggleTxt, syncBodyEnabled && styles.optToggleTxtActive]}>
-                                        {syncBodyEnabled ? 'Enabled' : 'Enable'}
-                                    </Text>
-                                </Pressable>
-                            </View>
-                            <Text style={styles.optCardDesc}>
-                                Sync weight, height, and body fat percentage snapshots.
-                            </Text>
-                        </View>
-
-                        <View style={styles.optCard}>
-                            <View style={styles.optCardHeader}>
-                                <Droplet size={20} color={colors.primary} />
-                                <Text style={styles.optCardTitle}>Blood Glucose Monitoring</Text>
-                                <Pressable 
-                                    style={[styles.optToggle, syncGlucoseEnabled && styles.optToggleActive]} 
-                                    onPress={() => toggleOptionalCategory('glucose')}
-                                >
-                                    <Text style={[styles.optToggleTxt, syncGlucoseEnabled && styles.optToggleTxtActive]}>
-                                        {syncGlucoseEnabled ? 'Enabled' : 'Enable'}
-                                    </Text>
-                                </Pressable>
-                            </View>
-                            <Text style={styles.optCardDesc}>
-                                Sync continuous/manual blood glucose metrics.
-                            </Text>
-                        </View>
-
-                        <View style={styles.optCard}>
-                            <View style={styles.optCardHeader}>
-                                <Activity size={20} color={colors.primary} />
-                                <Text style={styles.optCardTitle}>VO₂ Max & Respiratory Rate</Text>
-                                <Pressable 
-                                    style={[styles.optToggle, syncExtVitalsEnabled && styles.optToggleActive]} 
-                                    onPress={() => toggleOptionalCategory('extvitals')}
-                                >
-                                    <Text style={[styles.optToggleTxt, syncExtVitalsEnabled && styles.optToggleTxtActive]}>
-                                        {syncExtVitalsEnabled ? 'Enabled' : 'Enable'}
-                                    </Text>
-                                </Pressable>
-                            </View>
-                            <Text style={styles.optCardDesc}>
-                                Sync cardiovascular efficiency (VO₂ max) and sleep breathing rates.
-                            </Text>
-                        </View>
+                        ))}
                     </View>
 
                     {/* ── Health Connect Note Card ─────────────────── */}
