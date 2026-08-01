@@ -8,16 +8,42 @@ import {
   Dimensions,
   Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { CheckCircle2, AlertTriangle, Info, XCircle } from 'lucide-react-native';
 import { useMotion } from '../../theme/MotionProvider';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 48, 340);
+const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 44, 340);
 
 const THEME = {
-  success: { accent: '#10B981', bg: '#ECFDF5', icon: '✓', iconBg: '#D1FAE5' },
-  error:   { accent: '#EF4444', bg: '#FEF2F2', icon: '!', iconBg: '#FEE2E2' },
-  warning: { accent: '#F59E0B', bg: '#FFFBEB', icon: '⚠', iconBg: '#FEF3C7' },
-  info:    { accent: '#6366F1', bg: '#EEF2FF', icon: 'i', iconBg: '#E0E7FF' },
+  success: {
+    accent: '#059669',
+    gradient: ['#10B981', '#059669'],
+    haloBg: 'rgba(16, 185, 129, 0.12)',
+    haloBorder: 'rgba(16, 185, 129, 0.25)',
+    Icon: CheckCircle2,
+  },
+  error: {
+    accent: '#DC2626',
+    gradient: ['#F43F5E', '#DC2626'],
+    haloBg: 'rgba(239, 68, 68, 0.12)',
+    haloBorder: 'rgba(239, 68, 68, 0.25)',
+    Icon: XCircle,
+  },
+  warning: {
+    accent: '#D97706',
+    gradient: ['#F59E0B', '#D97706'],
+    haloBg: 'rgba(245, 158, 11, 0.12)',
+    haloBorder: 'rgba(245, 158, 11, 0.25)',
+    Icon: AlertTriangle,
+  },
+  info: {
+    accent: '#4F46E5',
+    gradient: ['#6366F1', '#4F46E5'],
+    haloBg: 'rgba(99, 102, 241, 0.12)',
+    haloBorder: 'rgba(99, 102, 241, 0.25)',
+    Icon: Info,
+  },
 };
 
 const CustomAlert = forwardRef((_, ref) => {
@@ -45,11 +71,11 @@ const CustomAlert = forwardRef((_, ref) => {
       return;
     }
 
-    scaleAnim.setValue(0.85);
+    scaleAnim.setValue(0.88);
     opacityAnim.setValue(0);
 
     Animated.parallel([
-      Animated.spring(scaleAnim, { toValue: 1, speed: 18, bounciness: 6, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, speed: 20, bounciness: 7, useNativeDriver: true }),
       Animated.timing(opacityAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
     ]).start();
   }, [reduceMotion, scaleAnim, opacityAnim]);
@@ -62,8 +88,8 @@ const CustomAlert = forwardRef((_, ref) => {
     }
 
     Animated.parallel([
-      Animated.timing(scaleAnim, { toValue: 0.9, duration: 150, useNativeDriver: true }),
-      Animated.timing(opacityAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 0.92, duration: 140, useNativeDriver: true }),
+      Animated.timing(opacityAnim, { toValue: 0, duration: 140, useNativeDriver: true }),
     ]).start(() => {
       setVisible(false);
       if (onDismissCallback) onDismissCallback();
@@ -75,6 +101,7 @@ const CustomAlert = forwardRef((_, ref) => {
   if (!visible) return null;
 
   const theme = THEME[type] || THEME.info;
+  const IconComponent = theme.Icon;
   const shouldStack = buttons.length > 2 || buttons.some(b => (b.text || '').length > 12);
 
   return (
@@ -97,9 +124,20 @@ const CustomAlert = forwardRef((_, ref) => {
             { transform: [{ scale: scaleAnim }] },
           ]}
         >
+          {/* Top Decorative Accent Bar */}
+          <LinearGradient
+            colors={theme.gradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.topAccentBar}
+          />
+
           <View style={styles.contentContainer}>
-            <View style={[styles.iconContainer, { backgroundColor: theme.iconBg }]}>
-              <Text style={[styles.iconText, { color: theme.accent }]}>{theme.icon}</Text>
+            {/* Dual-ring Gradient Icon Halo */}
+            <View style={[styles.iconHaloOuter, { backgroundColor: theme.haloBg, borderColor: theme.haloBorder }]}>
+              <View style={[styles.iconHaloInner, { backgroundColor: theme.haloBg }]}>
+                <IconComponent size={24} color={theme.accent} strokeWidth={2.5} />
+              </View>
             </View>
 
             <Text style={styles.titleText}>{title}</Text>
@@ -108,9 +146,9 @@ const CustomAlert = forwardRef((_, ref) => {
 
           <View style={[styles.buttonContainer, shouldStack && styles.buttonContainerStacked]}>
             {buttons.map((btn, idx) => {
-              const isPrimary = idx === buttons.length - 1 && buttons.length > 1;
-              const isCancel = btn.style === 'cancel' || btn.style === 'destructive';
+              const isPrimary = buttons.length === 1 || (idx === buttons.length - 1 && btn.style !== 'cancel');
               const isDestructive = btn.style === 'destructive';
+              const isCancel = btn.style === 'cancel';
 
               return (
                 <Pressable
@@ -118,8 +156,9 @@ const CustomAlert = forwardRef((_, ref) => {
                   style={({ pressed }) => [
                     styles.button,
                     shouldStack && styles.buttonStacked,
-                    isPrimary && { backgroundColor: theme.accent },
-                    isDestructive && { backgroundColor: '#EF4444' },
+                    isPrimary && styles.buttonPrimary,
+                    isDestructive && styles.buttonDestructive,
+                    isCancel && styles.buttonCancel,
                     pressed && styles.buttonPressed,
                   ]}
                   onPress={() => {
@@ -128,15 +167,28 @@ const CustomAlert = forwardRef((_, ref) => {
                     });
                   }}
                 >
-                  <Text
-                    style={[
-                      styles.buttonText,
-                      (isPrimary || isDestructive) && styles.buttonTextPrimary,
-                      isCancel && !isDestructive && !isPrimary && styles.buttonTextCancel,
-                    ]}
-                  >
-                    {btn.text}
-                  </Text>
+                  {isPrimary ? (
+                    <LinearGradient
+                      colors={isDestructive ? ['#F43F5E', '#DC2626'] : theme.gradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.primaryGradient}
+                    >
+                      <Text style={styles.buttonTextPrimary}>
+                        {btn.text}
+                      </Text>
+                    </LinearGradient>
+                  ) : (
+                    <Text
+                      style={[
+                        styles.buttonText,
+                        isDestructive && styles.buttonTextDestructive,
+                        isCancel && styles.buttonTextCancelLabel,
+                      ]}
+                    >
+                      {btn.text}
+                    </Text>
+                  )}
                 </Pressable>
               );
             })}
@@ -149,9 +201,9 @@ const CustomAlert = forwardRef((_, ref) => {
 
 function inferType(title = '', buttons = []) {
   const t = title.toLowerCase();
-  if (t.includes('error') || t.includes('failed') || t.includes('wrong')) return 'error';
-  if (t.includes('success') || t.includes('done') || t.includes('saved')) return 'success';
-  if (t.includes('warning') || t.includes('caution') || t.includes('careful')) return 'warning';
+  if (t.includes('error') || t.includes('failed') || t.includes('wrong') || t.includes('cannot')) return 'error';
+  if (t.includes('success') || t.includes('done') || t.includes('saved') || t.includes('updated')) return 'success';
+  if (t.includes('warning') || t.includes('caution') || t.includes('careful') || t.includes('not yet') || t.includes('patience')) return 'warning';
   if (buttons.some(b => b.style === 'destructive')) return 'error';
   return 'info';
 }
@@ -159,90 +211,124 @@ function inferType(title = '', buttons = []) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: 20,
   },
   alertBox: {
     width: ALERT_WIDTH,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: 28,
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.8)',
     overflow: 'hidden',
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.22,
+    shadowRadius: 28,
+    elevation: 16,
+  },
+  topAccentBar: {
+    height: 5,
+    width: '100%',
   },
   contentContainer: {
     paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingTop: 24,
+    paddingBottom: 20,
     alignItems: 'center',
   },
-  iconContainer: {
+  iconHaloOuter: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  iconHaloInner: {
     width: 44,
     height: 44,
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  iconText: {
-    fontSize: 20,
-    fontWeight: '800',
   },
   titleText: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '800',
     color: '#0F172A',
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
+    letterSpacing: -0.3,
   },
   messageText: {
-    fontSize: 13,
-    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#475569',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 21,
   },
   buttonContainer: {
     flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    padding: 12,
-    gap: 8,
+    paddingHorizontal: 18,
+    paddingBottom: 18,
+    gap: 10,
   },
   buttonContainerStacked: {
     flexDirection: 'column',
   },
   button: {
     flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    height: 46,
+    borderRadius: 14,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F1F5F9',
   },
   buttonStacked: {
     flex: 0,
     width: '100%',
   },
+  buttonPrimary: {
+    backgroundColor: 'transparent',
+  },
+  buttonDestructive: {
+    backgroundColor: '#EF4444',
+  },
+  buttonCancel: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  primaryGradient: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+  },
   buttonPressed: {
-    opacity: 0.75,
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
   },
   buttonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#334155',
   },
   buttonTextPrimary: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
+  buttonTextDestructive: {
     color: '#FFFFFF',
   },
-  buttonTextCancel: {
+  buttonTextCancelLabel: {
     color: '#64748B',
   },
 });
