@@ -286,7 +286,7 @@ const PremiumFormModal = ({
                 <View style={[
                     styles.sheetContainer,
                     centered && styles.sheetContainerCentered,
-                    keyboardHeight > 0 && { maxHeight: Math.max(280, SCREEN_HEIGHT - keyboardHeight - 50) }
+                    keyboardHeight > 0 && { maxHeight: Math.max(280, SCREEN_HEIGHT - keyboardHeight - (Platform.OS === 'android' ? 30 : 50)) }
                 ]}>
                     <KeyboardAvoidingView
                         style={{ flex: 1 }}
@@ -339,7 +339,7 @@ const PremiumFormModal = ({
                             style={{ flex: 1 }}
                             contentContainerStyle={[
                                 styles.scrollContent,
-                                androidKeyboardPad > 0 && { paddingBottom: 24 },
+                                keyboardHeight > 0 && { paddingBottom: 32 },
                             ]}
                             showsVerticalScrollIndicator={false}
                             keyboardShouldPersistTaps="handled"
@@ -352,11 +352,11 @@ const PremiumFormModal = ({
                             </ModalContentErrorBoundary>
                         </ScrollView>
 
-                        {/* Sticky Save Button — anchored at sheet bottom */}
+                        {/* Sticky Save Button — anchored at sheet bottom with safe keyboard clearance */}
                         {onSave && (
                             <View style={[
                                 styles.stickyFooter,
-                                keyboardHeight > 0 && { paddingBottom: 12, paddingTop: 10 }
+                                keyboardHeight > 0 && { paddingBottom: 20, paddingTop: 12 }
                             ]}>
                                 <ScalePressable
                                     onPress={handleSave}
