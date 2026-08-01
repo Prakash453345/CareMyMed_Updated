@@ -111,6 +111,32 @@ export default function HealthConnectSetupScreen({ navigation }) {
         glucose: false,
         usageStats: false,
     });
+    const [localPedometerSteps, setLocalPedometerSteps] = useState(null);
+
+    useEffect(() => {
+        let active = true;
+        const fetchPedometerFallback = async () => {
+            try {
+                const { Pedometer } = require('expo-sensors');
+                const isAvailable = await Pedometer.isAvailableAsync();
+                if (isAvailable) {
+                    const { status } = await Pedometer.getPermissionsAsync();
+                    if (status === 'granted') {
+                        const startOfToday = new Date();
+                        startOfToday.setHours(0, 0, 0, 0);
+                        const res = await Pedometer.getStepCountAsync(startOfToday, new Date());
+                        if (res && typeof res.steps === 'number' && res.steps > 0 && active) {
+                            setLocalPedometerSteps(res.steps);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('Pedometer fallback query error:', err);
+            }
+        };
+        fetchPedometerFallback();
+        return () => { active = false; };
+    }, []);
 
     // Dynamically calculate actual sync quality based on configuration/permission completeness
     useEffect(() => {
@@ -719,22 +745,24 @@ export default function HealthConnectSetupScreen({ navigation }) {
             case 'glucose': hasPerm = permissionsMap.glucose; break;
         }
 
+        const stepCount = (activity?.steps && activity.steps > 0) ? activity.steps : localPedometerSteps;
+
         switch (card.id) {
             case 'hr':
                 icon = <Heart size={16} color="#EF4444" strokeWidth={2.5} />;
                 bg = '#FEE2E2';
                 val = hasPerm 
-                    ? (vitals?.heart_rate ? `${vitals.heart_rate} bpm` : 'Waiting for first sync...') 
+                    ? (vitals?.heart_rate ? `${vitals.heart_rate} bpm` : 'No wearable · Log') 
                     : 'Permission Required';
-                badge = 'LIVE';
+                badge = vitals?.heart_rate ? 'LIVE' : 'MANUAL';
                 break;
             case 'sleep':
                 icon = <Moon size={16} color="#8B5CF6" strokeWidth={2.5} />;
                 bg = '#F5F3FF';
                 val = hasPerm 
-                    ? (sleepStr ? sleepStr : 'No activity today') 
+                    ? (sleepStr ? sleepStr : 'No sleep data') 
                     : 'Permission Required';
-                badge = 'DAILY';
+                badge = 'PHONE ENGINE';
                 break;
             case 'bp':
                 icon = <Activity size={16} color="#3B82F6" strokeWidth={2.5} />;
@@ -742,51 +770,53 @@ export default function HealthConnectSetupScreen({ navigation }) {
                 val = hasPerm 
                     ? (vitals?.blood_pressure?.systolic 
                         ? `${vitals.blood_pressure.systolic}/${vitals.blood_pressure.diastolic}` 
-                        : 'Waiting for first sync...') 
+                        : 'No wearable · Log') 
                     : 'Permission Required';
-                badge = 'LIVE';
+                badge = vitals?.blood_pressure?.systolic ? 'LIVE' : 'MANUAL';
                 break;
             case 'spo2':
                 icon = <Wind size={16} color="#06B6D4" strokeWidth={2.5} />;
                 bg = '#ECFEFF';
                 val = hasPerm 
-                    ? (vitals?.oxygen_saturation ? `${vitals.oxygen_saturation}%` : 'Waiting for first sync...') 
+                    ? (vitals?.oxygen_saturation ? `${vitals.oxygen_saturation}%` : 'No wearable · Log') 
                     : 'Permission Required';
-                badge = 'LIVE';
+                badge = vitals?.oxygen_saturation ? 'LIVE' : 'MANUAL';
                 break;
             case 'steps':
                 icon = <Activity size={16} color="#10B981" strokeWidth={2.5} />;
                 bg = '#D1FAE5';
                 val = hasPerm 
-                    ? (activity?.steps != null ? `${activity.steps.toLocaleString()} steps` : 'Waiting for first sync...') 
+                    ? (stepCount != null && stepCount > 0 
+                        ? `${stepCount.toLocaleString()} steps` 
+                        : (permissionsMap.pedometer ? '0 steps today' : 'Enable Phone Steps')) 
                     : 'Permission Required';
-                badge = 'DAILY';
+                badge = stepCount != null && stepCount > 0 ? (activity?.steps ? 'HEALTH CONNECT' : 'PHONE SENSOR') : 'PEDOMETER';
                 break;
             case 'exercise':
                 icon = <Flame size={16} color="#F59E0B" strokeWidth={2.5} />;
                 bg = '#FEF3C7';
                 const exerciseMins = activity?.exercises?.reduce((sum, e) => sum + (e.duration_minutes || 0), 0) || 0;
                 val = hasPerm 
-                    ? (exerciseMins > 0 ? `${exerciseMins} mins` : 'No exercise today') 
+                    ? (exerciseMins > 0 ? `${exerciseMins} mins` : 'No workouts logged') 
                     : 'Permission Required';
-                badge = 'DAILY';
+                badge = 'WORKOUTS';
                 break;
             case 'weight':
                 icon = <Scale size={16} color="#6366F1" strokeWidth={2.5} />;
                 bg = '#E0E7FF';
                 const profile = usePatientStore.getState().patient || {};
                 val = hasPerm 
-                    ? (profile.weight_kg ? `${profile.weight_kg} kg` : (activity?.weight ? `${activity.weight} kg` : 'Waiting for first sync...')) 
+                    ? (profile.weight_kg ? `${profile.weight_kg} kg` : (activity?.weight ? `${activity.weight} kg` : 'Log Weight')) 
                     : 'Permission Required';
-                badge = 'LATEST';
+                badge = 'PROFILE';
                 break;
             case 'glucose':
                 icon = <Droplet size={16} color="#EC4899" strokeWidth={2.5} />;
                 bg = '#FCE7F3';
                 val = hasPerm 
-                    ? (vitals?.blood_glucose ? `${vitals.blood_glucose} mg/dL` : 'Waiting for first sync...') 
+                    ? (vitals?.blood_glucose ? `${vitals.blood_glucose} mg/dL` : 'No wearable · Log') 
                     : 'Permission Required';
-                badge = 'LIVE';
+                badge = vitals?.blood_glucose ? 'LIVE' : 'MANUAL';
                 break;
         }
 
@@ -801,6 +831,13 @@ export default function HealthConnectSetupScreen({ navigation }) {
                 onPress={() => {
                     if (!hasPerm) {
                         openHealthSettings();
+                    } else if (card.id === 'steps' && (!stepCount || stepCount === 0) && !permissionsMap.pedometer) {
+                        try {
+                            const { Pedometer } = require('expo-sensors');
+                            Pedometer.requestPermissionsAsync().then(() => checkCurrentStatus());
+                        } catch (e) {}
+                    } else {
+                        navigation.navigate('HealthProfile');
                     }
                 }}
             >
