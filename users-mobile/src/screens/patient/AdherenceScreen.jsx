@@ -864,7 +864,7 @@ const getUnlockedLabel = (data) => {
 
 function PremiumBadge({ data, size = "normal", onPress, style }) {
   const isSmall = size === "small";
-  const itemWidth = style?.width || (isSmall ? 70 : (SCREEN_WIDTH - 68) / 2);
+  const itemWidth = style?.width || (isSmall ? 70 : (SCREEN_WIDTH - 92) / 2);
 
   const target = data.meta?.target || 1;
   const current = data.progress >= 1 ? target : Math.floor((data.progress || 0) * target);
@@ -2960,18 +2960,22 @@ export default function AdherenceScreen({ navigation }) {
               })}
 
               {/* Bottom Motivational Callout Banner */}
-              <View
-                style={{
-                  backgroundColor: "#F5F3FF",
-                  borderRadius: 20,
-                  padding: 16,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginTop: 4,
-                  marginBottom: 24,
-                  borderWidth: 1,
-                  borderColor: "rgba(233, 213, 255, 0.6)",
-                }}
+              <Pressable
+                style={({ pressed }) => [
+                  {
+                    backgroundColor: "#F5F3FF",
+                    borderRadius: 20,
+                    padding: 16,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginTop: 4,
+                    marginBottom: 24,
+                    borderWidth: 1,
+                    borderColor: "rgba(233, 213, 255, 0.6)",
+                  },
+                  pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] },
+                ]}
+                onPress={() => navigation.navigate("HealthCopilot")}
               >
                 <View
                   style={{
@@ -2990,7 +2994,7 @@ export default function AdherenceScreen({ navigation }) {
                     Keep it up!
                   </Text>
                   <Text style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
-                    Small steps today, stronger health tomorrow.
+                    Small steps today, stronger health tomorrow. Tap to chat with AI Coach.
                   </Text>
                 </View>
                 <View
@@ -3005,7 +3009,7 @@ export default function AdherenceScreen({ navigation }) {
                 >
                   <ChevronRight size={16} color="#7C3AED" />
                 </View>
-              </View>
+              </Pressable>
             </Animated.View>
           </ScrollView>
         </SafeAreaView>
