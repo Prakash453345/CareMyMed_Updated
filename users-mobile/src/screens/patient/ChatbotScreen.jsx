@@ -878,9 +878,15 @@ export default function ChatbotScreen({ navigation, route }) {
     // State Machine-driven Audio Recording state
     const [recording, setRecording] = useState(null);
     const [voiceState, setVoiceState] = useState('idle'); // 'idle' | 'recording' | 'review'
+    const recordingModeRef = useRef('idle');
     const [recordingDuration, setRecordingDuration] = useState(0);
     const [recordedAudioUri, setRecordedAudioUri] = useState(null);
     const timerIntervalRef = useRef(null);
+
+    // Keep recordingModeRef in sync with voiceState for background AppState listener
+    useEffect(() => {
+        recordingModeRef.current = voiceState;
+    }, [voiceState]);
 
     // Telegram Live Waveform Animated Drivers
     const waveAnim1 = useRef(new Animated.Value(6)).current;
@@ -1580,32 +1586,89 @@ export default function ChatbotScreen({ navigation, route }) {
 
     const startRecording = async () => {
         try {
-            const permission = await Audio.requestPermissionsAsync();
-            if (permission.status === 'granted') {
+            // ── Pre-flight: Request mic permission ──
+            let permission;
+            try {
+                permission = await Audio.requestPermissionsAsync();
+            } catch (permErr) {
+                console.warn('Microphone permission request failed:', permErr);
+                AlertManager.alert(
+                    'Microphone Unavailable',
+                    'Could not access the microphone. Please check your device settings.',
+                    [{ text: 'OK' }],
+                    { type: 'warning' }
+                );
+                return;
+            }
+
+            if (permission.status !== 'granted') {
+                AlertManager.alert(
+                    'Permission needed',
+                    'Please grant microphone access in your device settings to send voice messages.',
+                    [{ text: 'OK' }],
+                    { type: 'warning' }
+                );
+                setVoiceState('idle');
+                return;
+            }
+
+            // ── Set audio mode for recording ──
+            try {
                 await Audio.setAudioModeAsync({
                     allowsRecordingIOS: true,
                     playsInSilentModeIOS: true,
                 });
-                const { recording } = await Audio.Recording.createAsync(
+            } catch (modeErr) {
+                console.warn('Failed to set audio mode:', modeErr);
+                // Continue anyway — some devices still allow recording without this
+            }
+
+            // ── Create recording (try HIGH_QUALITY first, fallback to LOW_QUALITY) ──
+            let newRecording;
+            try {
+                const result = await Audio.Recording.createAsync(
                     Audio.RecordingOptionsPresets.HIGH_QUALITY
                 );
-                setRecording(recording);
-                setRecordedAudioUri(null);
-                setRecordingDuration(0);
-                setVoiceState('recording');
-                Vibration.vibrate(50);
-
-                // Start second timer
-                if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-                timerIntervalRef.current = setInterval(() => {
-                    setRecordingDuration(prev => prev + 1);
-                }, 1000);
-            } else {
-                AlertManager.alert('Permission needed', 'Please grant microphone access to send voice messages.', [{ text: 'OK' }], { type: 'warning' });
-                setVoiceState('idle');
+                newRecording = result.recording;
+            } catch (highQualityErr) {
+                console.warn('HIGH_QUALITY recording failed, trying LOW_QUALITY:', highQualityErr);
+                try {
+                    const result = await Audio.Recording.createAsync(
+                        Audio.RecordingOptionsPresets.LOW_QUALITY
+                    );
+                    newRecording = result.recording;
+                } catch (lowQualityErr) {
+                    console.error('All recording presets failed:', lowQualityErr);
+                    AlertManager.alert(
+                        'Recording Error',
+                        'Could not start voice recording on this device. Please try again.',
+                        [{ text: 'OK' }],
+                        { type: 'error' }
+                    );
+                    setVoiceState('idle');
+                    return;
+                }
             }
+
+            setRecording(newRecording);
+            setRecordedAudioUri(null);
+            setRecordingDuration(0);
+            setVoiceState('recording');
+            Vibration.vibrate(50);
+
+            // Start second timer
+            if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = setInterval(() => {
+                setRecordingDuration(prev => prev + 1);
+            }, 1000);
         } catch (err) {
-            console.error('Failed to start recording', err);
+            console.error('Failed to start recording:', err);
+            AlertManager.alert(
+                'Recording Error',
+                'Something went wrong starting the voice recorder. Please try again.',
+                [{ text: 'OK' }],
+                { type: 'error' }
+            );
             setVoiceState('idle');
         }
     };

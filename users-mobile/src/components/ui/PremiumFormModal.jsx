@@ -19,6 +19,7 @@ import {
     LayoutAnimation,
     UIManager,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { X, Save, AlertTriangle } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius, motion } from '../../theme';
@@ -93,6 +94,8 @@ const PremiumFormModal = ({
     headerRight,
     centered = false,
     icon,
+    iconColor = '#7C3AED',
+    iconBg = '#F5F3FF',
 }) => {
     let insets = { top: 0, bottom: 0 };
     try {
@@ -241,8 +244,6 @@ const PremiumFormModal = ({
         })
     ).current;
 
-    const androidKeyboardPad = Platform.OS === 'android' ? keyboardHeight : 0;
-
     // Organic scale morph interpolator for smooth spring entry/exit
     const sheetScaleMorph = slideAnim.interpolate({
         inputRange: [0, 0.6, 0.88, 1],
@@ -307,7 +308,7 @@ const PremiumFormModal = ({
                     >
                         {/* Top drag handle indicator for bottom sheets */}
                         {!centered && (
-                            <View {...panResponder.panHandlers} style={{ width: '100%', alignItems: 'center', paddingTop: 10, paddingBottom: 6 }}>
+                            <View {...panResponder.panHandlers} style={styles.handleHitArea}>
                                 <View style={styles.sheetHandle} />
                             </View>
                         )}
@@ -316,11 +317,10 @@ const PremiumFormModal = ({
                         <View style={[
                             styles.header,
                             centered && styles.headerCentered,
-                            !centered && { paddingTop: 12, borderBottomWidth: 0 }
                         ]}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
                                 {icon && (
-                                    <View style={[styles.iconCircle, { backgroundColor: '#FAF5FF', width: 44, height: 44, borderRadius: 22 }]}>
+                                    <View style={[styles.iconCircle, { backgroundColor: iconBg }]}>
                                         {icon}
                                     </View>
                                 )}
@@ -329,7 +329,7 @@ const PremiumFormModal = ({
                                         {title}
                                     </Text>
                                     {subtitle && (
-                                        <Text style={{ fontSize: 13, color: '#64748B', marginTop: 2, fontWeight: '500' }}>
+                                        <Text style={styles.subtitle} numberOfLines={2}>
                                             {subtitle}
                                         </Text>
                                     )}
@@ -342,7 +342,7 @@ const PremiumFormModal = ({
                                     style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
                                     hitSlop={12}
                                 >
-                                    <X size={20} color="#64748B" strokeWidth={2.5} />
+                                    <X size={18} color="#64748B" strokeWidth={2.4} />
                                 </Pressable>
                             </View>
                         </View>
@@ -369,26 +369,33 @@ const PremiumFormModal = ({
                         {onSave && (
                             <View style={[
                                 styles.stickyFooter,
-                                keyboardHeight > 0 && { paddingBottom: 20, paddingTop: 12 }
+                                keyboardHeight > 0 && { paddingBottom: 16, paddingTop: 10 }
                             ]}>
                                 <ScalePressable
                                     onPress={handleSave}
                                     disabled={saving || saveDisabled}
                                     pressScale={0.97}
                                     hapticType="selection"
-                                    style={[
-                                        styles.saveBtn,
-                                        (saving || saveDisabled) && styles.saveBtnDisabled,
-                                    ]}
+                                    style={{ width: '100%' }}
                                 >
-                                    {saving ? (
-                                        <ActivityIndicator color="#FFFFFF" size="small" />
-                                    ) : (
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                                            <Save size={18} color="#FFFFFF" strokeWidth={2.5} />
-                                            <Text style={styles.saveBtnText}>{saveText}</Text>
-                                        </View>
-                                    )}
+                                    <LinearGradient
+                                        colors={saveDisabled ? ['#94A3B8', '#94A3B8'] : ['#7C3AED', '#6D28D9']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={[
+                                            styles.saveBtnGradient,
+                                            (saving || saveDisabled) && { opacity: 0.6 }
+                                        ]}
+                                    >
+                                        {saving ? (
+                                            <ActivityIndicator color="#FFFFFF" size="small" />
+                                        ) : (
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                                                <Save size={18} color="#FFFFFF" strokeWidth={2.5} />
+                                                <Text style={styles.saveBtnText}>{saveText}</Text>
+                                            </View>
+                                        )}
+                                    </LinearGradient>
                                 </ScalePressable>
                             </View>
                         )}
@@ -403,7 +410,7 @@ const PremiumFormModal = ({
 const styles = StyleSheet.create({
     backdrop: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(15, 23, 42, 0.55)',
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
     },
     sheetWrapper: {
         position: 'absolute',
@@ -439,108 +446,107 @@ const styles = StyleSheet.create({
         paddingBottom: 8,
     },
     iconCircle: {
-        width: 40,
-        height: 40,
+        width: 38,
+        height: 38,
         borderRadius: 12,
-        backgroundColor: '#EFF6FF',
         alignItems: 'center',
         justifyContent: 'center',
     },
     sheetContainer: {
-        minHeight: SCREEN_HEIGHT * 0.62,
-        maxHeight: SCREEN_HEIGHT * 0.92,
+        minHeight: SCREEN_HEIGHT * 0.55,
+        maxHeight: SCREEN_HEIGHT * 0.90,
         backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
         borderBottomLeftRadius: 0,
         borderBottomRightRadius: 0,
         shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: -12 },
-        shadowOpacity: 0.1,
-        shadowRadius: 24,
-        elevation: 24,
+        shadowOffset: { width: 0, height: -8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 20,
+        elevation: 16,
         overflow: 'hidden',
         marginBottom: 0,
     },
+    handleHitArea: {
+        width: '100%',
+        alignItems: 'center',
+        paddingTop: 8,
+        paddingBottom: 4,
+    },
     sheetHandle: {
-        width: 46,
-        height: 5,
-        borderRadius: 2.5,
-        backgroundColor: '#E2E8F0',
-        alignSelf: 'center',
-        marginTop: 10,
-        marginBottom: 2,
+        width: 36,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#CBD5E1',
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 24,
-        paddingTop: 20,
-        paddingBottom: 16,
+        paddingHorizontal: 20,
+        paddingTop: 8,
+        paddingBottom: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#F8FAFC',
+        borderBottomColor: '#F1F5F9',
     },
     title: {
-        fontSize: 20,
+        fontSize: 18,
         ...FONT.bold,
-        color: colors.textPrimary || '#0F172A',
-        letterSpacing: -0.4,
+        color: '#0F172A',
+        letterSpacing: -0.3,
+    },
+    subtitle: {
+        fontSize: 12,
+        color: '#64748B',
+        marginTop: 1,
+        fontWeight: '500',
+        lineHeight: 16,
     },
     headerActions: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: 8,
     },
     closeBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
         backgroundColor: '#F1F5F9',
         alignItems: 'center',
         justifyContent: 'center',
     },
     scrollContent: {
-        paddingHorizontal: 24,
-        paddingTop: 12,
+        paddingHorizontal: 20,
+        paddingTop: 14,
         paddingBottom: 110,
         flexGrow: 1,
         gap: 12,
     },
     stickyFooter: {
-        paddingHorizontal: 24,
-        paddingTop: 12,
-        paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+        paddingHorizontal: 20,
+        paddingTop: 10,
+        paddingBottom: Platform.OS === 'ios' ? 30 : 16,
         borderTopWidth: 1,
         borderTopColor: '#F1F5F9',
         backgroundColor: '#FFFFFF',
-        shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: -6 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 8,
     },
-    saveBtn: {
-        height: 52,
-        borderRadius: radius.lg || 16,
-        backgroundColor: colors.primary || '#2563EB',
+    saveBtnGradient: {
+        height: 48,
+        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: colors.primary || '#2563EB',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.18,
-        shadowRadius: 10,
-        elevation: 6,
-    },
-    saveBtnPressed: {
-        transform: [{ scale: 0.97 }],
-        opacity: 0.9,
+        shadowColor: '#7C3AED',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.22,
+        shadowRadius: 8,
+        elevation: 4,
     },
     saveBtnDisabled: {
         opacity: 0.5,
     },
     saveBtnText: {
-        fontSize: 17,
+        fontSize: 15,
         ...FONT.bold,
         color: '#FFFFFF',
         letterSpacing: 0.2,

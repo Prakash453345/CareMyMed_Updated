@@ -2061,11 +2061,22 @@ const s = StyleSheet.create({
     addrCardLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 },
     addrLabel: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
     addrLine: { fontSize: 12, color: colors.textMuted, marginTop: 2, fontWeight: '500' },
-    labelRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2, marginBottom: 4 },
-    labelChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.md, backgroundColor: colors.background },
-    labelChipActive: { backgroundColor: colors.primarySoft, borderWidth: 1.5, borderColor: colors.primary },
-    labelChipTxt: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
-    labelChipTxtActive: { color: colors.primary, fontWeight: '700' },
+    labelRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4, marginBottom: 8 },
+    labelChip: {
+        paddingHorizontal: 14,
+        paddingVertical: 7,
+        borderRadius: 12,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    labelChipActive: {
+        backgroundColor: '#F3E8FF',
+        borderColor: '#7C3AED',
+        borderWidth: 1.5,
+    },
+    labelChipTxt: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+    labelChipTxtActive: { color: '#7C3AED', fontWeight: '800' },
 
     /* Empty State */
     emptyState: { alignItems: 'center', paddingVertical: 32 },

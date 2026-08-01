@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, Switch, Pressable,
-    ActivityIndicator, Platform, Linking, StatusBar, Modal
+    ActivityIndicator, Platform, Linking, StatusBar
 } from 'react-native';
+import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
     ChevronLeft, Shield, Lock, Bell, BellRing, Smartphone,
     Globe, Activity, RefreshCw, Moon, Sparkles, LogOut,
-    Check, AlertCircle, KeyRound, ChevronRight, Zap, Eye
+    Check, KeyRound, ChevronRight, Eye
 } from 'lucide-react-native';
 import * as SecureStore from 'expo-secure-store';
 import * as Notifications from 'expo-notifications';
@@ -19,8 +20,10 @@ import { apiService } from '../../lib/api';
 import HealthSyncService from '../../services/HealthSyncService';
 import AlertManager from '../../utils/AlertManager';
 import SmartInput from '../../components/ui/SmartInput';
+import PremiumFormModal from '../../components/ui/PremiumFormModal';
 import TabScreenTransition from '../../components/ui/TabScreenTransition';
-import AnimatedCard from '../../components/ui/AnimatedCard';
+import { colors } from '../../theme';
+import { HapticPatterns } from '../../utils/haptics';
 
 import * as LocalAuthentication from 'expo-local-authentication';
 
@@ -35,7 +38,7 @@ const LANGUAGES = [
 
 export default function SettingsScreen({ navigation }) {
     const { t } = useTranslation();
-    const { signOut, userEmail } = useAuth();
+    const { signOut } = useAuth();
     const patient = usePatientStore(s => s.patient);
     const setPatient = usePatientStore(s => s.setPatient);
     const reduceMotion = usePatientStore(s => s.reduceMotion);
@@ -67,7 +70,6 @@ export default function SettingsScreen({ navigation }) {
     useEffect(() => {
         (async () => {
             try {
-                // Check Biometrics
                 if (LocalAuthentication) {
                     const hasHardware = await LocalAuthentication.hasHardwareAsync();
                     const isEnrolled = await LocalAuthentication.isEnrolledAsync();
@@ -86,11 +88,9 @@ export default function SettingsScreen({ navigation }) {
                 const storedBio = await SecureStore.getItemAsync('biometric_auth_enabled');
                 setBiometricEnabled(storedBio === 'true');
 
-                // Check Notifications
                 const perms = await Notifications.getPermissionsAsync();
                 setNotifPermissionGranted(perms.status === 'granted');
 
-                // Check Health Sync
                 const syncStatus = await HealthSyncService.getStatus();
                 setHealthSyncEnabled(syncStatus.connected);
                 if (syncStatus.lastSync) {
@@ -102,7 +102,6 @@ export default function SettingsScreen({ navigation }) {
         })();
     }, []);
 
-    // Sync state updates when patient store changes
     useEffect(() => {
         if (patient) {
             if (patient.medication_reminders_enabled !== undefined) setMedReminders(patient.medication_reminders_enabled);
@@ -113,6 +112,7 @@ export default function SettingsScreen({ navigation }) {
 
     // ── Handlers ──
     const handleToggleBiometrics = async (val) => {
+        HapticPatterns.selection();
         if (val) {
             if (LocalAuthentication && !biometricSupported) {
                 AlertManager.alert(
@@ -145,6 +145,7 @@ export default function SettingsScreen({ navigation }) {
     };
 
     const handleChangePassword = async () => {
+        HapticPatterns.selection();
         if (!currentPassword || !newPassword || !confirmPassword) {
             AlertManager.alert('Missing Fields', 'Please fill in all password fields.');
             return;
@@ -177,6 +178,7 @@ export default function SettingsScreen({ navigation }) {
     };
 
     const handleToggleMedReminders = async (val) => {
+        HapticPatterns.selection();
         setMedReminders(val);
         try {
             const res = await apiService.patients.updateMe({ medication_reminders_enabled: val });
@@ -187,6 +189,7 @@ export default function SettingsScreen({ navigation }) {
     };
 
     const handleTogglePushNotifications = async (val) => {
+        HapticPatterns.selection();
         setPushEnabled(val);
         try {
             const res = await apiService.patients.updateMe({ push_notifications_enabled: val });
@@ -197,9 +200,10 @@ export default function SettingsScreen({ navigation }) {
     };
 
     const handleManualHealthSync = async () => {
+        HapticPatterns.selection();
         setIsSyncing(true);
         try {
-            const res = await HealthSyncService.syncVitals();
+            await HealthSyncService.syncVitals();
             const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             setLastSyncStr(nowStr);
             AlertManager.alert('Vitals Synced ✨', `Successfully synced latest health records at ${nowStr}.`);
@@ -212,6 +216,7 @@ export default function SettingsScreen({ navigation }) {
     };
 
     const handleSelectLanguage = async (langCode) => {
+        HapticPatterns.selection();
         setSelectedLang(langCode);
         setLanguageModalVisible(false);
         i18n.changeLanguage(langCode);
@@ -226,6 +231,7 @@ export default function SettingsScreen({ navigation }) {
     };
 
     const handleSignOut = () => {
+        HapticPatterns.selection();
         AlertManager.alert(
             'Sign Out 🚪',
             'Are you sure you want to log out of CareMyMed?',
@@ -240,11 +246,38 @@ export default function SettingsScreen({ navigation }) {
     return (
         <TabScreenTransition>
             <View style={styles.container}>
-                <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+                <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-                {/* ── Top Header ── */}
+                {/* ── Ambient Background Decorations ── */}
+                <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                    <Svg height="100%" width="100%" viewBox="0 0 400 850" preserveAspectRatio="none">
+                        <Defs>
+                            <SvgLinearGradient id="settingsTopBg" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <Stop offset="0%" stopColor="#EEF2FF" stopOpacity="0.85" />
+                                <Stop offset="100%" stopColor="#F8FAFC" stopOpacity="0" />
+                            </SvgLinearGradient>
+                        </Defs>
+                        <Path d="M140 0 C220 100, 300 130, 400 100 L400 0 Z" fill="url(#settingsTopBg)" />
+                        <Path
+                            d="M-20 160 C80 210, 180 140, 280 210 C340 250, 380 220, 420 280"
+                            stroke="#E2E8F0"
+                            strokeWidth="1.5"
+                            fill="none"
+                            opacity="0.35"
+                        />
+                    </Svg>
+                </View>
+
+                {/* ── Brand Header ── */}
                 <View style={styles.header}>
-                    <Pressable onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={12}>
+                    <Pressable
+                        onPress={() => {
+                            HapticPatterns.selection();
+                            navigation.goBack();
+                        }}
+                        style={styles.backBtn}
+                        hitSlop={12}
+                    >
                         <ChevronLeft size={22} color="#0F172A" strokeWidth={2.5} />
                     </Pressable>
                     <View style={styles.headerTitleGroup}>
@@ -255,13 +288,16 @@ export default function SettingsScreen({ navigation }) {
 
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-                    {/* ── Section 1: Security & Authentication ── */}
-                    <Text style={styles.sectionHeading}>Security & Access</Text>
+                    {/* ── Section 1: Security & Access ── */}
+                    <View style={styles.sectionHeaderRow}>
+                        <View style={styles.sectionBadge} />
+                        <Text style={styles.sectionHeading}>Security & Access</Text>
+                    </View>
                     <View style={styles.cardContainer}>
                         {/* Biometrics Row */}
                         <View style={styles.settingRow}>
                             <View style={[styles.iconBox, { backgroundColor: '#EEF2FF' }]}>
-                                <Smartphone size={18} color="#4F46E5" strokeWidth={2.5} />
+                                <Smartphone size={18} color="#6366F1" strokeWidth={2.4} />
                             </View>
                             <View style={styles.settingTextGroup}>
                                 <Text style={styles.settingTitle}>{biometricType} Login</Text>
@@ -270,33 +306,39 @@ export default function SettingsScreen({ navigation }) {
                             <Switch
                                 value={biometricEnabled}
                                 onValueChange={handleToggleBiometrics}
-                                trackColor={{ false: '#CBD5E1', true: '#818CF8' }}
-                                thumbColor={biometricEnabled ? '#4F46E5' : '#F8FAFC'}
+                                trackColor={{ false: '#E2E8F0', true: '#C7D2FE' }}
+                                thumbColor={biometricEnabled ? '#4F46E5' : '#FFFFFF'}
                             />
                         </View>
 
                         <View style={styles.divider} />
 
                         {/* Change Password Row */}
-                        <Pressable style={styles.settingRow} onPress={() => setCpModalVisible(true)}>
+                        <Pressable style={styles.settingRow} onPress={() => {
+                            HapticPatterns.selection();
+                            setCpModalVisible(true);
+                        }}>
                             <View style={[styles.iconBox, { backgroundColor: '#F5F3FF' }]}>
-                                <KeyRound size={18} color="#7C3AED" strokeWidth={2.5} />
+                                <KeyRound size={18} color="#7C3AED" strokeWidth={2.4} />
                             </View>
                             <View style={styles.settingTextGroup}>
                                 <Text style={styles.settingTitle}>Change Password</Text>
-                                <Text style={styles.settingSub}>Update account access credential</Text>
+                                <Text style={styles.settingSub}>Update account access credentials</Text>
                             </View>
-                            <ChevronRight size={18} color="#94A3B8" />
+                            <ChevronRight size={18} color="#94A3B8" strokeWidth={2.2} />
                         </Pressable>
                     </View>
 
                     {/* ── Section 2: Notifications & Health Alarms ── */}
-                    <Text style={styles.sectionHeading}>Notifications & Health Alarms</Text>
+                    <View style={styles.sectionHeaderRow}>
+                        <View style={[styles.sectionBadge, { backgroundColor: '#3B82F6' }]} />
+                        <Text style={styles.sectionHeading}>Notifications & Health Alarms</Text>
+                    </View>
                     <View style={styles.cardContainer}>
-                        {/* Pill Reminders Row */}
+                        {/* Medication Reminders Row */}
                         <View style={styles.settingRow}>
-                            <View style={[styles.iconBox, { backgroundColor: '#ECFEFF' }]}>
-                                <BellRing size={18} color="#0891B2" strokeWidth={2.5} />
+                            <View style={[styles.iconBox, { backgroundColor: '#EFF6FF' }]}>
+                                <BellRing size={18} color="#3B82F6" strokeWidth={2.4} />
                             </View>
                             <View style={styles.settingTextGroup}>
                                 <Text style={styles.settingTitle}>Medication Reminders</Text>
@@ -305,8 +347,8 @@ export default function SettingsScreen({ navigation }) {
                             <Switch
                                 value={medReminders}
                                 onValueChange={handleToggleMedReminders}
-                                trackColor={{ false: '#CBD5E1', true: '#67E8F9' }}
-                                thumbColor={medReminders ? '#0891B2' : '#F8FAFC'}
+                                trackColor={{ false: '#E2E8F0', true: '#BFDBFE' }}
+                                thumbColor={medReminders ? '#2563EB' : '#FFFFFF'}
                             />
                         </View>
 
@@ -315,7 +357,7 @@ export default function SettingsScreen({ navigation }) {
                         {/* Daily Briefing Row */}
                         <View style={styles.settingRow}>
                             <View style={[styles.iconBox, { backgroundColor: '#F0F9FF' }]}>
-                                <Sparkles size={18} color="#0284C7" strokeWidth={2.5} />
+                                <Sparkles size={18} color="#0284C7" strokeWidth={2.4} />
                             </View>
                             <View style={styles.settingTextGroup}>
                                 <Text style={styles.settingTitle}>Daily Health Briefing</Text>
@@ -324,17 +366,20 @@ export default function SettingsScreen({ navigation }) {
                             <Switch
                                 value={pushEnabled}
                                 onValueChange={handleTogglePushNotifications}
-                                trackColor={{ false: '#CBD5E1', true: '#38BDF8' }}
-                                thumbColor={pushEnabled ? '#0284C7' : '#F8FAFC'}
+                                trackColor={{ false: '#E2E8F0', true: '#BAE6FD' }}
+                                thumbColor={pushEnabled ? '#0284C7' : '#FFFFFF'}
                             />
                         </View>
 
                         <View style={styles.divider} />
 
                         {/* OS System Notification Settings */}
-                        <Pressable style={styles.settingRow} onPress={() => Linking.openSettings()}>
+                        <Pressable style={styles.settingRow} onPress={() => {
+                            HapticPatterns.selection();
+                            Linking.openSettings();
+                        }}>
                             <View style={[styles.iconBox, { backgroundColor: '#FEF3C7' }]}>
-                                <Bell size={18} color="#D97706" strokeWidth={2.5} />
+                                <Bell size={18} color="#D97706" strokeWidth={2.4} />
                             </View>
                             <View style={styles.settingTextGroup}>
                                 <Text style={styles.settingTitle}>Device Notification Settings</Text>
@@ -342,17 +387,20 @@ export default function SettingsScreen({ navigation }) {
                                     {notifPermissionGranted ? 'System permissions enabled' : 'Permissions blocked in OS settings'}
                                 </Text>
                             </View>
-                            <ChevronRight size={18} color="#94A3B8" />
+                            <ChevronRight size={18} color="#94A3B8" strokeWidth={2.2} />
                         </Pressable>
                     </View>
 
                     {/* ── Section 3: Preferences & Wearable Sync ── */}
-                    <Text style={styles.sectionHeading}>Preferences & Wearable Sync</Text>
+                    <View style={styles.sectionHeaderRow}>
+                        <View style={[styles.sectionBadge, { backgroundColor: '#10B981' }]} />
+                        <Text style={styles.sectionHeading}>Preferences & Wearable Sync</Text>
+                    </View>
                     <View style={styles.cardContainer}>
                         {/* Health Sync Row */}
                         <View style={styles.settingRow}>
-                            <View style={[styles.iconBox, { backgroundColor: '#FFF1F2' }]}>
-                                <Activity size={18} color="#F43F5E" strokeWidth={2.5} />
+                            <View style={[styles.iconBox, { backgroundColor: '#ECFDF5' }]}>
+                                <Activity size={18} color="#10B981" strokeWidth={2.4} />
                             </View>
                             <View style={styles.settingTextGroup}>
                                 <Text style={styles.settingTitle}>Wearable Health Sync</Text>
@@ -366,10 +414,10 @@ export default function SettingsScreen({ navigation }) {
                                 disabled={isSyncing}
                             >
                                 {isSyncing ? (
-                                    <ActivityIndicator size="small" color="#F43F5E" />
+                                    <ActivityIndicator size="small" color="#10B981" />
                                 ) : (
                                     <>
-                                        <RefreshCw size={12} color="#F43F5E" strokeWidth={2.5} />
+                                        <RefreshCw size={12} color="#10B981" strokeWidth={2.5} />
                                         <Text style={styles.syncActionTxt}>Sync</Text>
                                     </>
                                 )}
@@ -379,9 +427,12 @@ export default function SettingsScreen({ navigation }) {
                         <View style={styles.divider} />
 
                         {/* App Language */}
-                        <Pressable style={styles.settingRow} onPress={() => setLanguageModalVisible(true)}>
+                        <Pressable style={styles.settingRow} onPress={() => {
+                            HapticPatterns.selection();
+                            setLanguageModalVisible(true);
+                        }}>
                             <View style={[styles.iconBox, { backgroundColor: '#F0FDF4' }]}>
-                                <Globe size={18} color="#16A34A" strokeWidth={2.5} />
+                                <Globe size={18} color="#16A34A" strokeWidth={2.4} />
                             </View>
                             <View style={styles.settingTextGroup}>
                                 <Text style={styles.settingTitle}>App Language</Text>
@@ -389,7 +440,7 @@ export default function SettingsScreen({ navigation }) {
                                     {LANGUAGES.find(l => l.code === selectedLang)?.label || 'English'}
                                 </Text>
                             </View>
-                            <ChevronRight size={18} color="#94A3B8" />
+                            <ChevronRight size={18} color="#94A3B8" strokeWidth={2.2} />
                         </Pressable>
 
                         <View style={styles.divider} />
@@ -397,7 +448,7 @@ export default function SettingsScreen({ navigation }) {
                         {/* Reduce Motion */}
                         <View style={styles.settingRow}>
                             <View style={[styles.iconBox, { backgroundColor: '#FAF5FF' }]}>
-                                <Eye size={18} color="#9333EA" strokeWidth={2.5} />
+                                <Eye size={18} color="#9333EA" strokeWidth={2.4} />
                             </View>
                             <View style={styles.settingTextGroup}>
                                 <Text style={styles.settingTitle}>Reduce Motion</Text>
@@ -405,94 +456,88 @@ export default function SettingsScreen({ navigation }) {
                             </View>
                             <Switch
                                 value={!!reduceMotion}
-                                onValueChange={(val) => setReduceMotion(val)}
-                                trackColor={{ false: '#CBD5E1', true: '#C084FC' }}
-                                thumbColor={reduceMotion ? '#9333EA' : '#F8FAFC'}
+                                onValueChange={(val) => {
+                                    HapticPatterns.selection();
+                                    setReduceMotion(val);
+                                }}
+                                trackColor={{ false: '#E2E8F0', true: '#E9D5FF' }}
+                                thumbColor={reduceMotion ? '#9333EA' : '#FFFFFF'}
                             />
                         </View>
                     </View>
 
-                    {/* ── Sign Out CTA ── */}
+                    {/* ── Sign Out Card ── */}
                     <Pressable style={styles.signOutCard} onPress={handleSignOut}>
-                        <LogOut size={18} color="#EF4444" strokeWidth={2.5} />
+                        <LogOut size={18} color="#EF4444" strokeWidth={2.4} />
                         <Text style={styles.signOutTxt}>Sign Out of CareMyMed</Text>
                     </Pressable>
 
                     <Text style={styles.versionFooter}>CareMyMed v1.0.0 • Production Build</Text>
                 </ScrollView>
 
-                {/* ── Change Password Modal ── */}
-                <Modal visible={cpModalVisible} transparent animationType="fade" onRequestClose={() => setCpModalVisible(false)}>
-                    <View style={styles.modalBackdrop}>
-                        <View style={styles.modalCard}>
-                            <Text style={styles.modalTitle}>Change Password</Text>
-                            <Text style={styles.modalSub}>Enter current and new access credentials</Text>
+                {/* ── Change Password Modal (PremiumFormModal System) ── */}
+                <PremiumFormModal
+                    visible={cpModalVisible}
+                    onClose={() => setCpModalVisible(false)}
+                    title="Change Password"
+                    subtitle="Enter current and new access credentials"
+                    icon={Lock}
+                    iconColor="#7C3AED"
+                    iconBg="#F5F3FF"
+                    onSave={handleChangePassword}
+                    saveText={savingCp ? "Updating..." : "Update Password"}
+                    isSaving={savingCp}
+                >
+                    <SmartInput
+                        label="Current Password"
+                        secureTextEntry
+                        value={currentPassword}
+                        onChangeText={setCurrentPassword}
+                        placeholder="••••••••"
+                    />
+                    <SmartInput
+                        label="New Password"
+                        secureTextEntry
+                        value={newPassword}
+                        onChangeText={setNewPassword}
+                        placeholder="Min 8 characters"
+                    />
+                    <SmartInput
+                        label="Confirm New Password"
+                        secureTextEntry
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
+                        placeholder="Repeat new password"
+                    />
+                </PremiumFormModal>
 
-                            <SmartInput
-                                label="Current Password"
-                                secureTextEntry
-                                value={currentPassword}
-                                onChangeText={setCurrentPassword}
-                                placeholder="••••••••"
-                            />
-                            <SmartInput
-                                label="New Password"
-                                secureTextEntry
-                                value={newPassword}
-                                onChangeText={setNewPassword}
-                                placeholder="Min 8 characters"
-                            />
-                            <SmartInput
-                                label="Confirm New Password"
-                                secureTextEntry
-                                value={confirmPassword}
-                                onChangeText={setConfirmPassword}
-                                placeholder="Repeat new password"
-                            />
-
-                            <View style={styles.modalActions}>
-                                <Pressable style={styles.cancelBtn} onPress={() => setCpModalVisible(false)}>
-                                    <Text style={styles.cancelTxt}>Cancel</Text>
+                {/* ── Language Selector Modal (PremiumFormModal System) ── */}
+                <PremiumFormModal
+                    visible={languageModalVisible}
+                    onClose={() => setLanguageModalVisible(false)}
+                    title="Select Language"
+                    subtitle="Choose preferred language for app interface"
+                    icon={Globe}
+                    iconColor="#16A34A"
+                    iconBg="#F0FDF4"
+                    showFooter={false}
+                >
+                    <View style={{ gap: 4, paddingVertical: 4 }}>
+                        {LANGUAGES.map(lang => {
+                            const isSel = lang.code === selectedLang;
+                            return (
+                                <Pressable
+                                    key={lang.code}
+                                    style={[styles.langItem, isSel && styles.langItemSel]}
+                                    onPress={() => handleSelectLanguage(lang.code)}
+                                >
+                                    <Text style={[styles.langTxt, isSel && styles.langTxtSel]}>{lang.label}</Text>
+                                    {isSel && <Check size={18} color="#4F46E5" strokeWidth={3} />}
                                 </Pressable>
-                                <Pressable style={styles.saveBtn} onPress={handleChangePassword} disabled={savingCp}>
-                                    <LinearGradient colors={['#6366F1', '#4F46E5']} style={styles.saveGradient}>
-                                        {savingCp ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.saveTxt}>Update</Text>}
-                                    </LinearGradient>
-                                </Pressable>
-                            </View>
-                        </View>
+                            );
+                        })}
                     </View>
-                </Modal>
-
-                {/* ── Language Selector Modal ── */}
-                <Modal visible={languageModalVisible} transparent animationType="slide" onRequestClose={() => setLanguageModalVisible(false)}>
-                    <View style={styles.modalBackdrop}>
-                        <View style={styles.modalCard}>
-                            <Text style={styles.modalTitle}>Select Language</Text>
-                            <Text style={styles.modalSub}>Choose preferred language for app interface</Text>
-
-                            <ScrollView style={{ maxHeight: 260 }}>
-                                {LANGUAGES.map(lang => {
-                                    const isSel = lang.code === selectedLang;
-                                    return (
-                                        <Pressable
-                                            key={lang.code}
-                                            style={[styles.langItem, isSel && styles.langItemSel]}
-                                            onPress={() => handleSelectLanguage(lang.code)}
-                                        >
-                                            <Text style={[styles.langTxt, isSel && styles.langTxtSel]}>{lang.label}</Text>
-                                            {isSel && <Check size={18} color="#4F46E5" strokeWidth={3} />}
-                                        </Pressable>
-                                    );
-                                })}
-                            </ScrollView>
-
-                            <Pressable style={[styles.cancelBtn, { marginTop: 14 }]} onPress={() => setLanguageModalVisible(false)}>
-                                <Text style={styles.cancelTxt}>Close</Text>
-                            </Pressable>
-                        </View>
-                    </View>
-                </Modal>
+                </PremiumFormModal>
             </View>
         </TabScreenTransition>
     );
@@ -501,56 +546,129 @@ export default function SettingsScreen({ navigation }) {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
     header: {
-        flexDirection: 'row', alignItems: 'center', gap: 12,
-        paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 54 : 36, paddingBottom: 14,
-        backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
-        shadowColor: '#0F172A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 6, elevation: 2,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingHorizontal: 20,
+        paddingTop: Platform.OS === 'ios' ? 56 : 42,
+        paddingBottom: 16,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(241, 245, 249, 0.8)',
     },
-    backBtn: { width: 40, height: 40, borderRadius: 14, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+    backBtn: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+        elevation: 1,
+    },
     headerTitleGroup: { flex: 1 },
-    headerTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A', letterSpacing: -0.3 },
-    headerSub: { fontSize: 11, fontWeight: '600', color: '#64748B', marginTop: 1 },
+    headerTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: -0.3 },
+    headerSub: { fontSize: 11.5, fontWeight: '600', color: '#64748B', marginTop: 1 },
 
-    scrollContent: { padding: 20, paddingBottom: 40 },
-    sectionHeading: { fontSize: 11, fontWeight: '800', color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 14, marginBottom: 8, marginLeft: 4 },
+    scrollContent: { padding: 20, paddingBottom: 44 },
+    
+    sectionHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 16,
+        marginBottom: 10,
+        marginLeft: 2,
+    },
+    sectionBadge: {
+        width: 4,
+        height: 14,
+        borderRadius: 2,
+        backgroundColor: '#6366F1',
+    },
+    sectionHeading: {
+        fontSize: 11.5,
+        fontWeight: '800',
+        color: '#64748B',
+        textTransform: 'uppercase',
+        letterSpacing: 0.8,
+    },
 
     cardContainer: {
-        backgroundColor: '#FFFFFF', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 4,
-        borderWidth: 1, borderColor: '#F1F5F9', marginBottom: 12,
-        shadowColor: '#0F172A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 6, elevation: 1,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 22,
+        paddingHorizontal: 16,
+        paddingVertical: 2,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        marginBottom: 10,
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.03,
+        shadowRadius: 10,
+        elevation: 2,
     },
     settingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
-    iconBox: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    iconBox: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
     settingTextGroup: { flex: 1 },
-    settingTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
-    settingSub: { fontSize: 11, fontWeight: '600', color: '#64748B', marginTop: 2 },
+    settingTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A', letterSpacing: -0.2 },
+    settingSub: { fontSize: 11.5, fontWeight: '500', color: '#64748B', marginTop: 2, lineHeight: 15 },
     divider: { height: 1, backgroundColor: '#F1F5F9' },
 
-    syncActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF1F2', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#FECDD3' },
-    syncActionTxt: { fontSize: 11, fontWeight: '800', color: '#F43F5E' },
+    syncActionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#ECFDF5',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#A7F3D0',
+    },
+    syncActionTxt: { fontSize: 11.5, fontWeight: '800', color: '#10B981' },
 
     signOutCard: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-        backgroundColor: '#FEF2F2', borderRadius: 18, paddingVertical: 14, marginTop: 14,
-        borderWidth: 1, borderColor: '#FEE2E2',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: '#FEF2F2',
+        borderRadius: 20,
+        paddingVertical: 15,
+        marginTop: 16,
+        borderWidth: 1,
+        borderColor: '#FEE2E2',
+        shadowColor: '#EF4444',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        elevation: 1,
     },
     signOutTxt: { fontSize: 14, fontWeight: '800', color: '#EF4444' },
-    versionFooter: { textAlign: 'center', fontSize: 11, fontWeight: '600', color: '#94A3B8', marginTop: 20 },
+    versionFooter: { textAlign: 'center', fontSize: 11, fontWeight: '600', color: '#94A3B8', marginTop: 22 },
 
-    /* Modals */
-    modalBackdrop: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-    modalCard: { width: '100%', maxWidth: 360, backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#F1F5F9', elevation: 10 },
-    modalTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A' },
-    modalSub: { fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 2, marginBottom: 14 },
-    modalActions: { flexDirection: 'row', gap: 10, marginTop: 14 },
-    cancelBtn: { flex: 1, paddingVertical: 12, borderRadius: 14, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-    cancelTxt: { fontSize: 13, fontWeight: '800', color: '#64748B' },
-    saveBtn: { flex: 1, borderRadius: 14, overflow: 'hidden' },
-    saveGradient: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
-    saveTxt: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
-
-    langItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12, marginBottom: 4 },
-    langItemSel: { backgroundColor: '#EEF2FF' },
+    langItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 14,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        marginBottom: 6,
+    },
+    langItemSel: {
+        backgroundColor: '#EEF2FF',
+        borderColor: '#C7D2FE',
+    },
     langTxt: { fontSize: 14, fontWeight: '600', color: '#334155' },
     langTxtSel: { color: '#4F46E5', fontWeight: '800' },
 });

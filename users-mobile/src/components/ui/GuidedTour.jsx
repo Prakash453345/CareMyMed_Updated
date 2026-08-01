@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-    Modal, View, Text, StyleSheet, Pressable, Animated, Dimensions, Easing
+    Modal, View, Text, StyleSheet, Pressable, Animated, Dimensions, Easing, AppState, Keyboard
 } from 'react-native';
 import Svg, { Defs, Mask, Rect as SvgRect, Circle as SvgCircle } from 'react-native-svg';
 import { ChevronRight } from 'lucide-react-native';
@@ -18,13 +18,16 @@ export default function GuidedTour({
 }) {
     const [activeStep, setActiveStep] = useState(0);
     const [spotlightCoords, setSpotlightCoords] = useState(null);
-    const [arrowConfig, setArrowConfig] = useState({ isUp: true, arrowLeft: 48 });
-    const [computedShapeConfig, setComputedShapeConfig] = useState({ shape: 'roundedRect', radius: 16 });
+    const [arrowConfig, setArrowConfig] = useState({ isUp: true, arrowLeft: 40 });
+    const [computedShapeConfig, setComputedShapeConfig] = useState({ shape: 'roundedRect', radius: 14 });
     const [isTransitioning, setIsTransitioning] = useState(false);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
     const reduceMotion = useReduceMotion();
     const cardFade = useRef(new Animated.Value(1)).current;
     const cardContentFade = useRef(new Animated.Value(1)).current;
     const cardTranslateY = useRef(new Animated.Value(0)).current;
+    const cardScale = useRef(new Animated.Value(0.97)).current;
+    const pulseAnim = useRef(new Animated.Value(1)).current;
     const timeoutsRef = useRef([]);
 
     // Animated values for continuous 60fps morphing between steps
@@ -34,10 +37,58 @@ export default function GuidedTour({
     const animSpotHeight = useRef(new Animated.Value(0)).current;
     const animCardTop = useRef(new Animated.Value(0)).current;
     const animCardLeft = useRef(new Animated.Value(20)).current;
-    const animArrowLeft = useRef(new Animated.Value(48)).current;
+    const animArrowLeft = useRef(new Animated.Value(40)).current;
     const animOpacity = useRef(new Animated.Value(0)).current;
-    const animRadius = useRef(new Animated.Value(16)).current;
+    const animRadius = useRef(new Animated.Value(14)).current;
     const isFirstMeasureRef = useRef(true);
+
+    // 1. Keyboard Avoidance
+    useEffect(() => {
+        const showSub = Keyboard.addListener('keyboardDidShow', (e) => setKeyboardHeight(e.endCoordinates.height));
+        const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
+
+    // 2. AppState Pause Guard (stop animation loops when app is backgrounded)
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (nextState) => {
+            if (nextState.match(/inactive|background/)) {
+                pulseAnim.stopAnimation();
+                animSpotTop.stopAnimation();
+                animSpotLeft.stopAnimation();
+            }
+        });
+        return () => subscription.remove();
+    }, [pulseAnim, animSpotTop, animSpotLeft]);
+
+    // 3. Pulse animation around target element every few seconds
+    useEffect(() => {
+        if (visible && spotlightCoords && !reduceMotion) {
+            const pulseLoop = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, {
+                        toValue: 1.04,
+                        duration: 1200,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: false,
+                    }),
+                    Animated.timing(pulseAnim, {
+                        toValue: 1.0,
+                        duration: 1200,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: false,
+                    }),
+                ])
+            );
+            pulseLoop.start();
+            return () => pulseLoop.stop();
+        } else {
+            pulseAnim.setValue(1.0);
+        }
+    }, [visible, spotlightCoords, reduceMotion, pulseAnim]);
 
     const setTrackedTimeout = useCallback((fn, delay) => {
         const id = setTimeout(fn, delay);
@@ -52,17 +103,18 @@ export default function GuidedTour({
     }, []);
 
     /**
-     * GUIDED TOUR LAYOUT ENGINE
-     * Computes safe margins, smart placement, custom anchors, adaptive card sizing, and shapes
+     * SWIGGY-STYLE COMPACT TOOLTIP LAYOUT ENGINE
+     * Smart positioning, precise target anchoring, compact 260px card size
      */
     const animateToCoords = useCallback((coords, stepData) => {
         if (!coords || !stepData) return;
 
         const screenWidth = Dimensions.get('window').width || 360;
-        const screenHeight = Dimensions.get('window').height || 640;
-        const SAFE_MARGIN = 16;
+        const rawScreenHeight = Dimensions.get('window').height || 640;
+        const screenHeight = rawScreenHeight - keyboardHeight; // Keyboard offset aware
+        const SAFE_MARGIN = 16; // Strict 16px margin from display edges
 
-        const pad = Number(stepData.spotlightPadding ?? coords.padding) || 6;
+        const pad = Number(stepData.spotlightPadding ?? coords.padding) || 4;
         const rawTop = Number(coords.top);
         const rawLeft = Number(coords.left);
         const rawWidth = Number(coords.width);
@@ -71,17 +123,17 @@ export default function GuidedTour({
         const safeTop = isNaN(rawTop) ? 120 : rawTop;
         const safeLeft = isNaN(rawLeft) ? 16 : rawLeft;
         const safeWidth = isNaN(rawWidth) || rawWidth <= 0 ? screenWidth - 32 : rawWidth;
-        const safeHeight = isNaN(rawHeight) || rawHeight <= 0 ? 80 : rawHeight;
+        const safeHeight = isNaN(rawHeight) || rawHeight <= 0 ? 70 : rawHeight;
 
-        // 1. Safe Edge Boundaries (Never clip screen edges)
+        // 1. Safe Edge Boundaries
         const spotTop = Math.max(10, safeTop - pad);
         const spotLeft = Math.max(SAFE_MARGIN, Math.min(screenWidth - SAFE_MARGIN - 20, safeLeft - pad));
         const spotWidth = Math.min(screenWidth - SAFE_MARGIN * 2, Math.max(10, safeWidth + pad * 2));
         const spotHeight = Math.max(10, safeHeight + pad * 2);
 
-        // 2. Shape & Corner Radius Engine
+        // 2. Shape & Corner Radius
         const shape = stepData.shape || 'roundedRect';
-        let computedRadius = stepData.spotlightRadius || stepData.borderRadius || 16;
+        let computedRadius = stepData.spotlightRadius || stepData.borderRadius || 14;
         if (shape === 'circle') {
             computedRadius = Math.max(spotWidth, spotHeight) / 2;
         } else if (shape === 'pill') {
@@ -90,9 +142,9 @@ export default function GuidedTour({
 
         setComputedShapeConfig({ shape, radius: computedRadius });
 
-        // 3. Smart Placement Engine (Auto-calculates largest free area above vs below target)
-        const spaceAbove = spotTop - 20;
-        const spaceBelow = screenHeight - (spotTop + spotHeight) - 40;
+        // 3. Smart Placement Engine
+        const spaceAbove = spotTop - 15;
+        const spaceBelow = screenHeight - (spotTop + spotHeight) - 30;
         const preferred = stepData.preferredPlacement || stepData.arrow || 'auto';
 
         let isUp; // isUp = true means card sits BELOW spotlight (arrow points UP)
@@ -101,33 +153,32 @@ export default function GuidedTour({
         } else if (preferred === 'bottom' || preferred === 'below') {
             isUp = true;
         } else {
-            // Auto placement: Pick direction with largest free area
-            if (spaceBelow >= 180) {
+            if (spaceBelow >= 140) {
                 isUp = true;
-            } else if (spaceAbove >= 180) {
+            } else if (spaceAbove >= 140) {
                 isUp = false;
             } else {
                 isUp = spaceBelow >= spaceAbove;
             }
         }
 
-        // 4. Custom Anchor Points (anchorX ratio 0.0 to 1.0)
+        // 4. Custom Anchor Points
         const anchorRatio = stepData.anchorX !== undefined ? stepData.anchorX : 0.5;
         const targetCenterX = safeLeft + safeWidth * anchorRatio;
 
-        // 5. Adaptive Tooltip Card Width (~86% on phones, capped on tablets)
+        // 5. Adaptive Card Width with strict edge clamping: Math.min(270, screenWidth - 32)
         const cardWidth = Math.min(
-            stepData.maxCardWidth || 340,
-            Math.min(Math.round(screenWidth * 0.86), screenWidth > 600 ? 360 : 310)
+            stepData.maxCardWidth || 270,
+            screenWidth - 32
         );
         const cardLeft = Math.max(SAFE_MARGIN, Math.min(targetCenterX - cardWidth / 2, screenWidth - cardWidth - SAFE_MARGIN));
-        const computedArrowLeft = Math.max(16, Math.min(targetCenterX - cardLeft - 8, cardWidth - 32));
+        const computedArrowLeft = Math.max(16, Math.min(targetCenterX - cardLeft - 5, cardWidth - 28));
 
         let cardTop;
         if (isUp) {
-            cardTop = Math.min(screenHeight - 200, spotTop + spotHeight + 12);
+            cardTop = Math.min(screenHeight - 160, spotTop + spotHeight + 10);
         } else {
-            cardTop = Math.max(20, spotTop - (stepData.cardOffset || 170));
+            cardTop = Math.max(15, spotTop - (stepData.cardOffset || 135));
         }
 
         const finalSpotTop = isNaN(spotTop) ? 0 : spotTop;
@@ -136,7 +187,7 @@ export default function GuidedTour({
         const finalSpotHeight = isNaN(spotHeight) ? 100 : spotHeight;
         const finalCardTop = isNaN(cardTop) ? 100 : cardTop;
         const finalCardLeft = isNaN(cardLeft) ? 16 : cardLeft;
-        const finalArrowLeft = isNaN(computedArrowLeft) ? 48 : computedArrowLeft;
+        const finalArrowLeft = isNaN(computedArrowLeft) ? 40 : computedArrowLeft;
 
         setArrowConfig({ isUp, arrowLeft: finalArrowLeft });
 
@@ -150,26 +201,26 @@ export default function GuidedTour({
             animArrowLeft.setValue(finalArrowLeft);
             animRadius.setValue(computedRadius);
             animOpacity.setValue(1);
+            cardScale.setValue(1.0);
+            cardTranslateY.setValue(0);
             isFirstMeasureRef.current = false;
         } else {
-            // Coordinated 240ms gliding animation across all parameters
             Animated.parallel([
-                Animated.timing(animSpotTop, { toValue: finalSpotTop, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animSpotLeft, { toValue: finalSpotLeft, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animSpotWidth, { toValue: finalSpotWidth, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animSpotHeight, { toValue: finalSpotHeight, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animCardTop, { toValue: finalCardTop, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animCardLeft, { toValue: finalCardLeft, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animArrowLeft, { toValue: finalArrowLeft, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animRadius, { toValue: computedRadius, duration: 240, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
-                Animated.timing(animOpacity, { toValue: 1, duration: 180, useNativeDriver: false }),
+                Animated.timing(animSpotTop, { toValue: finalSpotTop, duration: 220, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animSpotLeft, { toValue: finalSpotLeft, duration: 220, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animSpotWidth, { toValue: finalSpotWidth, duration: 220, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animSpotHeight, { toValue: finalSpotHeight, duration: 220, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animCardTop, { toValue: finalCardTop, duration: 220, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animCardLeft, { toValue: finalCardLeft, duration: 220, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animArrowLeft, { toValue: finalArrowLeft, duration: 220, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animRadius, { toValue: computedRadius, duration: 220, easing: Easing.bezier(0.22, 0.98, 0.34, 1), useNativeDriver: false }),
+                Animated.timing(animOpacity, { toValue: 1, duration: 160, useNativeDriver: false }),
             ]).start();
         }
-    }, [animSpotTop, animSpotLeft, animSpotWidth, animSpotHeight, animCardTop, animCardLeft, animArrowLeft, animRadius, animOpacity, reduceMotion]);
+    }, [animSpotTop, animSpotLeft, animSpotWidth, animSpotHeight, animCardTop, animCardLeft, animArrowLeft, animRadius, animOpacity, cardScale, cardTranslateY, keyboardHeight, reduceMotion]);
 
     /**
      * AUTO-SCROLL ENGINE
-     * Automatically scrolls screen container until target is fully in viewport before measuring
      */
     const scrollToTarget = useCallback((stepData, callback) => {
         const activeScrollRef = stepData?.scrollRef || scrollRef;
@@ -180,7 +231,6 @@ export default function GuidedTour({
 
         const scrollInst = activeScrollRef.current;
 
-        // A) Explicit scrollOffset provided
         if (stepData.scrollOffset !== undefined) {
             try {
                 if (scrollInst.scrollTo) {
@@ -189,20 +239,18 @@ export default function GuidedTour({
                     scrollInst.scrollToOffset({ offset: Math.max(0, stepData.scrollOffset), animated: !reduceMotion });
                 }
             } catch (e) {}
-            setTrackedTimeout(callback, reduceMotion ? 50 : 260);
+            setTrackedTimeout(callback, reduceMotion ? 50 : 240);
             return;
         }
 
-        // B) FlatList scrollToIndex
         if (stepData.index !== undefined && scrollInst.scrollToIndex) {
             try {
                 scrollInst.scrollToIndex({ index: stepData.index, animated: !reduceMotion, viewPosition: 0.3 });
             } catch (e) {}
-            setTrackedTimeout(callback, reduceMotion ? 50 : 280);
+            setTrackedTimeout(callback, reduceMotion ? 50 : 260);
             return;
         }
 
-        // C) Automatic Layout Measurement & Scroll (measureLayout against ScrollView node)
         if (stepData.ref?.current) {
             try {
                 const targetNode = scrollInst.getNode ? scrollInst.getNode() : (scrollInst._component || scrollInst);
@@ -211,14 +259,14 @@ export default function GuidedTour({
                         targetNode,
                         (x, y) => {
                             try {
-                                const offset = Math.max(0, y - (stepData.scrollMargin || 50));
+                                const offset = Math.max(0, y - (stepData.scrollMargin || 40));
                                 if (scrollInst.scrollTo) {
                                     scrollInst.scrollTo({ y: offset, animated: !reduceMotion });
                                 } else if (scrollInst.scrollToOffset) {
                                     scrollInst.scrollToOffset({ offset, animated: !reduceMotion });
                                 }
                             } catch (e) {}
-                            setTrackedTimeout(callback, reduceMotion ? 50 : 260);
+                            setTrackedTimeout(callback, reduceMotion ? 50 : 240);
                         },
                         () => {
                             if (callback) callback();
@@ -233,7 +281,7 @@ export default function GuidedTour({
     }, [scrollRef, reduceMotion, setTrackedTimeout]);
 
     /**
-     * Measure step target using measureInWindow after auto-scroll completes
+     * Measure step target
      */
     const measureStep = useCallback((stepData, attempt = 0, onDone = null) => {
         if (!stepData) return;
@@ -242,7 +290,7 @@ export default function GuidedTour({
             const screenWidth = Dimensions.get('window').width || 360;
             const fallbackCoords = {
                 top: Number(sd?.spotlightTop) || 140,
-                height: Number(sd?.spotlightHeight) || 90,
+                height: Number(sd?.spotlightHeight) || 80,
                 left: 16,
                 width: screenWidth - 32
             };
@@ -298,7 +346,6 @@ export default function GuidedTour({
         doWindowMeasure();
     }, [setTrackedTimeout, animateToCoords]);
 
-    // Measure spotlight whenever active step or visibility changes
     useEffect(() => {
         if (visible && steps.length > 0) {
             const stepData = steps[activeStep];
@@ -319,31 +366,45 @@ export default function GuidedTour({
     if (!stepData) return null;
 
     const Icon = stepData.icon;
+    const cardWidthConst = Math.min(
+        stepData.maxCardWidth || 270,
+        Dimensions.get('window').width - 32
+    );
 
     const handleNext = async () => {
         HapticPatterns.selection();
         if (activeStep < steps.length - 1) {
+            // Cancel running in-flight animations on rapid taps
+            cardContentFade.stopAnimation();
+            cardTranslateY.stopAnimation();
+            cardScale.stopAnimation();
+
             setIsTransitioning(true);
             const nextStepIdx = activeStep + 1;
             const nextStepData = steps[nextStepIdx];
 
-            // 1. Fade out current card content & spotlight while scrolling
             Animated.parallel([
-                Animated.timing(cardContentFade, { toValue: 0, duration: 100, useNativeDriver: true }),
-                Animated.timing(animOpacity, { toValue: 0, duration: 100, useNativeDriver: false }),
+                Animated.timing(cardContentFade, { toValue: 0, duration: 90, useNativeDriver: true }),
+                Animated.timing(animOpacity, { toValue: 0, duration: 90, useNativeDriver: false }),
             ]).start(() => {
                 setActiveStep(nextStepIdx);
 
-                // 2. Perform Auto-Scroll
                 scrollToTarget(nextStepData, () => {
-                    // 3. Measure target after scroll finishes
                     measureStep(nextStepData, 0, () => {
-                        // 4. Fade back in with translateY lift
-                        cardTranslateY.setValue(8);
-                        Animated.parallel([
-                            Animated.timing(cardContentFade, { toValue: 1, duration: 180, useNativeDriver: true }),
-                            Animated.timing(cardTranslateY, { toValue: 0, duration: 180, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-                        ]).start(() => setIsTransitioning(false));
+                        if (reduceMotion) {
+                            cardContentFade.setValue(1);
+                            cardTranslateY.setValue(0);
+                            cardScale.setValue(1.0);
+                            setIsTransitioning(false);
+                        } else {
+                            cardTranslateY.setValue(10);
+                            cardScale.setValue(0.97);
+                            Animated.parallel([
+                                Animated.timing(cardContentFade, { toValue: 1, duration: 200, useNativeDriver: true }),
+                                Animated.timing(cardTranslateY, { toValue: 0, duration: 200, easing: Easing.out(Easing.back(1.1)), useNativeDriver: true }),
+                                Animated.timing(cardScale, { toValue: 1.0, duration: 200, easing: Easing.out(Easing.back(1.1)), useNativeDriver: true }),
+                            ]).start(() => setIsTransitioning(false));
+                        }
                     });
                 });
             });
@@ -363,16 +424,16 @@ export default function GuidedTour({
         if (onClose) onClose();
     };
 
-    const pad = Number(stepData.spotlightPadding ?? spotlightCoords?.padding) || 6;
-    const spotX = spotlightCoords ? Math.max(16, spotlightCoords.left - pad) : 0;
+    const pad = Number(stepData.spotlightPadding ?? spotlightCoords?.padding) || 4;
+    const spotX = spotlightCoords ? Math.max(14, spotlightCoords.left - pad) : 0;
     const spotY = spotlightCoords ? Math.max(10, spotlightCoords.top - pad) : 0;
     const spotW = spotlightCoords ? spotlightCoords.width + pad * 2 : 0;
     const spotH = spotlightCoords ? spotlightCoords.height + pad * 2 : 0;
 
     return (
         <Modal transparent visible={visible} animationType="fade" statusBarTranslucent={true}>
-            <View style={[s.wtOverlay, !spotlightCoords && s.wtOverlayCentered]}>
-                {/* Clean Cut-Out Overlay with 55% dimming so background remains visible & alive */}
+            <View style={[s.wtOverlay, !spotlightCoords && s.wtOverlayCentered]} pointerEvents="box-none">
+                {/* Sleek 40% Backdrop Dimming */}
                 {spotlightCoords ? (
                     <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
                         <Defs>
@@ -400,15 +461,15 @@ export default function GuidedTour({
                         <SvgRect
                             width="100%"
                             height="100%"
-                            fill="rgba(15, 23, 42, 0.55)"
+                            fill="rgba(15, 23, 42, 0.40)"
                             mask="url(#spotlightMask)"
                         />
                     </Svg>
                 ) : (
-                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(15, 23, 42, 0.55)' }]} pointerEvents="none" />
+                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(15, 23, 42, 0.40)' }]} pointerEvents="none" />
                 )}
 
-                {/* Subtle, non-glowing white edge line around target component (NO PURPLE HALO) */}
+                {/* Subtle Pulsing Highlight Halo around Target Element */}
                 {spotlightCoords && (
                     <Animated.View
                         style={[
@@ -420,31 +481,35 @@ export default function GuidedTour({
                                 height: animSpotHeight,
                                 opacity: animOpacity,
                                 borderRadius: animRadius,
+                                transform: [{ scale: pulseAnim }],
                             }
                         ]}
                         pointerEvents="none"
                     />
                 )}
 
-                {/* Anchored Tooltip Card */}
+                {/* Swiggy-Style Compact Floating Tooltip Card */}
                 <Animated.View
+                    accessible={true}
+                    accessibilityRole="alert"
+                    accessibilityLabel={`Step ${activeStep + 1} of ${steps.length}. ${stepData.title}. ${stepData.desc}`}
                     style={[
                         s.wtCard,
                         spotlightCoords ? {
                             position: 'absolute',
                             top: animCardTop,
                             left: animCardLeft,
-                            width: Math.min(Math.round(Dimensions.get('window').width * 0.86), Dimensions.get('window').width > 600 ? 360 : 310),
+                            width: cardWidthConst,
                         } : {
                             position: 'relative',
                             alignSelf: 'center',
-                            width: Math.min(Math.round(Dimensions.get('window').width * 0.86), Dimensions.get('window').width > 600 ? 360 : 310),
+                            width: cardWidthConst,
                         },
                         { opacity: cardFade }
                     ]}
                     pointerEvents={isTransitioning ? 'none' : 'auto'}
                 >
-                    {/* Anchored Arrow pointing to component center / custom anchorX */}
+                    {/* Rotated Arrow Pointer */}
                     {spotlightCoords && (
                         <Animated.View
                             style={[
@@ -454,33 +519,52 @@ export default function GuidedTour({
                         />
                     )}
 
-                    <Animated.View style={{ opacity: cardContentFade, transform: [{ translateY: cardTranslateY }] }}>
+                    <Animated.View style={{ opacity: cardContentFade, transform: reduceMotion ? [] : [{ translateY: cardTranslateY }, { scale: cardScale }] }}>
                         <View style={s.wtCardHeader}>
                             <View style={s.wtIconWrap}>
-                                {Icon && <Icon size={18} color="#475569" strokeWidth={2.2} />}
+                                {Icon && <Icon size={14} color={stepData.iconColor || "#7C3AED"} strokeWidth={2.4} />}
                             </View>
-                            <Text style={s.wtTitle}>{stepData.title}</Text>
-                            <Pressable onPress={handleSkip} style={s.wtSkipBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                            <Text style={s.wtTitle} numberOfLines={1}>{stepData.title}</Text>
+                            <Pressable
+                                onPress={handleSkip}
+                                style={s.wtSkipBtn}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                accessibilityRole="button"
+                                accessibilityLabel="Skip tour"
+                            >
                                 <Text style={s.wtSkipText}>Skip</Text>
                             </Pressable>
                         </View>
 
-                        <Text style={s.wtDesc}>{stepData.desc}</Text>
+                        {/* Description strictly capped at 2 lines */}
+                        <Text style={s.wtDesc} numberOfLines={2} ellipsizeMode="tail">{stepData.desc}</Text>
 
                         <View style={s.wtFooter}>
-                            {/* Step Counter (1 / 5) for instant position clarity */}
-                            <View style={s.wtStepCounter}>
-                                <Text style={s.wtStepCounterText}>
-                                    {activeStep + 1} / {steps.length}
-                                </Text>
+                            {/* Modern Progress Dots (● ○ ○ ○) instead of text fractions */}
+                            <View style={s.wtDotsRow} accessibilityLabel={`Step ${activeStep + 1} of ${steps.length}`}>
+                                {steps.map((_, idx) => (
+                                    <View
+                                        key={idx}
+                                        style={[
+                                            s.wtDot,
+                                            activeStep === idx ? s.wtDotActive : s.wtDotInactive,
+                                        ]}
+                                    />
+                                ))}
                             </View>
 
-                            {/* Vibrant Primary Action Button */}
-                            <Pressable style={s.wtNextBtn} onPress={handleNext} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                            {/* Compact Action Button */}
+                            <Pressable
+                                style={s.wtNextBtn}
+                                onPress={handleNext}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                accessibilityRole="button"
+                                accessibilityLabel={activeStep === steps.length - 1 ? 'Finish tour' : 'Next step'}
+                            >
                                 <Text style={s.wtNextText}>
                                     {activeStep === steps.length - 1 ? 'Got It' : 'Next'}
                                 </Text>
-                                <ChevronRight size={13} color="#FFF" strokeWidth={2.8} />
+                                <ChevronRight size={12} color="#FFF" strokeWidth={2.8} />
                             </Pressable>
                         </View>
                     </Animated.View>
@@ -495,92 +579,97 @@ const s = StyleSheet.create({
         flex: 1,
     },
     wtOverlayCentered: {
-        justify: 'center',
+        justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        padding: 16,
     },
-    // Pure clean cut-out edge — NO purple glow, NO shadow, NO neon halo
     wtSpotlight: {
         position: 'absolute',
         borderWidth: 1.5,
-        borderColor: 'rgba(255, 255, 255, 0.25)',
+        borderColor: 'rgba(255, 255, 255, 0.3)',
         borderStyle: 'solid',
-        borderRadius: 16,
+        borderRadius: 14,
         backgroundColor: 'transparent',
     },
     wtCard: {
         position: 'absolute',
         backgroundColor: '#FFFFFF',
-        borderRadius: 22,
-        padding: 18,
+        borderRadius: 18,
+        padding: 13,
         shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: 8 },
+        shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.14,
-        shadowRadius: 20,
+        shadowRadius: 16,
         elevation: 8,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: 'rgba(226, 232, 240, 0.9)',
     },
     wtCardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 10,
+        marginBottom: 6,
+        gap: 6,
     },
     wtIconWrap: {
-        width: 34,
-        height: 34,
-        borderRadius: 10,
-        backgroundColor: '#F8FAFC',
+        width: 26,
+        height: 26,
+        borderRadius: 8,
+        backgroundColor: '#F3E8FF',
         alignItems: 'center',
-        justify: 'center',
-        marginRight: 10,
+        justifyContent: 'center',
     },
     wtTitle: {
-        fontSize: 15.5,
+        fontSize: 13.5,
         fontWeight: '800',
         color: '#0F172A',
         flex: 1,
     },
     wtSkipBtn: {
-        paddingHorizontal: 6,
-        paddingVertical: 4,
+        paddingHorizontal: 4,
+        paddingVertical: 2,
         backgroundColor: 'transparent',
     },
     wtSkipText: {
-        fontSize: 12.5,
+        fontSize: 11,
         fontWeight: '600',
         color: '#94A3B8',
     },
     wtDesc: {
-        fontSize: 13,
+        fontSize: 11.5,
         fontWeight: '500',
         color: '#475569',
-        lineHeight: 19.5,
-        marginBottom: 16,
+        lineHeight: 16.5,
+        marginBottom: 10,
     },
     wtFooter: {
         flexDirection: 'row',
         alignItems: 'center',
-        justify: 'space-between',
+        justifyContent: 'space-between',
     },
-    wtStepCounter: {
-        backgroundColor: '#F1F5F9',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 10,
+    wtDotsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
     },
-    wtStepCounterText: {
-        fontSize: 11.5,
-        fontWeight: '700',
-        color: '#64748B',
+    wtDot: {
+        height: 5,
+        borderRadius: 2.5,
+    },
+    wtDotActive: {
+        width: 14,
+        backgroundColor: '#7C3AED',
+    },
+    wtDotInactive: {
+        width: 5,
+        backgroundColor: '#CBD5E1',
     },
     wtNextBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 3,
+        gap: 2,
         backgroundColor: '#7C3AED',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 5,
         borderRadius: 12,
         shadowColor: '#7C3AED',
         shadowOffset: { width: 0, height: 2 },
@@ -589,31 +678,31 @@ const s = StyleSheet.create({
         elevation: 2,
     },
     wtNextText: {
-        fontSize: 13,
+        fontSize: 11.5,
         fontWeight: '800',
         color: '#FFF',
     },
     wtCardArrowUp: {
         position: 'absolute',
-        top: -7,
-        width: 14,
-        height: 14,
+        top: -5,
+        width: 10,
+        height: 10,
         backgroundColor: '#FFFFFF',
         borderLeftWidth: 1,
         borderTopWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: 'rgba(226, 232, 240, 0.9)',
         transform: [{ rotate: '45deg' }],
         zIndex: 5,
     },
     wtCardArrowDown: {
         position: 'absolute',
-        bottom: -7,
-        width: 14,
-        height: 14,
+        bottom: -5,
+        width: 10,
+        height: 10,
         backgroundColor: '#FFFFFF',
         borderRightWidth: 1,
         borderBottomWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: 'rgba(226, 232, 240, 0.9)',
         transform: [{ rotate: '45deg' }],
         zIndex: 5,
     },

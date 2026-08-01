@@ -550,15 +550,14 @@ const CircularProgress = ({
 
 // ── Animated Number Counter ─────────────────────────────────────
 const AnimatedNumber = ({ value, style, suffix = "%" }) => {
-  const animValue = useRef(new Animated.Value(0)).current;
-  const [displayValue, setDisplayValue] = useState(0);
+  const animValue = useRef(new Animated.Value(value || 0)).current;
+  const [displayValue, setDisplayValue] = useState(value || 0);
 
   useEffect(() => {
-    animValue.setValue(0);
     Animated.timing(animValue, {
       toValue: value,
-      duration: 1100,
-      easing: Easing.out(Easing.cubic),
+      duration: 300,
+      easing: Easing.out(Easing.quad),
       useNativeDriver: false,
     }).start();
     const listener = animValue.addListener(({ value: v }) =>
@@ -1183,6 +1182,8 @@ function SmartInsightCard({ insights = [], feedback, t, onSetReminder }) {
 
   const currentItem = items[activeIdx] || items[0];
 
+  const isActionable = currentItem.text.includes("reminder") || currentItem.text.includes("doses");
+
   return (
     <View
       {...panResponder.panHandlers}
@@ -1192,6 +1193,7 @@ function SmartInsightCard({ insights = [], feedback, t, onSetReminder }) {
         borderWidth: 1,
         borderColor: "rgba(124, 58, 237, 0.12)",
         padding: 16,
+        minHeight: 120,
         marginBottom: 16,
         shadowColor: "#7C3AED",
         shadowOffset: { width: 0, height: 4 },
@@ -1255,45 +1257,58 @@ function SmartInsightCard({ insights = [], feedback, t, onSetReminder }) {
         )}
       </View>
 
-      {/* Main Text Content */}
-      <Text
-        style={{
-          fontSize: 13,
-          fontWeight: "600",
-          color: "#1E293B",
-          lineHeight: 19,
-        }}
-      >
-        {currentItem.text}
-      </Text>
+      {/* Main Text Content — flex so CTA stays at bottom */}
+      <View style={{ flex: 1, justifyContent: "space-between" }}>
+        <Text
+          style={{
+            fontSize: 13,
+            fontWeight: "600",
+            color: "#1E293B",
+            lineHeight: 19,
+          }}
+        >
+          {currentItem.text}
+        </Text>
 
-      {/* Optional CTA Button */}
-      {(currentItem.text.includes("reminder") || currentItem.text.includes("doses")) && (
+        {/* CTA Button — always rendered for consistent card height */}
         <Pressable
           style={{
             marginTop: 12,
             alignSelf: "flex-start",
-            backgroundColor: "#7C3AED",
+            backgroundColor: isActionable ? "#7C3AED" : "#F3E8FF",
             paddingHorizontal: 14,
             paddingVertical: 7,
             borderRadius: 12,
-            shadowColor: "#7C3AED",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.2,
-            shadowRadius: 4,
-            elevation: 2,
+            ...(isActionable
+              ? {
+                  shadowColor: "#7C3AED",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }
+              : {}),
           }}
           onPress={() => {
-            if (onSetReminder) {
+            if (isActionable && onSetReminder) {
               onSetReminder(currentItem);
             }
+            // Non-actionable slides: could navigate to chatbot, but for now just visual consistency
           }}
         >
-          <Text style={{ fontSize: 11.5, fontWeight: "800", color: "#FFFFFF" }}>
-            {t("adherence.set_reminder", { defaultValue: "Set Reminder" })}
+          <Text
+            style={{
+              fontSize: 11.5,
+              fontWeight: "800",
+              color: isActionable ? "#FFFFFF" : "#7C3AED",
+            }}
+          >
+            {isActionable
+              ? t("adherence.set_reminder", { defaultValue: "Set Reminder" })
+              : t("adherence.ask_ai_coach", { defaultValue: "Ask AI Coach" })}
           </Text>
         </Pressable>
-      )}
+      </View>
     </View>
   );
 }
@@ -1389,6 +1404,7 @@ export default function AdherenceScreen({ navigation }) {
   const { t } = useTranslation();
   const adherenceDetails = usePatientStore((s) => s.adherenceDetails);
   const adherenceRecap = usePatientStore((s) => s.adherenceRecap);
+  const adherenceRecaps = usePatientStore((s) => s.adherenceRecaps);
   const fetchAdherenceDetails = usePatientStore((s) => s.fetchAdherenceDetails);
   const fetchAdherenceRecap = usePatientStore((s) => s.fetchAdherenceRecap);
 
@@ -1516,7 +1532,6 @@ export default function AdherenceScreen({ navigation }) {
     const cached = usePatientStore.getState().adherenceRecaps?.[tab];
     if (!cached) {
       setRecapLoading(true);
-      usePatientStore.setState({ adherenceRecap: null });
     }
     await fetchAdherenceRecap(tab);
     setRecapLoading(false);
@@ -1565,7 +1580,16 @@ export default function AdherenceScreen({ navigation }) {
   const streak = data.streak || 0;
   const weeklyTrend = data.weekly_trend || [];
 
-  const feedback = getFeedbackMessage(score.monthly, momentum, t);
+  const activeTabRate =
+    adherenceRecaps?.[activeRecapTab]?.adherence_rate ??
+    (adherenceRecap?.period === activeRecapTab ? adherenceRecap?.adherence_rate : null);
+
+  const heroScore =
+    activeTabRate ??
+    (activeRecapTab === "weekly"
+      ? score.weekly
+      : score.monthly);
+  const feedback = getFeedbackMessage(heroScore, momentum, t);
   const levelColor = LEVEL_COLORS[level.key] || C.light;
 
   const MomentumIcon =
@@ -1586,13 +1610,6 @@ export default function AdherenceScreen({ navigation }) {
       : momentum === "falling"
         ? t("adherence.falling", { defaultValue: "Falling" })
         : t("adherence.steady", { defaultValue: "Steady" });
-
-  const heroScore =
-    activeRecapTab === "weekly"
-      ? score.weekly
-      : activeRecapTab === "yearly"
-        ? (adherenceRecap?.adherence_rate ?? score.monthly)
-        : score.monthly;
   const heroTheme = getHeroTheme(heroScore);
   const ringColor = heroTheme.ringColor;
 
@@ -1931,7 +1948,7 @@ export default function AdherenceScreen({ navigation }) {
                           {t("adherence.score", { defaultValue: "Score" })}
                         </Text>
                         <AnimatedNumber
-                          value={adherenceRecap?.adherence_rate ?? score.weekly}
+                          value={heroScore}
                           style={styles.heroStatValue}
                         />
                       </View>
