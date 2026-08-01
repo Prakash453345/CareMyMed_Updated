@@ -20,6 +20,7 @@ import {
     UIManager,
 } from 'react-native';
 import { X, Save, AlertTriangle } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius, motion } from '../../theme';
 import ScalePressable from './ScalePressable';
 
@@ -93,11 +94,23 @@ const PremiumFormModal = ({
     centered = false,
     icon,
 }) => {
+    let insets = { top: 0, bottom: 0 };
+    try {
+        insets = useSafeAreaInsets();
+    } catch (e) {
+        // Safe fallback if called outside SafeAreaProvider
+    }
+
     const slideAnim = useRef(new Animated.Value(0)).current;
     const backdropAnim = useRef(new Animated.Value(0)).current;
     const [keyboardHeight, setKeyboardHeight] = useState(0);
     const panY = useRef(new Animated.Value(0)).current;
     const wasVisibleRef = useRef(false);
+
+    const FOOTER_HEIGHT = 52;
+    const dynamicScrollPadding = onSave
+        ? FOOTER_HEIGHT + (insets?.bottom || 0) + (keyboardHeight > 0 ? 36 : 28)
+        : 32;
 
     useEffect(() => {
         if (visible) {
@@ -339,7 +352,7 @@ const PremiumFormModal = ({
                             style={{ flex: 1 }}
                             contentContainerStyle={[
                                 styles.scrollContent,
-                                keyboardHeight > 0 && { paddingBottom: 32 },
+                                { paddingBottom: dynamicScrollPadding },
                             ]}
                             showsVerticalScrollIndicator={false}
                             keyboardShouldPersistTaps="handled"
