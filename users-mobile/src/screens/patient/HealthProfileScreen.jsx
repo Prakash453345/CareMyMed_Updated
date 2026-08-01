@@ -311,19 +311,6 @@ const getConsistencyStyle = (score) => {
   return { label: "Limited Tracking", color: "#64748B" };
 };
 
-const cmToFtIn = (cm) => {
-  if (!cm) return "";
-  const parsed = parseFloat(cm);
-  if (isNaN(parsed) || parsed <= 0) return "";
-  const realInches = parsed / 2.54;
-  const ft = Math.floor(realInches / 12);
-  const inch = Math.round(realInches % 12);
-  if (inch === 12) {
-    return `${ft + 1} ft 0 in`;
-  }
-  return `${ft} ft ${inch} in`;
-};
-
 const TactileWheelPicker = ({
   data,
   selectedValue,

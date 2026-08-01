@@ -106,7 +106,9 @@
       "reactNativeDirectoryCheck": {
         "exclude": [
           "react-native-health",
-          "react-native-encrypted-storage"
+          "react-native-encrypted-storage",
+          "expo-health-connect",
+          "expo-android-usagestats"
         ]
       }
     }
