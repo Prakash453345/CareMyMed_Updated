@@ -3056,140 +3056,397 @@ export default function AdherenceScreen({ navigation }) {
               style={styles.modalBackdrop}
               onPress={() => setSelectedDay(null)}
             />
-            <View style={styles.bottomSheet}>
-              <View style={styles.sheetHandle} />
+            <View
+              style={[
+                styles.bottomSheet,
+                {
+                  borderTopLeftRadius: 32,
+                  borderTopRightRadius: 32,
+                  backgroundColor: "#FFFFFF",
+                  paddingHorizontal: 20,
+                  paddingBottom: 34,
+                },
+              ]}
+            >
+              {/* Top Handle & Close Action */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  paddingTop: 12,
+                  paddingBottom: 8,
+                }}
+              >
+                <View style={{ width: 32 }} />
+                <View
+                  style={{
+                    width: 42,
+                    height: 5,
+                    borderRadius: 3,
+                    backgroundColor: "#CBD5E1",
+                  }}
+                />
+                <Pressable
+                  onPress={() => setSelectedDay(null)}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: "#F1F5F9",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <X size={18} color="#64748B" />
+                </Pressable>
+              </View>
+
               {selectedDay && (
-                <>
-                  <View style={styles.sheetHeader}>
-                    <View>
-                      <Text style={styles.sheetDate}>
+                <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+                  {/* Sheet Header */}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "flex-start",
+                      justifyContent: "space-between",
+                      marginBottom: 18,
+                      marginTop: 4,
+                    }}
+                  >
+                    <View style={{ flex: 1, paddingRight: 10 }}>
+                      <Text
+                        style={{
+                          fontSize: 20,
+                          fontWeight: "900",
+                          color: "#0F172A",
+                          letterSpacing: -0.4,
+                        }}
+                      >
                         {format(parseISO(selectedDay.date), "EEEE, MMMM do")}
                       </Text>
-                      <Text style={styles.sheetYear}>
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          fontWeight: "600",
+                          color: "#64748B",
+                          marginTop: 2,
+                        }}
+                      >
                         {format(parseISO(selectedDay.date), "yyyy")}
                       </Text>
                     </View>
-                    <View
-                      style={[
-                        styles.sheetBadge,
-                        {
-                          backgroundColor:
-                            STATUS_COLORS[selectedDay.status] + "22",
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.sheetBadgeText,
-                          { color: STATUS_COLORS[selectedDay.status] },
-                        ]}
-                      >
-                        {selectedDay.rate}% adherence
-                      </Text>
-                    </View>
-                  </View>
 
-                  {selectedDay.medicines && selectedDay.medicines.length > 0 ? (
-                    <View style={{ marginBottom: 16 }}>
-                      <Text style={styles.sheetSectionLabel}>
-                        {t("adherence.medications_label", {
-                          defaultValue: "MEDICATIONS",
-                        })}
-                      </Text>
-                      {selectedDay.medicines.map((med, idx) => (
+                    {/* Adherence Status Badge Pill */}
+                    {(() => {
+                      const rate = selectedDay.rate || 0;
+                      const isComplete = rate >= 90;
+                      const isPartial = rate >= 40 && rate < 90;
+                      const bg = isComplete
+                        ? "#ECFDF5"
+                        : isPartial
+                          ? "#FFFBEB"
+                          : "#FFF1F2";
+                      const border = isComplete
+                        ? "#A7F3D0"
+                        : isPartial
+                          ? "#FDE68A"
+                          : "#FECDD3";
+                      const textClr = isComplete
+                        ? "#059669"
+                        : isPartial
+                          ? "#D97706"
+                          : "#E11D48";
+                      const IconComp = isComplete
+                        ? CheckCircle2
+                        : isPartial
+                          ? Zap
+                          : Icons.AlertCircle || X;
+
+                      return (
                         <View
-                          key={idx}
                           style={{
                             flexDirection: "row",
                             alignItems: "center",
-                            justifyContent: "space-between",
-                            backgroundColor: med.taken ? "#FAF5FF" : "#F8FAFC",
-                            borderRadius: 16,
-                            padding: 12,
-                            marginBottom: 10,
+                            gap: 5,
+                            backgroundColor: bg,
                             borderWidth: 1,
-                            borderColor: med.taken ? "#F3E8FF" : "#E2E8F0",
-                            shadowColor: "#7C3AED",
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: med.taken ? 0.03 : 0,
-                            shadowRadius: 6,
-                            elevation: 1,
+                            borderColor: border,
+                            borderRadius: 20,
+                            paddingHorizontal: 12,
+                            paddingVertical: 6,
                           }}
                         >
+                          <IconComp size={14} color={textClr} />
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              fontWeight: "800",
+                              color: textClr,
+                            }}
+                          >
+                            {rate}% adherence
+                          </Text>
+                        </View>
+                      );
+                    })()}
+                  </View>
+
+                  {/* Summary Bar */}
+                  {selectedDay.medicines && selectedDay.medicines.length > 0 && (
+                    <View
+                      style={{
+                        backgroundColor: "#F8FAFC",
+                        borderRadius: 16,
+                        borderWidth: 1,
+                        borderColor: "#E2E8F0",
+                        padding: 12,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-around",
+                        marginBottom: 20,
+                      }}
+                    >
+                      <View style={{ alignItems: "center" }}>
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: "700",
+                            color: "#64748B",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Doses Taken
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 16,
+                            fontWeight: "900",
+                            color: "#0F172A",
+                            marginTop: 2,
+                          }}
+                        >
+                          {selectedDay.medicines.filter((m) => m.taken).length} /{" "}
+                          {selectedDay.medicines.length}
+                        </Text>
+                      </View>
+                      <View
+                        style={{
+                          width: 1,
+                          height: 24,
+                          backgroundColor: "#CBD5E1",
+                        }}
+                      />
+                      <View style={{ alignItems: "center" }}>
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: "700",
+                            color: "#64748B",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Status
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            fontWeight: "800",
+                            color:
+                              selectedDay.rate >= 90
+                                ? "#059669"
+                                : selectedDay.rate >= 40
+                                  ? "#D97706"
+                                  : "#E11D48",
+                            marginTop: 2,
+                          }}
+                        >
+                          {selectedDay.rate >= 90
+                            ? "Perfect Day ✨"
+                            : selectedDay.rate >= 40
+                              ? "Partial"
+                              : "Missed"}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Medications List */}
+                  {selectedDay.medicines && selectedDay.medicines.length > 0 ? (
+                    <View style={{ marginBottom: 20 }}>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: "800",
+                          color: "#64748B",
+                          letterSpacing: 0.8,
+                          textTransform: "uppercase",
+                          marginBottom: 10,
+                        }}
+                      >
+                        {t("adherence.medications_label", {
+                          defaultValue: "SCHEDULED MEDICATIONS",
+                        })}
+                      </Text>
+                      {selectedDay.medicines.map((med, idx) => {
+                        const timeSlot = (med.time || "morning").toLowerCase();
+                        const timeEmoji =
+                          timeSlot === "morning"
+                            ? "🌅 Morning"
+                            : timeSlot === "afternoon"
+                              ? "☀️ Afternoon"
+                              : timeSlot === "night" || timeSlot === "evening"
+                                ? "🌙 Night"
+                                : `⏰ ${med.time}`;
+
+                        const cardBg = med.taken ? "#FAF5FF" : "#FFF1F2";
+                        const cardBorder = med.taken
+                          ? "rgba(124, 58, 237, 0.16)"
+                          : "rgba(244, 63, 94, 0.18)";
+                        const indicatorColor = med.taken ? "#10B981" : "#F43F5E";
+
+                        return (
                           <View
+                            key={idx}
                             style={{
                               flexDirection: "row",
                               alignItems: "center",
-                              flex: 1,
+                              justifyContent: "space-between",
+                              backgroundColor: cardBg,
+                              borderRadius: 18,
+                              padding: 14,
+                              marginBottom: 10,
+                              borderWidth: 1,
+                              borderColor: cardBorder,
+                              position: "relative",
+                              overflow: "hidden",
                             }}
                           >
+                            {/* Left Accent Indicator Bar */}
                             <View
                               style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: 16,
-                                backgroundColor: med.taken
-                                  ? "#ECFDF5"
-                                  : "#FEF2F2",
+                                position: "absolute",
+                                left: 0,
+                                top: 0,
+                                bottom: 0,
+                                width: 4.5,
+                                backgroundColor: indicatorColor,
+                              }}
+                            />
+
+                            <View
+                              style={{
+                                flexDirection: "row",
                                 alignItems: "center",
-                                justifyContent: "center",
+                                flex: 1,
+                                marginLeft: 6,
                               }}
                             >
-                              {med.taken ? (
-                                <CheckCircle2 size={16} color="#10B981" />
-                              ) : (
-                                <X size={16} color="#EF4444" />
-                              )}
-                            </View>
-                            <View style={{ flex: 1, marginHorizontal: 12 }}>
-                              <Text
+                              <View
                                 style={{
-                                  fontSize: 15,
-                                  fontWeight: "700",
-                                  color: med.taken ? "#0F172A" : "#64748B",
-                                  textDecorationLine: med.taken
-                                    ? "none"
-                                    : "line-through",
+                                  width: 36,
+                                  height: 36,
+                                  borderRadius: 18,
+                                  backgroundColor: med.taken
+                                    ? "#ECFDF5"
+                                    : "#FFE4E6",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  borderWidth: 1,
+                                  borderColor: med.taken
+                                    ? "#A7F3D0"
+                                    : "#FECDD3",
                                 }}
                               >
-                                {med.name}
+                                {med.taken ? (
+                                  <CheckCircle2 size={18} color="#10B981" />
+                                ) : (
+                                  <X size={18} color="#F43F5E" />
+                                )}
+                              </View>
+
+                              <View style={{ flex: 1, marginLeft: 12 }}>
+                                <Text
+                                  style={{
+                                    fontSize: 15,
+                                    fontWeight: "800",
+                                    color: "#0F172A",
+                                  }}
+                                >
+                                  {med.name}
+                                </Text>
+                                <Text
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: "600",
+                                    color: med.taken ? "#059669" : "#E11D48",
+                                    marginTop: 2,
+                                  }}
+                                >
+                                  {med.taken
+                                    ? "Dose Logged"
+                                    : "Dose Missed"}
+                                </Text>
+                              </View>
+                            </View>
+
+                            {/* Time Badge */}
+                            <View
+                              style={{
+                                backgroundColor: med.taken
+                                  ? "#F5F3FF"
+                                  : "#FFF",
+                                paddingHorizontal: 10,
+                                paddingVertical: 5,
+                                borderRadius: 10,
+                                borderWidth: 1,
+                                borderColor: med.taken
+                                  ? "rgba(124, 58, 237, 0.12)"
+                                  : "rgba(244, 63, 94, 0.12)",
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: "800",
+                                  color: med.taken ? "#7C3AED" : "#E11D48",
+                                }}
+                              >
+                                {timeEmoji}
                               </Text>
                             </View>
                           </View>
-                          <View
-                            style={{
-                              backgroundColor: med.taken
-                                ? "#F5F3FF"
-                                : "#F1F5F9",
-                              paddingHorizontal: 10,
-                              paddingVertical: 5,
-                              borderRadius: 8,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 10,
-                                fontWeight: "800",
-                                color: med.taken ? "#7C3AED" : "#64748B",
-                                textTransform: "uppercase",
-                              }}
-                            >
-                              {med.time}
-                            </Text>
-                          </View>
-                        </View>
-                      ))}
+                        );
+                      })}
                     </View>
                   ) : (
-                    <View style={styles.sheetEmptyBox}>
-                      <Text style={styles.sheetEmptyIcon}>
+                    <View
+                      style={{
+                        backgroundColor: "#F8FAFC",
+                        borderRadius: 20,
+                        borderWidth: 1,
+                        borderColor: "#E2E8F0",
+                        padding: 24,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginBottom: 20,
+                      }}
+                    >
+                      <Text style={{ fontSize: 36, marginBottom: 8 }}>
                         {selectedDay._noEntry && selectedDay._isPast
                           ? "😴"
                           : selectedDay._noEntry
                             ? "📅"
                             : "💊"}
                       </Text>
-                      <Text style={styles.sheetEmptyTitle}>
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          fontWeight: "800",
+                          color: "#0F172A",
+                          textAlign: "center",
+                        }}
+                      >
                         {selectedDay._noEntry && selectedDay._isPast
                           ? t("adherence.no_log_past", {
                               defaultValue: "No records for this day",
@@ -3203,7 +3460,14 @@ export default function AdherenceScreen({ navigation }) {
                                   "No medications scheduled for this day.",
                               })}
                       </Text>
-                      <Text style={styles.sheetEmptyDesc}>
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: "#64748B",
+                          textAlign: "center",
+                          marginTop: 4,
+                        }}
+                      >
                         {selectedDay._noEntry && selectedDay._isPast
                           ? t("adherence.no_log_past_desc", {
                               defaultValue:
@@ -3217,13 +3481,18 @@ export default function AdherenceScreen({ navigation }) {
                     </View>
                   )}
 
+                  {/* Vitals Summary Card */}
                   {selectedDay.vitals && (
-                    <View style={styles.sheetVitals}>
-                      <Text style={styles.sheetSectionLabel}>
-                        {t("adherence.vitals_logged_label", {
-                          defaultValue: "VITALS LOGGED",
-                        })}
-                      </Text>
+                    <View
+                      style={{
+                        backgroundColor: "#F0F9FF",
+                        borderRadius: 20,
+                        borderWidth: 1,
+                        borderColor: "#BAE6FD",
+                        padding: 16,
+                        marginBottom: 16,
+                      }}
+                    >
                       <View
                         style={{
                           flexDirection: "row",
