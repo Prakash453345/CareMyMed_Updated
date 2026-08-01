@@ -670,7 +670,7 @@ function QuickActionsDashboard({ onPress, userRole, patientName }) {
         <View style={styles.actionsDashboard}>
             <View style={styles.actionsHeader}>
                 <Sparkles size={16} color="#6366F1" strokeWidth={2.5} />
-                <Text style={styles.actionsHeaderText}>How can I help you today?</Text>
+                <Text style={styles.actionsHeaderText}>Suggested Questions</Text>
             </View>
             
             <View style={styles.actionsGrid}>
@@ -681,8 +681,8 @@ function QuickActionsDashboard({ onPress, userRole, patientName }) {
                             <Calendar size={18} color="#EA580C" />
                         </View>
                         <View style={styles.actionCardContent}>
-                            <Text style={styles.actionCardTitle}>{isCompanion ? `What should ${patientShortName} do today?` : 'What should I do today?'}</Text>
-                            <Text style={styles.actionCardSub}>{isCompanion ? "See patient's plan" : "See today's plan"}</Text>
+                            <Text style={styles.actionCardTitle}>{isCompanion ? `Today's Plan` : 'Today\'s Plan'}</Text>
+                            <Text style={styles.actionCardSub}>{isCompanion ? "See patient's schedule" : "See today's schedule"}</Text>
                         </View>
                     </Pressable>
                     
@@ -691,8 +691,8 @@ function QuickActionsDashboard({ onPress, userRole, patientName }) {
                             <TrendingUp size={18} color="#059669" />
                         </View>
                         <View style={styles.actionCardContent}>
-                            <Text style={styles.actionCardTitle}>{isCompanion ? `${patientShortName}'s Weekly Summary` : 'Weekly Health Summary'}</Text>
-                            <Text style={styles.actionCardSub}>{isCompanion ? "Patient's progress this week" : "Your progress this week"}</Text>
+                            <Text style={styles.actionCardTitle}>{isCompanion ? `Weekly Summary` : 'Weekly Summary'}</Text>
+                            <Text style={styles.actionCardSub}>{isCompanion ? "Progress this week" : "Your progress this week"}</Text>
                         </View>
                     </Pressable>
                 </View>
@@ -704,47 +704,29 @@ function QuickActionsDashboard({ onPress, userRole, patientName }) {
                             <Pill size={18} color="#4F46E5" />
                         </View>
                         <View style={styles.actionCardContent}>
-                            <Text style={styles.actionCardTitle}>{isCompanion ? `${patientShortName}'s meds list` : 'My medications list'}</Text>
-                            <Text style={styles.actionCardSub}>{isCompanion ? "View patient's meds" : "View all your meds"}</Text>
+                            <Text style={styles.actionCardTitle}>{isCompanion ? `Medications List` : 'Medications'}</Text>
+                            <Text style={styles.actionCardSub}>{isCompanion ? "View prescribed meds" : "View active doses"}</Text>
                         </View>
                     </Pressable>
                     
-                    <Pressable style={styles.actionGridCard} onPress={() => onPress(isCompanion ? `📈 ${patientShortName}'s adherence streak` : '📈 My adherence streak')}>
-                        <View style={[styles.actionIconBox, { backgroundColor: '#FFF1F2' }]}>
-                            <Flame size={18} color="#E11D48" />
+                    <Pressable style={styles.actionGridCard} onPress={() => onPress(isCompanion ? `🩺 View ${patientShortName}'s vitals status` : '🩺 View vitals status')}>
+                        <View style={[styles.actionIconBox, { backgroundColor: '#F0FDF4' }]}>
+                            <Activity size={18} color="#16A34A" />
                         </View>
                         <View style={styles.actionCardContent}>
-                            <Text style={styles.actionCardTitle}>{isCompanion ? `${patientShortName}'s adherence streak` : 'My adherence streak'}</Text>
-                            <Text style={styles.actionCardSub}>{isCompanion ? "Track patient's consistency" : "Track your consistency"}</Text>
+                            <Text style={styles.actionCardTitle}>{isCompanion ? `Vitals Status` : 'Vitals Status'}</Text>
+                            <Text style={styles.actionCardSub}>Check BP, HR & trends</Text>
                         </View>
                     </Pressable>
                 </View>
             </View>
             
-            {/* Center Card 5 */}
-            <Pressable style={styles.actionCardCenter} onPress={() => onPress(isCompanion ? `🩺 View ${patientShortName}'s vitals status` : '🩺 View vitals status')}>
-                <View style={[styles.actionIconBox, { backgroundColor: '#F0FDF4' }]}>
-                    <Activity size={18} color="#16A34A" />
-                </View>
-                <View style={styles.actionCardContent}>
-                    <Text style={styles.actionCardTitle}>{isCompanion ? `View ${patientShortName}'s vitals status` : 'View vitals status'}</Text>
-                    <Text style={styles.actionCardSub}>Check BP, HR & more</Text>
-                </View>
-            </Pressable>
-            
-            {/* Privacy / Security Banner */}
-            <View style={styles.privacyBanner}>
-                <View style={styles.privacyIconBox}>
-                    <Shield size={18} color="#4F46E5" />
-                </View>
-                <Text style={styles.privacyText}>
-                    {isCompanion 
-                        ? `Patient health data is private, secure, and used only to support their care.`
-                        : `Your health data is private, secure, and used only to support your care.`}
+            {/* Subtle Privacy Footnote */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 14 }}>
+                <Shield size={12} color="#94A3B8" />
+                <Text style={{ fontSize: 11, color: '#94A3B8', fontWeight: '500' }}>
+                    {isCompanion ? "Patient health data is encrypted and private." : "Your health data is encrypted and private."}
                 </Text>
-                <Pressable style={styles.privacyLearnBtn}>
-                    <Text style={styles.privacyLearnText}>Learn more</Text>
-                </Pressable>
             </View>
         </View>
     );
@@ -1754,21 +1736,23 @@ export default function ChatbotScreen({ navigation, route }) {
                     contentContainerStyle={styles.messageList}
                     showsVerticalScrollIndicator={false}
                     ListHeaderComponent={
-                        isCompanion && isCompanionLoading ? (
-                            <View style={{ padding: 20, alignItems: 'center' }}>
-                                <ActivityIndicator size="small" color="#6366F1" />
-                            </View>
-                        ) : (
-                            <WelcomeSnapshotCard
-                                firstName={isCompanion ? (displayName || 'there') : (patient?.first_name || displayName || 'there')}
-                                medsCount={medsCount}
-                                takenCount={takenCount}
-                                vitals={activeVitals}
-                                streak={activeStreak}
-                                userRole={userRole}
-                                patientName={companionData?.patient?.name}
-                            />
-                        )
+                        !messages.some(m => m.isUser) ? (
+                            isCompanion && isCompanionLoading ? (
+                                <View style={{ padding: 20, alignItems: 'center' }}>
+                                    <ActivityIndicator size="small" color="#6366F1" />
+                                </View>
+                            ) : (
+                                <WelcomeSnapshotCard
+                                    firstName={isCompanion ? (displayName || 'there') : (patient?.first_name || displayName || 'there')}
+                                    medsCount={medsCount}
+                                    takenCount={takenCount}
+                                    vitals={activeVitals}
+                                    streak={activeStreak}
+                                    userRole={userRole}
+                                    patientName={companionData?.patient?.name}
+                                />
+                            )
+                        ) : null
                     }
                     ListFooterComponent={
                         <>
@@ -1780,17 +1764,9 @@ export default function ChatbotScreen({ navigation, route }) {
                                 />
                             )}
                             {isTyping ? <TypingIndicator stage={typingStage} /> : null}
-                            {!isTyping && messages.some(m => !m.isUser && m.text) ? (
+                            {!isTyping && followUpSuggestions && followUpSuggestions.length > 0 ? (
                                 <View style={styles.followUpContainer}>
-                                    {(followUpSuggestions.length > 0 
-                                        ? followUpSuggestions 
-                                        : [
-                                            '🎤 Explain in simple terms',
-                                            '💊 Which medicine helps?',
-                                            '📈 Show my vitals trend',
-                                            '🩺 What should I ask my doctor?',
-                                          ]
-                                    ).map((chip, idx) => (
+                                    {followUpSuggestions.map((chip, idx) => (
                                         <Pressable
                                             key={idx}
                                             style={({ pressed }) => [
