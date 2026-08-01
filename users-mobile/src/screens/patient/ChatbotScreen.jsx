@@ -24,6 +24,7 @@ import { apiService, handleApiError } from '../../lib/api';
 import AlertManager from '../../utils/AlertManager';
 import { globalChatCache, removeCachedSession } from './ChatHistoryScreen';
 import TabScreenTransition from '../../components/ui/TabScreenTransition';
+import HeroTransition from '../../livingGlass/components/HeroTransition';
 
 const INITIAL_SUGGESTIONS = [
     '📋 What should I do today?',
@@ -1739,10 +1740,12 @@ export default function ChatbotScreen({ navigation, route }) {
                     <ArrowLeft size={22} color="#0F172A" strokeWidth={2.5} />
                 </Pressable>
                 <View style={styles.headerCenter}>
-                    <Image 
-                        source={require('../../../assets/doctor_mascot.jpg')} 
-                        style={styles.headerMascotAvatar} 
-                    />
+                    <HeroTransition id="chatbot_header_avatar">
+                        <Image 
+                            source={require('../../../assets/doctor_mascot.jpg')} 
+                            style={styles.headerMascotAvatar} 
+                        />
+                    </HeroTransition>
                     <View>
                         <Text style={styles.headerTitle}>Care Assistant</Text>
                         <View style={styles.onlineRow}>

@@ -72,6 +72,7 @@ import ChatFAB from "../components/ui/ChatFAB";
 import HealthCopilotScreen from "../screens/patient/HealthCopilotScreen";
 import InterventionCenterScreen from "../screens/app/InterventionCenterScreen";
 import BottomSheetProvider from "../components/ui/BottomSheetProvider";
+import LivingGlassProvider from "../livingGlass/runtime/LivingGlassRuntime";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -529,14 +530,16 @@ export default function AppNavigator({ fontsLoaded }) {
     }
 
     return (
-        <BottomSheetProvider>
-            <View style={{ flex: 1 }}>
-                <GlobalSyncBanner />
-                <MainAppStack />
-                <CustomAlert ref={alertRef} />
-                <AchievementCelebration />
-            </View>
-        </BottomSheetProvider>
+        <LivingGlassProvider>
+            <BottomSheetProvider>
+                <View style={{ flex: 1 }}>
+                    <GlobalSyncBanner />
+                    <MainAppStack />
+                    <CustomAlert ref={alertRef} />
+                    <AchievementCelebration />
+                </View>
+            </BottomSheetProvider>
+        </LivingGlassProvider>
     );
 }
 
