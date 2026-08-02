@@ -2996,7 +2996,7 @@ export default function AdherenceScreen({ navigation }) {
                             flexDirection: "row",
                             flexWrap: "wrap",
                             justifyContent: catAchievements.length === 1 ? "center" : "space-between",
-                            gap: 12,
+                            rowGap: 12,
                             alignItems: "flex-start",
                           }}
                         >
