@@ -481,7 +481,7 @@ export default function SettingsScreen({ navigation }) {
                     onClose={() => setCpModalVisible(false)}
                     title="Change Password"
                     subtitle="Enter current and new access credentials"
-                    icon={Lock}
+                    icon={<Lock size={20} color="#7C3AED" strokeWidth={2.4} />}
                     iconColor="#7C3AED"
                     iconBg="#F5F3FF"
                     onSave={handleChangePassword}
@@ -517,7 +517,7 @@ export default function SettingsScreen({ navigation }) {
                     onClose={() => setLanguageModalVisible(false)}
                     title="Select Language"
                     subtitle="Choose preferred language for app interface"
-                    icon={Globe}
+                    icon={<Globe size={20} color="#16A34A" strokeWidth={2.4} />}
                     iconColor="#16A34A"
                     iconBg="#F0FDF4"
                     showFooter={false}

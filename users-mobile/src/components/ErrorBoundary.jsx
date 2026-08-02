@@ -23,10 +23,7 @@ export default class ErrorBoundary extends React.Component {
 
     componentDidCatch(error, errorInfo) {
         SplashScreen.hideAsync().catch(() => { });
-        // Production: send to Sentry/Crashlytics
-        // Sentry.captureException(error, { extra: errorInfo });
         console.error('[ErrorBoundary] Caught:', error?.message);
-        // Never log full stack or user data
     }
 
     handleReset = () => {
@@ -47,6 +44,46 @@ export default class ErrorBoundary extends React.Component {
                     <Pressable style={styles.button} onPress={this.handleReset}>
                         <RefreshCw size={18} color="#FFFFFF" />
                         <Text style={styles.buttonText}>Try Again</Text>
+                    </Pressable>
+                </View>
+            );
+        }
+        return this.props.children;
+    }
+}
+
+export class ContainerErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error, errorInfo) {
+        console.error('[ContainerErrorBoundary] Caught in container:', error?.message);
+    }
+
+    handleReset = () => {
+        this.setState({ hasError: false, error: null });
+    };
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <View style={[styles.containerCompact, this.props.style]}>
+                    <AlertTriangle size={28} color="#EF4444" style={{ marginBottom: 8 }} />
+                    <Text style={styles.titleCompact}>
+                        {this.props.title || 'Section Encountered an Issue'}
+                    </Text>
+                    <Text style={styles.subtitleCompact}>
+                        {this.props.message || 'An unexpected error occurred loading this section. The rest of your app remains active.'}
+                    </Text>
+                    <Pressable style={styles.buttonCompact} onPress={this.handleReset}>
+                        <RefreshCw size={14} color="#FFFFFF" />
+                        <Text style={styles.buttonTextCompact}>Try Again</Text>
                     </Pressable>
                 </View>
             );
@@ -105,6 +142,48 @@ const styles = StyleSheet.create({
     buttonText: {
         color: '#FFFFFF',
         fontSize: 16,
+        fontWeight: '700',
+    },
+
+    // Compact Container Fallback
+    containerCompact: {
+        padding: 24,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginVertical: 12,
+    },
+    titleCompact: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#0F172A',
+        marginBottom: 4,
+        textAlign: 'center',
+    },
+    subtitleCompact: {
+        fontSize: 12.5,
+        fontWeight: '500',
+        color: '#64748B',
+        textAlign: 'center',
+        lineHeight: 18,
+        marginBottom: 14,
+        paddingHorizontal: 10,
+    },
+    buttonCompact: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#7C3AED',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 12,
+    },
+    buttonTextCompact: {
+        color: '#FFFFFF',
+        fontSize: 13,
         fontWeight: '700',
     },
 });

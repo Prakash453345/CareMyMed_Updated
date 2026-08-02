@@ -258,6 +258,16 @@ const PremiumFormModal = ({
         panY
     );
 
+    const renderIcon = () => {
+        if (!icon) return null;
+        if (React.isValidElement(icon)) return icon;
+        if (typeof icon === 'function' || typeof icon === 'object') {
+            const IconComp = icon;
+            return <IconComp size={20} color={iconColor} strokeWidth={2.5} />;
+        }
+        return null;
+    };
+
     return (
         <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose} statusBarTranslucent>
             {/* Backdrop */}
@@ -302,104 +312,104 @@ const PremiumFormModal = ({
                     centered && styles.sheetContainerCentered,
                     keyboardHeight > 0 && { maxHeight: Math.max(280, SCREEN_HEIGHT - keyboardHeight - (Platform.OS === 'android' ? 30 : 50)) }
                 ]}>
-                    <KeyboardAvoidingView
-                        style={{ flex: 1 }}
-                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                    >
-                        {/* Top drag handle indicator for bottom sheets */}
-                        {!centered && (
-                            <View {...panResponder.panHandlers} style={styles.handleHitArea}>
-                                <View style={styles.sheetHandle} />
-                            </View>
-                        )}
+                    <ModalContentErrorBoundary>
+                        <KeyboardAvoidingView
+                            style={{ flex: 1 }}
+                            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                        >
+                            {/* Top drag handle indicator for bottom sheets */}
+                            {!centered && (
+                                <View {...panResponder.panHandlers} style={styles.handleHitArea}>
+                                    <View style={styles.sheetHandle} />
+                                </View>
+                            )}
 
-                        {/* Header */}
-                        <View style={[
-                            styles.header,
-                            centered && styles.headerCentered,
-                        ]}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
-                                {icon && (
-                                    <View style={[styles.iconCircle, { backgroundColor: iconBg }]}>
-                                        {icon}
-                                    </View>
-                                )}
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.title} numberOfLines={1}>
-                                        {title}
-                                    </Text>
-                                    {subtitle && (
-                                        <Text style={styles.subtitle} numberOfLines={2}>
-                                            {subtitle}
-                                        </Text>
+                            {/* Header */}
+                            <View style={[
+                                styles.header,
+                                centered && styles.headerCentered,
+                            ]}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
+                                    {icon && (
+                                        <View style={[styles.iconCircle, { backgroundColor: iconBg }]}>
+                                            {renderIcon()}
+                                        </View>
                                     )}
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.title} numberOfLines={1}>
+                                            {title}
+                                        </Text>
+                                        {subtitle && (
+                                            <Text style={styles.subtitle} numberOfLines={2}>
+                                                {subtitle}
+                                            </Text>
+                                        )}
+                                    </View>
+                                </View>
+                                <View style={styles.headerActions}>
+                                    {headerRight}
+                                    <Pressable
+                                        onPress={handleClose}
+                                        style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
+                                        hitSlop={12}
+                                    >
+                                        <X size={18} color="#64748B" strokeWidth={2.4} />
+                                    </Pressable>
                                 </View>
                             </View>
-                            <View style={styles.headerActions}>
-                                {headerRight}
-                                <Pressable
-                                    onPress={handleClose}
-                                    style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
-                                    hitSlop={12}
-                                >
-                                    <X size={18} color="#64748B" strokeWidth={2.4} />
-                                </Pressable>
-                            </View>
-                        </View>
 
-                        {/* Scrollable Form Body */}
-                        <ScrollView
-                            style={{ flex: 1 }}
-                            contentContainerStyle={[
-                                styles.scrollContent,
-                                { paddingBottom: dynamicScrollPadding },
-                            ]}
-                            showsVerticalScrollIndicator={false}
-                            keyboardShouldPersistTaps="handled"
-                            keyboardDismissMode="on-drag"
-                            bounces={true}
-                            nestedScrollEnabled={true}
-                        >
-                            <ModalContentErrorBoundary>
+                            {/* Scrollable Form Body */}
+                            <ScrollView
+                                style={{ flex: 1 }}
+                                contentContainerStyle={[
+                                    styles.scrollContent,
+                                    { paddingBottom: dynamicScrollPadding },
+                                ]}
+                                showsVerticalScrollIndicator={false}
+                                keyboardShouldPersistTaps="handled"
+                                keyboardDismissMode="on-drag"
+                                bounces={true}
+                                nestedScrollEnabled={true}
+                            >
                                 {children}
-                            </ModalContentErrorBoundary>
-                        </ScrollView>
+                            </ScrollView>
 
-                        {/* Sticky Save Button — anchored at sheet bottom with safe keyboard clearance */}
-                        {onSave && (
-                            <View style={[
-                                styles.stickyFooter,
-                                keyboardHeight > 0 && { paddingBottom: 16, paddingTop: 10 }
-                            ]}>
-                                <ScalePressable
-                                    onPress={handleSave}
-                                    disabled={saving || saveDisabled}
-                                    pressScale={0.97}
-                                    hapticType="selection"
-                                    style={{ width: '100%' }}
-                                >
-                                    <LinearGradient
-                                        colors={saveDisabled ? ['#94A3B8', '#94A3B8'] : ['#7C3AED', '#6D28D9']}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 0 }}
-                                        style={[
-                                            styles.saveBtnGradient,
-                                            (saving || saveDisabled) && { opacity: 0.6 }
-                                        ]}
+                            {/* Sticky Save Button — anchored at sheet bottom with safe keyboard clearance */}
+                            {onSave && (
+                                <View style={[
+                                    styles.stickyFooter,
+                                    keyboardHeight > 0 && { paddingBottom: 16, paddingTop: 10 }
+                                ]}>
+                                    <ScalePressable
+                                        onPress={handleSave}
+                                        disabled={saving || saveDisabled}
+                                        pressScale={0.97}
+                                        hapticType="selection"
+                                        style={{ width: '100%' }}
                                     >
-                                        {saving ? (
-                                            <ActivityIndicator color="#FFFFFF" size="small" />
-                                        ) : (
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                                                <Save size={18} color="#FFFFFF" strokeWidth={2.5} />
-                                                <Text style={styles.saveBtnText}>{saveText}</Text>
-                                            </View>
-                                        )}
-                                    </LinearGradient>
-                                </ScalePressable>
-                            </View>
-                        )}
-                    </KeyboardAvoidingView>
+                                        <LinearGradient
+                                            colors={saveDisabled ? ['#94A3B8', '#94A3B8'] : ['#7C3AED', '#6D28D9']}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 0 }}
+                                            style={[
+                                                styles.saveBtnGradient,
+                                                (saving || saveDisabled) && { opacity: 0.6 }
+                                            ]}
+                                        >
+                                            {saving ? (
+                                                <ActivityIndicator color="#FFFFFF" size="small" />
+                                            ) : (
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                                                    <Save size={18} color="#FFFFFF" strokeWidth={2.5} />
+                                                    <Text style={styles.saveBtnText}>{saveText}</Text>
+                                                </View>
+                                            )}
+                                        </LinearGradient>
+                                    </ScalePressable>
+                                </View>
+                            )}
+                        </KeyboardAvoidingView>
+                    </ModalContentErrorBoundary>
                 </View>
               </Animated.View>
             </View>
