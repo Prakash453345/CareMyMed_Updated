@@ -449,7 +449,7 @@ export default function PatientHomeScreen({ navigation }) {
         }),
         icon: Sparkles,
         iconColor: "#A855F7",
-        ref: aiCoachHeaderRef.current ? aiCoachHeaderRef : insightCardRef,
+        ref: aiCoachHeaderRef,
         spotlightPadding: 6,
         visible: true,
       },
@@ -463,7 +463,7 @@ export default function PatientHomeScreen({ navigation }) {
         }),
         icon: Pill,
         iconColor: "#3B82F6",
-        ref: todaysPlanHeaderRef.current ? todaysPlanHeaderRef : medsCardRef,
+        ref: todaysPlanHeaderRef,
         spotlightPadding: 6,
         visible: true,
       },
@@ -477,7 +477,7 @@ export default function PatientHomeScreen({ navigation }) {
         }),
         icon: Heart,
         iconColor: "#EF4444",
-        ref: vitalsHeaderRef.current ? vitalsHeaderRef : vitalsCardRef,
+        ref: vitalsHeaderRef,
         spotlightPadding: 6,
         visible: true,
       },
@@ -2964,7 +2964,7 @@ export default function PatientHomeScreen({ navigation }) {
             <View ref={insightCardRef} collapsable={false}>
               <Animated.View style={[entranceStyle(4), styles.section]}>
               <View style={styles.insightCard}>
-                <View style={styles.insightHeaderRow}>
+                <View ref={aiCoachHeaderRef} collapsable={false} style={styles.insightHeaderRow}>
                   <View style={styles.insightHeaderLeft}>
                     <View style={styles.insightIconBox}>
                       <Sparkles size={16} color="#A855F7" />
@@ -3062,7 +3062,7 @@ export default function PatientHomeScreen({ navigation }) {
             {/* ── 6. MEDICATIONS ── */}
             <View ref={medsCardRef} collapsable={false}>
               <Animated.View style={[entranceStyle(6), styles.section]}>
-              <View style={styles.sectionTitleRow}>
+              <View ref={todaysPlanHeaderRef} collapsable={false} style={styles.sectionTitleRow}>
                 <Text style={styles.sectionTitle}>
                   {t("home.todays_plan", { defaultValue: "TODAY'S PLAN" })}
                 </Text>
@@ -3263,7 +3263,7 @@ export default function PatientHomeScreen({ navigation }) {
               }}
             >
               <View ref={vitalsCardRef} collapsable={false}>
-                <View style={styles.sectionTitleRow}>
+                <View ref={vitalsHeaderRef} collapsable={false} style={styles.sectionTitleRow}>
                   <Text style={styles.sectionTitle}>
                     {t("home.vitals", { defaultValue: "VITALS" })}
                   </Text>
