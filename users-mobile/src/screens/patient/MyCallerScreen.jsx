@@ -187,9 +187,12 @@ export default function MyCallerScreen({ navigation }) {
   const tourTriggeredRef = useRef(false);
   const scrollRef = useRef(null);
   const callerCardRef = useRef(null);
+  const callBtnRef = useRef(null);
   const managerCardRef = useRef(null);
   const contactsCardRef = useRef(null);
+  const addContactBtnRef = useRef(null);
   const callsCardRef = useRef(null);
+  const recentCallsTitleRef = useRef(null);
 
   const contactModalAnim = useRef(new Animated.Value(0)).current;
   const staggerAnims = useRef(
@@ -323,39 +326,45 @@ export default function MyCallerScreen({ navigation }) {
     const steps = [];
 
     steps.push({
-      title: "Your Caller",
-      desc: "Ramesh is your matched caller. They will call you for scheduled check-ins, medication logs, and wellness chats. Tap 'Call Now' to call them directly.",
+      title: "Call Your Coordinator",
+      desc: "Tap 'Call Now' anytime to connect directly with your dedicated caller for check-ins, medication logs, and wellness updates.",
       icon: Phone,
       iconColor: "#6366F1",
-      ref: callerCardRef,
+      ref: callBtnRef.current ? callBtnRef : callerCardRef,
+      spotlightPadding: 6,
+      shape: "pill",
       visible: !!caller,
     });
 
     steps.push({
       title: "Care Manager",
-      desc: "Oversees your overall care. Contact them to request schedule changes, report general feedback, or update care preferences.",
+      desc: "Oversees your overall care plan. Contact them directly to request schedule changes or report feedback.",
       icon: UserCheck,
       iconColor: "#10B981",
       ref: managerCardRef,
+      spotlightPadding: 6,
       visible: !!manager,
     });
 
     steps.push({
-      title: "Trusted Contacts & SOS",
-      desc: "Add family members or close friends who should be contacted in emergencies (SOS) or who you want to authorize to view your health logs.",
+      title: "Add Trusted Contact",
+      desc: "Tap '+' to add family members or close friends for emergency SOS notifications or shared health logs.",
       icon: Heart,
       iconColor: "#EF4444",
-      ref: contactsCardRef,
+      ref: addContactBtnRef.current ? addContactBtnRef : contactsCardRef,
+      spotlightPadding: 6,
+      shape: "circle",
       visible: true,
     });
 
     if (calls.length > 0) {
       steps.push({
         title: "Check-In Log History",
-        desc: "Review dates of past check-ins, along with AI-generated summaries capturing the details from your check-in calls.",
+        desc: "Review dates of past check-ins, along with AI-generated summaries capturing your check-in calls.",
         icon: Clock,
         iconColor: "#F59E0B",
-        ref: callsCardRef,
+        ref: recentCallsTitleRef.current ? recentCallsTitleRef : callsCardRef,
+        spotlightPadding: 6,
         visible: true,
       });
     }
@@ -1057,6 +1066,8 @@ export default function MyCallerScreen({ navigation }) {
 
                 {/* Call button */}
                 <Pressable
+                  ref={callBtnRef}
+                  collapsable={false}
                   style={({ pressed }) => [
                     s.heroCallBtn,
                     pressed && { opacity: 0.7 },
@@ -1279,6 +1290,8 @@ export default function MyCallerScreen({ navigation }) {
               })}
             </Text>
             <Pressable
+              ref={addContactBtnRef}
+              collapsable={false}
               style={({ pressed }) => [s.addBtn, pressed && { opacity: 0.7 }]}
               onPress={() => openContactModal()}
             >
@@ -1399,7 +1412,7 @@ export default function MyCallerScreen({ navigation }) {
         {calls.length > 0 && (
           <Animated.View style={anim(4)}>
             <View ref={callsCardRef} collapsable={false}>
-            <View style={s.sectionHeaderRow}>
+            <View style={s.sectionHeaderRow} ref={recentCallsTitleRef} collapsable={false}>
               <Text style={s.sectionLabel}>
                 {t("caller.recent_calls", { defaultValue: "RECENT CALLS" })}
               </Text>

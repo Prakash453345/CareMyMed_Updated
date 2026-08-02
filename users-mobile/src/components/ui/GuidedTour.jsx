@@ -103,8 +103,8 @@ export default function GuidedTour({
     }, []);
 
     /**
-     * SWIGGY-STYLE COMPACT TOOLTIP LAYOUT ENGINE
-     * Smart positioning, precise target anchoring, compact 260px card size
+     * ADAPTIVE SPOTLIGHT & TOOLTIP PLACEMENT ENGINE (Swiggy-Style Precision)
+     * Smart positioning, tight spotlight bounds, sticky header collision avoidance, direct center anchoring
      */
     const animateToCoords = useCallback((coords, stepData) => {
         if (!coords || !stepData) return;
@@ -114,7 +114,8 @@ export default function GuidedTour({
         const screenHeight = rawScreenHeight - keyboardHeight; // Keyboard offset aware
         const SAFE_MARGIN = 16; // Strict 16px margin from display edges
 
-        const pad = Number(stepData.spotlightPadding ?? coords.padding) || 4;
+        // Tight spotlight padding (+8px to +10px default instead of massive card padding)
+        const pad = Number(stepData.spotlightPadding ?? coords.padding) ?? 8;
         const rawTop = Number(coords.top);
         const rawLeft = Number(coords.left);
         const rawWidth = Number(coords.width);
@@ -123,17 +124,17 @@ export default function GuidedTour({
         const safeTop = isNaN(rawTop) ? 120 : rawTop;
         const safeLeft = isNaN(rawLeft) ? 16 : rawLeft;
         const safeWidth = isNaN(rawWidth) || rawWidth <= 0 ? screenWidth - 32 : rawWidth;
-        const safeHeight = isNaN(rawHeight) || rawHeight <= 0 ? 70 : rawHeight;
+        const safeHeight = isNaN(rawHeight) || rawHeight <= 0 ? 50 : rawHeight;
 
-        // 1. Safe Edge Boundaries
+        // 1. Precise Spotlight Edge Boundaries
         const spotTop = Math.max(10, safeTop - pad);
         const spotLeft = Math.max(SAFE_MARGIN, Math.min(screenWidth - SAFE_MARGIN - 20, safeLeft - pad));
         const spotWidth = Math.min(screenWidth - SAFE_MARGIN * 2, Math.max(10, safeWidth + pad * 2));
         const spotHeight = Math.max(10, safeHeight + pad * 2);
 
-        // 2. Shape & Corner Radius
+        // 2. Shape & Corner Radius (default 12px for tight clean look)
         const shape = stepData.shape || 'roundedRect';
-        let computedRadius = stepData.spotlightRadius || stepData.borderRadius || 14;
+        let computedRadius = stepData.spotlightRadius || stepData.borderRadius || 12;
         if (shape === 'circle') {
             computedRadius = Math.max(spotWidth, spotHeight) / 2;
         } else if (shape === 'pill') {
@@ -142,43 +143,56 @@ export default function GuidedTour({
 
         setComputedShapeConfig({ shape, radius: computedRadius });
 
-        // 3. Smart Placement Engine
-        const spaceAbove = spotTop - 15;
-        const spaceBelow = screenHeight - (spotTop + spotHeight) - 30;
+        // 3. Clear Space Calculations aware of Sticky Header (105px) and Bottom Nav Bar (90px)
+        const topHeaderOffset = Number(stepData.topOffset || 105);
+        const bottomBarOffset = Number(stepData.bottomOffset || 90);
+
+        const clearAbove = spotTop - topHeaderOffset;
+        const clearBelow = (screenHeight - bottomBarOffset) - (spotTop + spotHeight);
+        const estimatedCardHeight = Number(stepData.cardHeight || 135);
         const preferred = stepData.preferredPlacement || stepData.arrow || 'auto';
 
         let isUp; // isUp = true means card sits BELOW spotlight (arrow points UP)
         if (preferred === 'top' || preferred === 'above') {
-            isUp = false;
+            // If top requested but clearAbove is cramped (< 120px) to avoid sticky header collision, auto-switch to below!
+            isUp = clearAbove < 120;
         } else if (preferred === 'bottom' || preferred === 'below') {
             isUp = true;
         } else {
-            if (spaceBelow >= 140) {
+            // Auto placement: Pick side with maximum clear space!
+            if (clearBelow >= estimatedCardHeight + 10) {
                 isUp = true;
-            } else if (spaceAbove >= 140) {
+            } else if (clearAbove >= estimatedCardHeight + 10) {
                 isUp = false;
             } else {
-                isUp = spaceBelow >= spaceAbove;
+                isUp = clearBelow >= clearAbove;
             }
         }
 
-        // 4. Custom Anchor Points
+        // 4. Custom Anchor Points (Points directly to center of spotlight target)
         const anchorRatio = stepData.anchorX !== undefined ? stepData.anchorX : 0.5;
         const targetCenterX = safeLeft + safeWidth * anchorRatio;
 
-        // 5. Adaptive Card Width with strict edge clamping: Math.min(270, screenWidth - 32)
+        // 5. Adaptive Card Width with strict edge clamping: Math.min(260, screenWidth - 32)
         const cardWidth = Math.min(
-            stepData.maxCardWidth || 270,
+            stepData.maxCardWidth || 260,
             screenWidth - 32
         );
         const cardLeft = Math.max(SAFE_MARGIN, Math.min(targetCenterX - cardWidth / 2, screenWidth - cardWidth - SAFE_MARGIN));
-        const computedArrowLeft = Math.max(16, Math.min(targetCenterX - cardLeft - 5, cardWidth - 28));
+        const computedArrowLeft = Math.max(16, Math.min(targetCenterX - cardLeft - 6, cardWidth - 28));
 
+        // 6. Placement & Kissing Offset (8px gap from spotlight boundary)
         let cardTop;
         if (isUp) {
-            cardTop = Math.min(screenHeight - 160, spotTop + spotHeight + 10);
+            // Position below spotlight with 8px kissing gap
+            cardTop = spotTop + spotHeight + 8;
+            // Safety clamp: do not overlap bottom navigation bar
+            cardTop = Math.min(screenHeight - bottomBarOffset - estimatedCardHeight, cardTop);
         } else {
-            cardTop = Math.max(15, spotTop - (stepData.cardOffset || 135));
+            // Position above spotlight with 8px kissing gap
+            cardTop = spotTop - estimatedCardHeight - 8;
+            // Safety clamp: NEVER collide with sticky top header bar (topHeaderOffset)
+            cardTop = Math.max(topHeaderOffset + 6, cardTop);
         }
 
         const finalSpotTop = isNaN(spotTop) ? 0 : spotTop;
@@ -461,7 +475,7 @@ export default function GuidedTour({
                         <SvgRect
                             width="100%"
                             height="100%"
-                            fill="rgba(15, 23, 42, 0.40)"
+                            fill="rgba(15, 23, 42, 0.36)"
                             mask="url(#spotlightMask)"
                         />
                     </Svg>
