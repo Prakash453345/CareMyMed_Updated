@@ -964,15 +964,18 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
       onPressOut={handlePressOut}
       style={[
         {
-          width: itemWidth,
+          width: isSmall ? 70 : "48%",
           borderRadius: 20,
           borderWidth: 1.5,
-          borderColor: data.unlocked ? accentColor + "33" : "rgba(226, 232, 240, 0.9)",
+          borderColor: data.unlocked
+            ? accentColor + "40"
+            : "rgba(226, 232, 240, 0.9)",
           shadowColor: data.unlocked ? accentColor : "#0F172A",
           shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: data.unlocked ? 0.12 : 0.02,
-          shadowRadius: 12,
+          shadowOpacity: data.unlocked ? 0.14 : 0.03,
+          shadowRadius: 10,
           elevation: data.unlocked ? 4 : 1,
+          marginBottom: 12,
           position: "relative",
           overflow: "hidden",
         },
@@ -980,94 +983,140 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
       ]}
     >
       <LinearGradient
-        colors={cardBgColors}
+        colors={
+          data.unlocked
+            ? [tierConfig.bgColor || "#FAF5FF", "#FFFFFF"]
+            : ["#FFFFFF", "#F8FAFC"]
+        }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={{ padding: 12, width: "100%" }}
+        style={{ padding: 14, width: "100%" }}
       >
         {renderWatermark()}
-        <Animated.View
-          style={{
-            transform: [{ scale: pressScale }],
-            flexDirection: "row",
-            alignItems: "center",
-          }}
-        >
-          {/* Left Material Depth Emblem */}
+        <Animated.View style={{ transform: [{ scale: pressScale }] }}>
+          {/* Top Row: Emblem Icon on Left, Status Badge on Right */}
           <View
             style={{
-              width: 46,
-              height: 46,
-              borderRadius: 23,
+              flexDirection: "row",
               alignItems: "center",
-              justifyContent: "center",
-              position: "relative",
-              borderWidth: 1.5,
-              borderColor: data.unlocked ? "rgba(255, 255, 255, 0.7)" : "#E2E8F0",
-              shadowColor: gradientColors[1] || accentColor,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: data.unlocked ? 0.3 : 0.05,
-              shadowRadius: 6,
-              elevation: data.unlocked ? 3 : 1,
+              justifyContent: "space-between",
+              marginBottom: 10,
             }}
           >
-            <LinearGradient
-              colors={data.unlocked ? gradientColors : ["#F8FAFC", "#E2E8F0"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <View
               style={{
-                width: "100%",
-                height: "100%",
-                borderRadius: 23,
+                width: 40,
+                height: 40,
+                borderRadius: 20,
                 alignItems: "center",
                 justifyContent: "center",
+                position: "relative",
+                borderWidth: 1.5,
+                borderColor: data.unlocked
+                  ? "rgba(255, 255, 255, 0.8)"
+                  : "#E2E8F0",
+                shadowColor: gradientColors[1] || accentColor,
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: data.unlocked ? 0.25 : 0.05,
+                shadowRadius: 5,
+                elevation: data.unlocked ? 3 : 1,
               }}
             >
-              <IconComponent size={21} color={data.unlocked ? "#FFFFFF" : "#94A3B8"} />
-            </LinearGradient>
-
-            {/* Top Right Checkmark Badge */}
-            {data.unlocked && (
-              <View
+              <LinearGradient
+                colors={data.unlocked ? gradientColors : ["#F8FAFC", "#E2E8F0"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={{
-                  position: "absolute",
-                  top: -2,
-                  right: -2,
-                  backgroundColor: "#10B981",
-                  borderRadius: 9,
-                  width: 18,
-                  height: 18,
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: 20,
                   alignItems: "center",
                   justifyContent: "center",
-                  borderWidth: 1.5,
-                  borderColor: "#FFFFFF",
                 }}
               >
-                <CheckCircle2 size={11} color="#FFFFFF" strokeWidth={3} />
+                <IconComponent
+                  size={19}
+                  color={data.unlocked ? "#FFFFFF" : "#94A3B8"}
+                />
+              </LinearGradient>
+
+              {data.unlocked && (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: -2,
+                    right: -2,
+                    backgroundColor: "#10B981",
+                    borderRadius: 8,
+                    width: 16,
+                    height: 16,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderWidth: 1.5,
+                    borderColor: "#FFFFFF",
+                  }}
+                >
+                  <CheckCircle2 size={10} color="#FFFFFF" strokeWidth={3} />
+                </View>
+              )}
+            </View>
+
+            {/* Unlocked / Locked Status Badge Pill */}
+            {data.unlocked ? (
+              <View
+                style={{
+                  backgroundColor: "#ECFDF5",
+                  borderColor: "#A7F3D0",
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 9.5,
+                    fontWeight: "800",
+                    color: "#059669",
+                  }}
+                  numberOfLines={1}
+                >
+                  {label}
+                </Text>
               </View>
+            ) : (
+              <Text
+                style={{
+                  fontSize: 9.5,
+                  fontWeight: "800",
+                  color: accentColor,
+                }}
+              >
+                {pct}%
+              </Text>
             )}
           </View>
 
-          {/* Center Details Column */}
-          <View style={{ flex: 1, marginLeft: 10, paddingRight: 2 }}>
+          {/* Content Block: Full Width Title & Subtitle */}
+          <View style={{ width: "100%" }}>
             <Text
               style={{
-                fontSize: 12.5,
+                fontSize: 13.5,
                 fontWeight: "800",
                 color: data.unlocked ? "#0F172A" : "#475569",
-                lineHeight: 16,
+                lineHeight: 18,
               }}
               numberOfLines={1}
             >
               {displayTitle}
             </Text>
+
             <Text
               style={{
-                fontSize: 10,
+                fontSize: 10.5,
                 fontWeight: "500",
                 color: "#64748B",
                 marginTop: 2,
-                marginBottom: 6,
                 lineHeight: 14,
               }}
               numberOfLines={2}
@@ -1075,62 +1124,29 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
               {displayDesc}
             </Text>
 
-            {/* Status Badge Pill & Progress Bar */}
-            <View style={{ alignSelf: "flex-start", width: "100%" }}>
-              {data.unlocked ? (
+            {/* Locked Progress Bar */}
+            {!data.unlocked && (
+              <View style={{ width: "100%", marginTop: 8 }}>
                 <View
                   style={{
-                    backgroundColor: "#ECFDF5",
-                    borderColor: "#A7F3D0",
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    paddingHorizontal: 8,
-                    paddingVertical: 2,
-                    alignSelf: "flex-start",
+                    width: "100%",
+                    height: 5,
+                    borderRadius: 2.5,
+                    backgroundColor: "#E2E8F0",
+                    overflow: "hidden",
                   }}
                 >
-                  <Text style={{ fontSize: 9.5, fontWeight: "800", color: "#059669" }}>
-                    {label}
-                  </Text>
-                </View>
-              ) : (
-                <View style={{ width: "100%", marginTop: 2 }}>
                   <View
                     style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 3,
+                      width: `${pct}%`,
+                      height: "100%",
+                      borderRadius: 2.5,
+                      backgroundColor: accentColor,
                     }}
-                  >
-                    <Text style={{ fontSize: 9, fontWeight: "800", color: "#94A3B8" }}>
-                      LOCKED
-                    </Text>
-                    <Text style={{ fontSize: 9, fontWeight: "800", color: accentColor }}>
-                      {pct}%
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      width: "100%",
-                      height: 4,
-                      borderRadius: 2,
-                      backgroundColor: "#E2E8F0",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: `${pct}%`,
-                        height: "100%",
-                        borderRadius: 2,
-                        backgroundColor: accentColor,
-                      }}
-                    />
-                  </View>
+                  />
                 </View>
-              )}
-            </View>
+              </View>
+            )}
           </View>
         </Animated.View>
       </LinearGradient>
