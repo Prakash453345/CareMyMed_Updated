@@ -696,10 +696,10 @@ export default function PatientHomeScreen({ navigation }) {
     extrapolate: "clamp",
   });
 
-  // Normalized Docking Progress (0 -> 1)
+  // Normalized Docking Progress (0 -> 1) — Direct linear 1:1 scroll coupling
   const dockProgress = scrollY.interpolate({
-    inputRange: [0, dockDistance * 0.5, dockDistance],
-    outputRange: [0, 0.3, 1.0],
+    inputRange: [0, Math.max(1, dockDistance)],
+    outputRange: [0, 1.0],
     extrapolate: "clamp",
   });
 
@@ -712,7 +712,7 @@ export default function PatientHomeScreen({ navigation }) {
 
   const cardBorderRadius = dockProgress.interpolate({
     inputRange: [0, 1],
-    outputRange: [20, 28],
+    outputRange: [20, 26],
     extrapolate: "clamp",
   });
 
@@ -729,51 +729,52 @@ export default function PatientHomeScreen({ navigation }) {
   });
 
   // Internal Content Cross-Morphing (Inline <-> Docked)
+  // Clean cross-fade with 10% safety gap to eliminate double text overlap
   const eyebrowInlineOpacity = dockProgress.interpolate({
-    inputRange: [0, 0.6, 1],
-    outputRange: [1, 0.2, 0],
+    inputRange: [0, 0.45],
+    outputRange: [1, 0],
     extrapolate: "clamp",
   });
 
   const eyebrowDockedOpacity = dockProgress.interpolate({
-    inputRange: [0, 0.4, 1],
-    outputRange: [0, 0.8, 1],
+    inputRange: [0.55, 1],
+    outputRange: [0, 1],
     extrapolate: "clamp",
   });
 
   const ctaInlineOpacity = dockProgress.interpolate({
-    inputRange: [0, 0.6, 1],
-    outputRange: [1, 0.1, 0],
+    inputRange: [0, 0.45],
+    outputRange: [1, 0],
     extrapolate: "clamp",
   });
 
   const ctaDockedOpacity = dockProgress.interpolate({
-    inputRange: [0, 0.4, 1],
-    outputRange: [0, 0.9, 1],
+    inputRange: [0.55, 1],
+    outputRange: [0, 1],
     extrapolate: "clamp",
   });
 
   // Hero Greeting Section Smooth Progressive Collapse
   const heroTitleOpacity = scrollY.interpolate({
-    inputRange: [0, dockDistance * 0.75],
+    inputRange: [0, Math.max(1, dockDistance * 0.7)],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
 
   const heroTitleTranslateY = scrollY.interpolate({
-    inputRange: [0, dockDistance * 0.75],
-    outputRange: [0, -20],
+    inputRange: [0, Math.max(1, dockDistance * 0.7)],
+    outputRange: [0, -18],
     extrapolate: "clamp",
   });
 
   const heroSubtextOpacity = scrollY.interpolate({
-    inputRange: [15, dockDistance * 0.85],
+    inputRange: [0, Math.max(1, dockDistance * 0.8)],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
 
   const heroSubtextTranslateY = scrollY.interpolate({
-    inputRange: [15, dockDistance * 0.85],
+    inputRange: [0, Math.max(1, dockDistance * 0.8)],
     outputRange: [0, -14],
     extrapolate: "clamp",
   });
@@ -2248,7 +2249,11 @@ export default function PatientHomeScreen({ navigation }) {
               {/* Top Row: Brand & Header Actions */}
               <View style={styles.headerTopRow}>
                 <View style={styles.brandBadge}>
-                  <Sparkles size={14} color="#7C3AED" />
+                  <Image
+                    source={require("../../../assets/logo.png")}
+                    style={styles.brandLogo}
+                    resizeMode="contain"
+                  />
                   <Text style={styles.brandText}>CareMyMed</Text>
                 </View>
                 <View style={styles.headerActions}>
@@ -3933,11 +3938,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     backgroundColor: "#F3E8FF",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E9D5FF",
+  },
+  brandLogo: {
+    width: 18,
+    height: 18,
+    borderRadius: 5,
   },
   brandText: {
     fontSize: 12,
