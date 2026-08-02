@@ -679,55 +679,55 @@ export default function PatientHomeScreen({ navigation }) {
 
   // Staggered hero greeting title, subtext & inline header actions fade/slide animations
   const heroTitleOpacity = scrollY.interpolate({
-    inputRange: [0, 40],
+    inputRange: [0, 90],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
   const heroTitleTranslateY = scrollY.interpolate({
-    inputRange: [0, 40],
-    outputRange: [0, -12],
+    inputRange: [0, 90],
+    outputRange: [0, -18],
     extrapolate: "clamp",
   });
   const heroSubtextOpacity = scrollY.interpolate({
-    inputRange: [10, 50],
+    inputRange: [20, 110],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
   const heroSubtextTranslateY = scrollY.interpolate({
-    inputRange: [10, 50],
-    outputRange: [0, -10],
+    inputRange: [20, 110],
+    outputRange: [0, -14],
     extrapolate: "clamp",
   });
 
   // Seamless Morphing Container Transform (inline banner -> sticky top pill)
   const inlineBannerScale = scrollY.interpolate({
-    inputRange: [0, 85],
+    inputRange: [100, 160],
     outputRange: [1.0, 0.94],
     extrapolate: "clamp",
   });
   const inlineBannerOpacity = scrollY.interpolate({
-    inputRange: [15, 80],
+    inputRange: [120, 160],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
   const inlineBannerTranslateY = scrollY.interpolate({
-    inputRange: [0, 85],
-    outputRange: [0, -30],
+    inputRange: [100, 160],
+    outputRange: [0, -12],
     extrapolate: "clamp",
   });
 
   const stickyHeaderOpacity = scrollY.interpolate({
-    inputRange: [40, 85],
+    inputRange: [135, 175],
     outputRange: [0, 1],
     extrapolate: "clamp",
   });
   const stickyHeaderTranslateY = scrollY.interpolate({
-    inputRange: [40, 85],
+    inputRange: [135, 175],
     outputRange: [-18, 0],
     extrapolate: "clamp",
   });
   const stickyHeaderScale = scrollY.interpolate({
-    inputRange: [40, 85],
+    inputRange: [135, 175],
     outputRange: [0.94, 1.0],
     extrapolate: "clamp",
   });
@@ -2134,15 +2134,12 @@ export default function PatientHomeScreen({ navigation }) {
             }
           >
             {/* ── HEADER ── */}
-            <View style={[styles.header, { paddingTop: 0, paddingBottom: 12 }]}>
-              <View style={styles.mainHeaderRow}>
-                <View style={{ flex: 1, paddingRight: 16 }}>
-                  <Text style={styles.greetingName}>
-                    {adaptiveGreeting}
-                  </Text>
-                  <Text style={styles.headerSubtext}>
-                    {headerSubtitle}
-                  </Text>
+            <View style={[styles.header, { paddingTop: 0, paddingBottom: 16 }]}>
+              {/* Top Row: Brand & Header Actions */}
+              <View style={styles.headerTopRow}>
+                <View style={styles.brandBadge}>
+                  <Sparkles size={14} color="#7C3AED" />
+                  <Text style={styles.brandText}>CareMyMed</Text>
                 </View>
                 <View style={styles.headerActions}>
                   <Pressable
@@ -2176,17 +2173,52 @@ export default function PatientHomeScreen({ navigation }) {
                   </TouchableOpacity>
                 </View>
               </View>
+
+              {/* Spacious Full-Width Hero Greeting */}
+              <Animated.View
+                style={[
+                  styles.heroGreetingBlock,
+                  {
+                    opacity: heroTitleOpacity,
+                    transform: [{ translateY: heroTitleTranslateY }],
+                  },
+                ]}
+              >
+                <Text style={styles.greetingName}>
+                  {adaptiveGreeting}
+                </Text>
+                <Animated.Text
+                  style={[
+                    styles.headerSubtext,
+                    {
+                      opacity: heroSubtextOpacity,
+                      transform: [{ translateY: heroSubtextTranslateY }],
+                    },
+                  ]}
+                >
+                  {headerSubtitle}
+                </Animated.Text>
+              </Animated.View>
             </View>
 
-            {/* ── Progressive Disclosure Guidance Banner ── */}
-            <View style={{ marginBottom: 12 }}>
+            {/* ── Progressive Disclosure Guidance Banner (Inline Morph Source) ── */}
+            <Animated.View
+              style={{
+                marginBottom: 14,
+                opacity: inlineBannerOpacity,
+                transform: [
+                  { translateY: inlineBannerTranslateY },
+                  { scale: inlineBannerScale },
+                ],
+              }}
+            >
               <TurnByTurnBanner
                 stepTitle={nextAction.bannerTitle}
                 stepDescription={nextAction.bannerDescription}
                 iconType={nextAction.iconType}
                 onPress={() => navigation.navigate(nextAction.targetScreen)}
               />
-            </View>
+            </Animated.View>
 
             {/* Pills Row */}
             <Animated.View
@@ -3785,25 +3817,49 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: Platform.OS === "ios" ? 60 : 56,
     paddingHorizontal: spacing.heroScreen,
-    paddingBottom: 14,
+    paddingBottom: 16,
     backgroundColor: "transparent",
   },
-  mainHeaderRow: {
+  headerTopRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  brandBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#F3E8FF",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E9D5FF",
+  },
+  brandText: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#7C3AED",
+    letterSpacing: 0.5,
+  },
+  heroGreetingBlock: {
+    marginTop: 4,
+    marginBottom: 4,
   },
   greetingName: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: "900",
     color: "#7C3AED",
     letterSpacing: -1,
+    lineHeight: 38,
   },
   headerSubtext: {
-    fontSize: 13,
-    color: "#94A3B8",
-    marginTop: 2,
-    fontWeight: "600",
+    fontSize: 14,
+    color: "#64748B",
+    marginTop: 4,
+    fontWeight: "500",
+    lineHeight: 20,
   },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 10 },
   headerIconBtn: {
