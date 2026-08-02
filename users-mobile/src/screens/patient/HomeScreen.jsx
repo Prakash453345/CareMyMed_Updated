@@ -674,61 +674,100 @@ export default function PatientHomeScreen({ navigation }) {
   const medsCardScaleAnim = useRef(new Animated.Value(1)).current;
   const prevMedsCompletedRef = useRef(null);
 
-  // ScrollY tracking for Container Transform Morphing Header
+  // Dynamic layout measurement for True Shared Morphing Card
+  const [inlineCardAnchorY, setInlineCardAnchorY] = useState(185);
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  // Staggered hero greeting title, subtext & inline header actions fade/slide animations
+  // Calculate dynamic docking target & distance based on status bar / inset layout
+  const dockTargetY = Platform.OS === "ios" ? 56 : (StatusBar.currentHeight ? StatusBar.currentHeight + 12 : 44);
+  const dockDistance = Math.max(10, inlineCardAnchorY - dockTargetY);
+
+  // Single Shared Morphing Container Physical Top Position (clamps at dockTargetY)
+  const cardTopPosition = scrollY.interpolate({
+    inputRange: [0, dockDistance, dockDistance + 10000],
+    outputRange: [inlineCardAnchorY, dockTargetY, dockTargetY],
+    extrapolate: "clamp",
+  });
+
+  // Normalized Docking Progress (0 -> 1)
+  const dockProgress = scrollY.interpolate({
+    inputRange: [0, dockDistance * 0.5, dockDistance],
+    outputRange: [0, 0.3, 1.0],
+    extrapolate: "clamp",
+  });
+
+  // Physical Card Surface Morphing Styles
+  const cardPaddingVertical = dockProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [14, 9],
+    extrapolate: "clamp",
+  });
+
+  const cardBorderRadius = dockProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [20, 28],
+    extrapolate: "clamp",
+  });
+
+  const cardBorderColor = dockProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["rgba(255, 255, 255, 0.12)", "rgba(255, 255, 255, 0.22)"],
+    extrapolate: "clamp",
+  });
+
+  const cardElevation = dockProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [2, 8],
+    extrapolate: "clamp",
+  });
+
+  // Internal Content Cross-Morphing (Inline <-> Docked)
+  const eyebrowInlineOpacity = dockProgress.interpolate({
+    inputRange: [0, 0.6, 1],
+    outputRange: [1, 0.2, 0],
+    extrapolate: "clamp",
+  });
+
+  const eyebrowDockedOpacity = dockProgress.interpolate({
+    inputRange: [0, 0.4, 1],
+    outputRange: [0, 0.8, 1],
+    extrapolate: "clamp",
+  });
+
+  const ctaInlineOpacity = dockProgress.interpolate({
+    inputRange: [0, 0.6, 1],
+    outputRange: [1, 0.1, 0],
+    extrapolate: "clamp",
+  });
+
+  const ctaDockedOpacity = dockProgress.interpolate({
+    inputRange: [0, 0.4, 1],
+    outputRange: [0, 0.9, 1],
+    extrapolate: "clamp",
+  });
+
+  // Hero Greeting Section Smooth Progressive Collapse
   const heroTitleOpacity = scrollY.interpolate({
-    inputRange: [0, 90],
+    inputRange: [0, dockDistance * 0.75],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
+
   const heroTitleTranslateY = scrollY.interpolate({
-    inputRange: [0, 90],
-    outputRange: [0, -18],
+    inputRange: [0, dockDistance * 0.75],
+    outputRange: [0, -20],
     extrapolate: "clamp",
   });
+
   const heroSubtextOpacity = scrollY.interpolate({
-    inputRange: [20, 110],
+    inputRange: [15, dockDistance * 0.85],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
+
   const heroSubtextTranslateY = scrollY.interpolate({
-    inputRange: [20, 110],
+    inputRange: [15, dockDistance * 0.85],
     outputRange: [0, -14],
-    extrapolate: "clamp",
-  });
-
-  // Seamless Morphing Container Transform (inline banner -> sticky top pill)
-  const inlineBannerScale = scrollY.interpolate({
-    inputRange: [100, 160],
-    outputRange: [1.0, 0.94],
-    extrapolate: "clamp",
-  });
-  const inlineBannerOpacity = scrollY.interpolate({
-    inputRange: [120, 160],
-    outputRange: [1, 0],
-    extrapolate: "clamp",
-  });
-  const inlineBannerTranslateY = scrollY.interpolate({
-    inputRange: [100, 160],
-    outputRange: [0, -12],
-    extrapolate: "clamp",
-  });
-
-  const stickyHeaderOpacity = scrollY.interpolate({
-    inputRange: [135, 175],
-    outputRange: [0, 1],
-    extrapolate: "clamp",
-  });
-  const stickyHeaderTranslateY = scrollY.interpolate({
-    inputRange: [135, 175],
-    outputRange: [-18, 0],
-    extrapolate: "clamp",
-  });
-  const stickyHeaderScale = scrollY.interpolate({
-    inputRange: [135, 175],
-    outputRange: [0.94, 1.0],
     extrapolate: "clamp",
   });
 
@@ -2071,38 +2110,102 @@ export default function PatientHomeScreen({ navigation }) {
             </Svg>
           </View>
 
-          {/* ── Frosted Sticky Container Header (Morphed State) ── */}
+          {/* ── SINGLE CONTINUOUS SHARED MORPHING CARD SURFACE ── */}
           <Animated.View
             pointerEvents="box-none"
             style={[
-              styles.stickyHeaderBar,
+              styles.singleSharedCardContainer,
               {
-                opacity: stickyHeaderOpacity,
-                transform: [
-                  { translateY: stickyHeaderTranslateY },
-                  { scale: stickyHeaderScale },
-                ],
+                top: cardTopPosition,
+                paddingVertical: cardPaddingVertical,
+                borderRadius: cardBorderRadius,
+                borderColor: cardBorderColor,
+                elevation: cardElevation,
               },
             ]}
           >
             <Pressable
-              style={styles.stickyBannerCapsule}
+              style={styles.cardInternalPressable}
               onPress={() => navigation.navigate(nextAction.targetScreen)}
             >
-              <View style={styles.stickyPillIconBadge}>
-                <Pill size={15} color="#FFFFFF" />
+              <View style={styles.cardIconBadge}>
+                {nextAction.iconType === "medication" ? (
+                  <Pill size={16} color="#FFFFFF" />
+                ) : nextAction.iconType === "vital" ? (
+                  <Heart size={16} color="#FFFFFF" />
+                ) : nextAction.iconType === "alert" ? (
+                  <AlertTriangle size={16} color="#FFFFFF" />
+                ) : (
+                  <Sparkles size={16} color="#FFFFFF" />
+                )}
               </View>
-              <View style={{ flex: 1, paddingRight: 8 }}>
-                <Text style={styles.stickyEyebrowText}>NEXT STEP</Text>
-                <Text style={styles.stickyBannerText} numberOfLines={1} ellipsizeMode="tail">
+
+              <View style={{ flex: 1, paddingRight: 8, justifyContent: "center" }}>
+                <View style={{ height: 16, justifyContent: "center", position: "relative" }}>
+                  <Animated.View
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      top: 0,
+                      opacity: eyebrowInlineOpacity,
+                    }}
+                  >
+                    <View style={styles.eyebrowCapsule}>
+                      <Text style={styles.eyebrowText}>
+                        {(nextAction.bannerTitle || "WHAT'S NEXT?").toUpperCase()}
+                      </Text>
+                    </View>
+                  </Animated.View>
+
+                  <Animated.View
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      top: 0,
+                      opacity: eyebrowDockedOpacity,
+                    }}
+                  >
+                    <Text style={styles.dockedEyebrowText}>NEXT STEP</Text>
+                  </Animated.View>
+                </View>
+
+                <Text
+                  style={styles.cardMainText}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
                   {nextAction.actionPayload?.name
                     ? `Take ${nextAction.actionPayload.name}`
-                    : nextAction.bannerDescription?.split("•")[0]?.trim() || nextAction.bannerDescription}
+                    : nextAction.bannerDescription?.split("•")[0]?.trim() ||
+                      nextAction.bannerDescription}
                 </Text>
               </View>
-              <View style={styles.stickyCtaBadge}>
-                <Text style={styles.stickyCtaText}>View</Text>
-                <ChevronRight size={13} color="#C084FC" />
+
+              <View style={{ width: 56, height: 32, alignItems: "flex-end", justifyContent: "center", position: "relative" }}>
+                <Animated.View
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    opacity: ctaInlineOpacity,
+                  }}
+                >
+                  <View style={styles.arrowCircle}>
+                    <ChevronRight size={15} color="#94A3B8" />
+                  </View>
+                </Animated.View>
+
+                <Animated.View
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    opacity: ctaDockedOpacity,
+                  }}
+                >
+                  <View style={styles.dockedCtaBadge}>
+                    <Text style={styles.dockedCtaText}>View</Text>
+                    <ChevronRight size={13} color="#C084FC" />
+                  </View>
+                </Animated.View>
               </View>
             </Pressable>
           </Animated.View>
@@ -2201,24 +2304,16 @@ export default function PatientHomeScreen({ navigation }) {
               </Animated.View>
             </View>
 
-            {/* ── Progressive Disclosure Guidance Banner (Inline Morph Source) ── */}
-            <Animated.View
-              style={{
-                marginBottom: 14,
-                opacity: inlineBannerOpacity,
-                transform: [
-                  { translateY: inlineBannerTranslateY },
-                  { scale: inlineBannerScale },
-                ],
+            {/* ── Inline Placeholder Anchor for Shared Card Layout & Dynamic Alignment ── */}
+            <View
+              onLayout={(e) => {
+                const y = e.nativeEvent.layout.y;
+                if (y > 0 && Math.abs(y - inlineCardAnchorY) > 2) {
+                  setInlineCardAnchorY(y);
+                }
               }}
-            >
-              <TurnByTurnBanner
-                stepTitle={nextAction.bannerTitle}
-                stepDescription={nextAction.bannerDescription}
-                iconType={nextAction.iconType}
-                onPress={() => navigation.navigate(nextAction.targetScreen)}
-              />
-            </Animated.View>
+              style={{ height: 68, marginBottom: 14 }}
+            />
 
             {/* Pills Row */}
             <Animated.View
@@ -5055,53 +5150,67 @@ const styles = StyleSheet.create({
   },
   // Frosted Sticky Container Header Morphing Bar
   // Frosted Sticky Container Header Morphing Floating Dock Capsule
-  stickyHeaderBar: {
+  // ── SINGLE CONTINUOUS SHARED MORPHING CARD SURFACE ──
+  singleSharedCardContainer: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 60 : (StatusBar.currentHeight ? StatusBar.currentHeight + 18 : 52),
     left: 16,
     right: 16,
     zIndex: 120,
-    flexDirection: "row",
-    alignItems: "center",
     backgroundColor: "#0F172A",
-    borderRadius: 28,
     paddingHorizontal: 16,
-    paddingVertical: 10,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.16)",
     shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.24,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
   },
-  stickyBannerCapsule: {
-    flex: 1,
+  cardInternalPressable: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
-  stickyPillIconBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(124, 58, 237, 0.35)",
+  cardIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(124, 58, 237, 0.32)",
     alignItems: "center",
     justifyContent: "center",
   },
-  stickyEyebrowText: {
+  eyebrowCapsule: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(124, 58, 237, 0.2)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 100,
+  },
+  eyebrowText: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#C084FC",
+    letterSpacing: 0.6,
+  },
+  dockedEyebrowText: {
     fontSize: 9,
     fontWeight: "900",
     color: "#C084FC",
     letterSpacing: 0.8,
   },
-  stickyBannerText: {
-    fontSize: 13,
+  cardMainText: {
+    fontSize: 14,
     fontWeight: "800",
     color: "#F8FAFC",
-    marginTop: 1,
+    marginTop: 2,
   },
-  stickyCtaBadge: {
+  arrowCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dockedCtaBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
@@ -5112,7 +5221,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(192, 132, 252, 0.3)",
   },
-  stickyCtaText: {
+  dockedCtaText: {
     fontSize: 11,
     fontWeight: "800",
     color: "#E9D5FF",
