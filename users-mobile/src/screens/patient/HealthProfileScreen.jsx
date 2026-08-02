@@ -498,10 +498,14 @@ export default function HealthProfileScreen({ navigation }) {
   const profileTourTriggeredRef = useRef(false);
   const scrollViewRef = useRef(null);
   const profileSetupCardRef = useRef(null);
+  const profileCompletenessHeaderRef = useRef(null);
   const headerRef = useRef(null);
   const healthScoreCardRef = useRef(null);
+  const healthScoreRingRef = useRef(null);
   const alertsCardRef = useRef(null);
+  const alertsHeaderRef = useRef(null);
   const medicalRecordsCardRef = useRef(null);
+  const medicalRecordsHeaderRef = useRef(null);
 
   const getProfileTourSteps = () => {
     return [
@@ -515,7 +519,8 @@ export default function HealthProfileScreen({ navigation }) {
         }),
         icon: HeartPulse,
         iconColor: "#EF4444",
-        ref: healthScoreCardRef,
+        ref: healthScoreRingRef.current ? healthScoreRingRef : healthScoreCardRef,
+        spotlightPadding: 6,
         scrollOffset: 0,
         visible: true,
       },
@@ -529,7 +534,8 @@ export default function HealthProfileScreen({ navigation }) {
         }),
         icon: ShieldCheck,
         iconColor: "#10B981",
-        ref: profileSetupCardRef,
+        ref: profileCompletenessHeaderRef.current ? profileCompletenessHeaderRef : profileSetupCardRef,
+        spotlightPadding: 6,
         scrollOffset: 0,
         visible: true,
       },
@@ -543,7 +549,8 @@ export default function HealthProfileScreen({ navigation }) {
         }),
         icon: AlertTriangle,
         iconColor: "#F59E0B",
-        ref: alertsCardRef,
+        ref: alertsHeaderRef.current ? alertsHeaderRef : alertsCardRef,
+        spotlightPadding: 6,
         scrollOffset: 0,
         visible: true,
       },
@@ -557,7 +564,8 @@ export default function HealthProfileScreen({ navigation }) {
         }),
         icon: FileText,
         iconColor: "#8B5CF6",
-        ref: medicalRecordsCardRef,
+        ref: medicalRecordsHeaderRef.current ? medicalRecordsHeaderRef : medicalRecordsCardRef,
+        spotlightPadding: 6,
         scrollOffset: 250,
         visible: true,
       },
@@ -2231,7 +2239,7 @@ export default function HealthProfileScreen({ navigation }) {
                       alignItems: "center",
                     }}
                   >
-                    <Text style={s.completeBannerTitle}>
+                    <Text ref={profileCompletenessHeaderRef} collapsable={false} style={s.completeBannerTitle}>
                       {t("health_profile.profile_completeness", {
                         defaultValue: "Profile Completeness",
                       })}
@@ -2596,7 +2604,7 @@ export default function HealthProfileScreen({ navigation }) {
                     </Pressable>
                   </View>
                   <View style={s.dashCenter}>
-                    <View style={s.ringWrap}>
+                    <View ref={healthScoreRingRef} collapsable={false} style={s.ringWrap}>
                       <Svg width={88} height={88} viewBox="0 0 88 88">
                         <SvgCircle
                           cx="44"
@@ -2733,7 +2741,7 @@ export default function HealthProfileScreen({ navigation }) {
                   <AlertTriangle size={18} color="#EF4444" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.alertTitle}>
+                  <Text ref={alertsHeaderRef} collapsable={false} style={s.alertTitle}>
                     {t("health_profile.health_alerts", {
                       defaultValue: "Health Alerts",
                     })}
@@ -2866,7 +2874,7 @@ export default function HealthProfileScreen({ navigation }) {
                   >
                     <HeartPulse size={16} color="#EF4444" />
                   </View>
-                  <Text style={s.gridTitle}>
+                  <Text ref={medicalRecordsHeaderRef} collapsable={false} style={s.gridTitle}>
                     {t("health_profile.current_conditions", {
                       defaultValue: "Current Conditions",
                     })}
@@ -6560,14 +6568,6 @@ export default function HealthProfileScreen({ navigation }) {
             );
           })()}
         </Modal>
-
-        <GuidedTour
-          visible={showProfileTour}
-          steps={getProfileTourSteps()}
-          scrollRef={scrollViewRef}
-          tourKey="health_profile"
-          onClose={() => setShowProfileTour(false)}
-        />
 
         {/* ── VITALS PICKER MODAL (WHEEL) ── */}
         <Modal

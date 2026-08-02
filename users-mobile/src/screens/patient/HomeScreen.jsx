@@ -412,9 +412,12 @@ export default function PatientHomeScreen({ navigation }) {
   const heartRateInputRef = useRef(null);
   const vitalsSectionY = useRef(0);
   const vitalsCardRef = useRef(null);
+  const vitalsHeaderRef = useRef(null);
   const orbRef = useRef(null);
   const insightCardRef = useRef(null);
+  const aiCoachHeaderRef = useRef(null);
   const medsCardRef = useRef(null);
+  const todaysPlanHeaderRef = useRef(null);
 
   const [showVitalsTour, setShowVitalsTour] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -433,6 +436,7 @@ export default function PatientHomeScreen({ navigation }) {
         icon: Sparkles,
         iconColor: "#A78BFA",
         ref: orbRef,
+        spotlightPadding: 6,
         visible: true,
       },
       {
@@ -445,7 +449,8 @@ export default function PatientHomeScreen({ navigation }) {
         }),
         icon: Sparkles,
         iconColor: "#A855F7",
-        ref: insightCardRef,
+        ref: aiCoachHeaderRef.current ? aiCoachHeaderRef : insightCardRef,
+        spotlightPadding: 6,
         visible: true,
       },
       {
@@ -458,7 +463,8 @@ export default function PatientHomeScreen({ navigation }) {
         }),
         icon: Pill,
         iconColor: "#3B82F6",
-        ref: medsCardRef,
+        ref: todaysPlanHeaderRef.current ? todaysPlanHeaderRef : medsCardRef,
+        spotlightPadding: 6,
         visible: true,
       },
       {
@@ -471,7 +477,8 @@ export default function PatientHomeScreen({ navigation }) {
         }),
         icon: Heart,
         iconColor: "#EF4444",
-        ref: vitalsCardRef,
+        ref: vitalsHeaderRef.current ? vitalsHeaderRef : vitalsCardRef,
+        spotlightPadding: 6,
         visible: true,
       },
     ];

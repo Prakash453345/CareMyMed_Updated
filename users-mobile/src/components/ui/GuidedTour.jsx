@@ -41,6 +41,7 @@ export default function GuidedTour({
     const animOpacity = useRef(new Animated.Value(0)).current;
     const animRadius = useRef(new Animated.Value(14)).current;
     const isFirstMeasureRef = useRef(true);
+    const instanceIdRef = useRef(`tour_${Math.random().toString(36).slice(2, 7)}`);
 
     // 1. Keyboard Avoidance
     useEffect(() => {
@@ -438,6 +439,8 @@ export default function GuidedTour({
         if (onClose) onClose();
     };
 
+    const maskId = `spotlightMask_${tourKey || 'default'}_${instanceIdRef.current}`;
+
     const pad = Number(stepData.spotlightPadding ?? spotlightCoords?.padding) || 4;
     const spotX = spotlightCoords ? Math.max(14, spotlightCoords.left - pad) : 0;
     const spotY = spotlightCoords ? Math.max(10, spotlightCoords.top - pad) : 0;
@@ -447,11 +450,11 @@ export default function GuidedTour({
     return (
         <Modal transparent visible={visible} animationType="fade" statusBarTranslucent={true}>
             <View style={[s.wtOverlay, !spotlightCoords && s.wtOverlayCentered]} pointerEvents="box-none">
-                {/* Sleek 40% Backdrop Dimming */}
+                {/* Sleek 36% Backdrop Dimming */}
                 {spotlightCoords ? (
                     <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
                         <Defs>
-                            <Mask id="spotlightMask">
+                            <Mask id={maskId}>
                                 <SvgRect width="100%" height="100%" fill="white" />
                                 {computedShapeConfig.shape === 'circle' ? (
                                     <SvgCircle
@@ -476,7 +479,7 @@ export default function GuidedTour({
                             width="100%"
                             height="100%"
                             fill="rgba(15, 23, 42, 0.36)"
-                            mask="url(#spotlightMask)"
+                            mask={`url(#${maskId})`}
                         />
                     </Svg>
                 ) : (

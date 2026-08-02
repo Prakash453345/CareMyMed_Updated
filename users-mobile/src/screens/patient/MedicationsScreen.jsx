@@ -996,10 +996,13 @@ export default function MedicationsScreen({ navigation, route }) {
   const medsTourTriggeredRef = useRef(false);
   const scrollViewRef = useRef(null);
   const medsListCardRef = useRef(null);
+  const scheduleHeaderRef = useRef(null);
   const headerRef = useRef(null);
   const adherenceCardRef = useRef(null);
+  const adherenceBadgeRef = useRef(null);
   const slotsRef = useRef(null);
   const tempMedsRef = useRef(null);
+  const addTempMedBtnRef = useRef(null);
 
   const getMedsTourSteps = () => {
     const steps = [];
@@ -1012,7 +1015,8 @@ export default function MedicationsScreen({ navigation, route }) {
       }),
       icon: Pill,
       iconColor: "#10B981",
-      ref: schedule && Object.values(schedule).flat().length > 0 ? slotsRef : medsListCardRef,
+      ref: scheduleHeaderRef.current ? scheduleHeaderRef : (schedule && Object.values(schedule).flat().length > 0 ? slotsRef : medsListCardRef),
+      spotlightPadding: 6,
       scrollOffset: 0,
       visible: true,
     });
@@ -1025,7 +1029,8 @@ export default function MedicationsScreen({ navigation, route }) {
       }),
       icon: TrendingUp,
       iconColor: "#6366F1",
-      ref: adherenceCardRef,
+      ref: adherenceBadgeRef.current ? adherenceBadgeRef : adherenceCardRef,
+      spotlightPadding: 6,
       scrollOffset: 0,
       visible: true,
     });
@@ -1038,7 +1043,8 @@ export default function MedicationsScreen({ navigation, route }) {
       }),
       icon: Zap,
       iconColor: "#A855F7",
-      ref: tempMedsRef,
+      ref: addTempMedBtnRef.current ? addTempMedBtnRef : tempMedsRef,
+      spotlightPadding: 6,
       scrollOffset: 300,
       visible: true,
     });
@@ -2111,7 +2117,7 @@ export default function MedicationsScreen({ navigation, route }) {
                         })}
                       </Text>
                     </View>
-                    <View style={styles.adherenceBadge}>
+                    <View ref={adherenceBadgeRef} collapsable={false} style={styles.adherenceBadge}>
                       <TrendingUp size={13} color="#6366F1" />
                       <Text style={styles.adherenceBadgeTxt}>
                         {adherencePct}%{" "}
@@ -2311,6 +2317,8 @@ export default function MedicationsScreen({ navigation, route }) {
                       </View>
                     </View>
                     <Pressable
+                      ref={addTempMedBtnRef}
+                      collapsable={false}
                       onPress={() => {
                         setTempMedForm({
                           name: "",
