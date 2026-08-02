@@ -689,67 +689,39 @@ export default function PatientHomeScreen({ navigation }) {
   const dockTargetY = Platform.OS === "ios" ? 56 : (StatusBar.currentHeight ? StatusBar.currentHeight + 12 : 44);
   const dockDistance = Math.max(10, inlineCardAnchorY - dockTargetY);
 
-  // Single Shared Morphing Container Physical Top Position (clamps at dockTargetY)
-  const cardTopPosition = scrollY.interpolate({
-    inputRange: [0, dockDistance, dockDistance + 10000],
-    outputRange: [inlineCardAnchorY, dockTargetY, dockTargetY],
-    extrapolate: "clamp",
-  });
-
-  // Normalized Docking Progress (0 -> 1) — Direct linear 1:1 scroll coupling
-  const dockProgress = scrollY.interpolate({
+  // Native GPU-Accelerated Y Translation (Inline <-> Docked)
+  // At scrollY = 0: translateY = inlineCardAnchorY - dockTargetY (positioned at inline location)
+  // At scrollY = dockDistance: translateY = 0 (docked at top)
+  const cardTranslateY = scrollY.interpolate({
     inputRange: [0, Math.max(1, dockDistance)],
-    outputRange: [0, 1.0],
-    extrapolate: "clamp",
-  });
-
-  // Physical Card Surface Morphing Styles
-  const cardPaddingVertical = dockProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [14, 9],
-    extrapolate: "clamp",
-  });
-
-  const cardBorderRadius = dockProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [20, 26],
-    extrapolate: "clamp",
-  });
-
-  const cardBorderColor = dockProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["rgba(255, 255, 255, 0.12)", "rgba(255, 255, 255, 0.22)"],
-    extrapolate: "clamp",
-  });
-
-  const cardElevation = dockProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [2, 8],
+    outputRange: [Math.max(0, inlineCardAnchorY - dockTargetY), 0],
     extrapolate: "clamp",
   });
 
   // Internal Content Cross-Morphing (Inline <-> Docked)
   // Clean cross-fade with 10% safety gap to eliminate double text overlap
-  const eyebrowInlineOpacity = dockProgress.interpolate({
-    inputRange: [0, 0.45],
+  const eyebrowInlineOpacity = scrollY.interpolate({
+    inputRange: [0, Math.max(1, dockDistance * 0.45)],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
 
-  const eyebrowDockedOpacity = dockProgress.interpolate({
-    inputRange: [0.55, 1],
+  const eyebrowDockedOpacity = scrollY.interpolate({
+    inputRange: [Math.max(1, dockDistance * 0.55), Math.max(1, dockDistance)],
     outputRange: [0, 1],
     extrapolate: "clamp",
   });
 
-  const ctaInlineOpacity = dockProgress.interpolate({
-    inputRange: [0, 0.45],
+  // Inline CTA arrow circle fades out cleanly
+  const ctaInlineOpacity = scrollY.interpolate({
+    inputRange: [0, Math.max(1, dockDistance * 0.45)],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
 
-  const ctaDockedOpacity = dockProgress.interpolate({
-    inputRange: [0.55, 1],
+  // Docked CTA View pill fades in cleanly
+  const ctaDockedOpacity = scrollY.interpolate({
+    inputRange: [Math.max(1, dockDistance * 0.55), Math.max(1, dockDistance)],
     outputRange: [0, 1],
     extrapolate: "clamp",
   });
@@ -2124,11 +2096,8 @@ export default function PatientHomeScreen({ navigation }) {
             style={[
               styles.singleSharedCardContainer,
               {
-                top: cardTopPosition,
-                paddingVertical: cardPaddingVertical,
-                borderRadius: cardBorderRadius,
-                borderColor: cardBorderColor,
-                elevation: cardElevation,
+                top: dockTargetY,
+                transform: [{ translateY: cardTranslateY }],
               },
             ]}
           >
