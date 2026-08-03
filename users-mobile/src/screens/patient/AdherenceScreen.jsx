@@ -835,29 +835,29 @@ const getUnlockedLabel = (data) => {
   const key = data.key;
   switch (key) {
     case "streak_14":
-      return "2/2 weeks";
+      return "2 Wks";
     case "bp_stabilized":
-      return "14/14 days";
+      return "14 Days";
     case "hydration_hero":
-      return "5/5 days";
+      return "5 Days";
     case "mindful_week":
-      return "7/7 days";
+      return "7 Days";
     case "7_perfect_days":
-      return "7/7 perfect days";
+      return "7 Days";
     case "night_owl":
-      return "5/5 nights";
+      return "5 Nights";
     case "vitals_tracker":
-      return "10/10 days";
+      return "10 Days";
     case "100_doses":
-      return "100/100 doses";
+      return "100 Doses";
     case "profile_complete":
-      return "100% complete";
+      return "100%";
     case "streak_30":
-      return "30/30 days";
+      return "30 Days";
     case "30_perfect_days":
-      return "30/30 perfect days";
+      return "30 Days";
     default:
-      return "Achieved";
+      return "Unlocked";
   }
 };
 
@@ -1069,17 +1069,22 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
                   borderColor: "#A7F3D0",
                   borderWidth: 1,
                   borderRadius: 10,
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
+                  paddingHorizontal: 6,
+                  paddingVertical: 2.5,
+                  maxWidth: "52%",
+                  flexShrink: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 <Text
                   style={{
-                    fontSize: 9.5,
+                    fontSize: 9,
                     fontWeight: "800",
                     color: "#059669",
                   }}
                   numberOfLines={1}
+                  ellipsizeMode="tail"
                 >
                   {label}
                 </Text>
@@ -1098,15 +1103,15 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
           </View>
 
           {/* Content Block: Full Width Title & Subtitle */}
-          <View style={{ width: "100%" }}>
+          <View style={{ width: "100%", marginTop: 2 }}>
             <Text
               style={{
-                fontSize: 13.5,
+                fontSize: 13,
                 fontWeight: "800",
-                color: data.unlocked ? "#0F172A" : "#475569",
-                lineHeight: 18,
+                color: data.unlocked ? "#0F172A" : "#334155",
+                lineHeight: 17,
               }}
-              numberOfLines={1}
+              numberOfLines={2}
             >
               {displayTitle}
             </Text>
@@ -1116,10 +1121,11 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
                 fontSize: 10.5,
                 fontWeight: "500",
                 color: "#64748B",
-                marginTop: 2,
+                marginTop: 3,
                 lineHeight: 14,
               }}
-              numberOfLines={2}
+              numberOfLines={1}
+              ellipsizeMode="tail"
             >
               {displayDesc}
             </Text>
