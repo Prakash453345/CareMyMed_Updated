@@ -389,12 +389,24 @@ const SlotHeader = ({ slot, callTime }) => {
 // ── Medication Card ───────────────────────────────────────────────────────────
 const MedCard = ({ med, onToggle, onSnooze, onRefill, onPressDetails }) => {
   const { t } = useTranslation();
-  const swRef = useRef(null);
-  const checkScale = useRef(new Animated.Value(med.taken ? 1 : 0)).current;
-  const cfg = SLOT_CONFIG[med.type] || SLOT_CONFIG.as_needed;
+  const cardScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (med.taken) {
+      Animated.sequence([
+        Animated.timing(cardScale, {
+          toValue: 1.02,
+          duration: 120,
+          useNativeDriver: true,
+        }),
+        Animated.spring(cardScale, {
+          toValue: 1,
+          friction: 6,
+          tension: 70,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
       Animated.spring(checkScale, {
         toValue: 1,
         friction: 5,
@@ -505,10 +517,11 @@ const MedCard = ({ med, onToggle, onSnooze, onRefill, onPressDetails }) => {
         leftThreshold={40}
         rightThreshold={40}
       >
-        <Pressable
-          onPress={() => onPressDetails && onPressDetails(med)}
-          style={[styles.medCard, med.taken && styles.medCardTaken]}
-        >
+        <Animated.View style={{ transform: [{ scale: cardScale }] }}>
+          <Pressable
+            onPress={() => onPressDetails && onPressDetails(med)}
+            style={[styles.medCard, med.taken && styles.medCardTaken]}
+          >
           {/* Top accent bar */}
           <View
             style={[
@@ -626,7 +639,8 @@ const MedCard = ({ med, onToggle, onSnooze, onRefill, onPressDetails }) => {
             </View>
           </View>
         </Pressable>
-      </Swipeable>
+      </Animated.View>
+    </Swipeable>
     </View>
   );
 };
