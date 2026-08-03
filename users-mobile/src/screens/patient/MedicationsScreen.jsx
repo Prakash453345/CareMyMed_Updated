@@ -383,6 +383,7 @@ const SlotHeader = ({ slot, callTime }) => {
         </View>
       ) : null}
     </View>
+  );
 };
 
 const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef, onPressDetails, tourRef, isHighlighted }) => {
