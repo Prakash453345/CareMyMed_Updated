@@ -19,6 +19,7 @@ jest.mock('../../src/theme', () => ({
     textSecondary: '#64748B',
     textMuted: '#94A3B8',
   },
+  useReduceMotion: () => true,
 }));
 
 jest.mock('../../src/theme/motion', () => ({

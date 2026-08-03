@@ -316,6 +316,7 @@ const TactileWheelPicker = ({
   selectedValue,
   onValueChange,
   itemHeight = 44,
+  activeColor = "#7C3AED",
 }) => {
   const flatListRef = useRef(null);
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -330,7 +331,7 @@ const TactileWheelPicker = ({
     ];
   }, [data]);
 
-  const onMomentumScrollEnd = (event) => {
+  const handleScrollEnd = (event) => {
     const y = event.nativeEvent.contentOffset.y;
     const index = Math.round(y / itemHeight);
     if (index >= 0 && index < data.length) {
@@ -370,7 +371,7 @@ const TactileWheelPicker = ({
         itemScrollY + itemHeight,
         itemScrollY + itemHeight * 2,
       ],
-      outputRange: [0.8, 0.9, 1.12, 0.9, 0.8],
+      outputRange: [0.75, 0.88, 1.15, 0.88, 0.75],
       extrapolate: "clamp",
     });
 
@@ -382,7 +383,7 @@ const TactileWheelPicker = ({
         itemScrollY + itemHeight,
         itemScrollY + itemHeight * 2,
       ],
-      outputRange: [0.35, 0.55, 1.0, 0.55, 0.35],
+      outputRange: [0.25, 0.45, 1.0, 0.45, 0.25],
       extrapolate: "clamp",
     });
 
@@ -414,7 +415,7 @@ const TactileWheelPicker = ({
           style={{
             fontSize: 20,
             ...FONT.bold,
-            color: isSelected ? "#7C3AED" : "#64748B",
+            color: isSelected ? activeColor : "#94A3B8",
           }}
         >
           {item.label}
@@ -422,6 +423,8 @@ const TactileWheelPicker = ({
       </Animated.View>
     );
   };
+
+  const isEmerald = activeColor === "#10B981";
 
   return (
     <View
@@ -435,13 +438,13 @@ const TactileWheelPicker = ({
         style={{
           position: "absolute",
           top: itemHeight * 2,
-          left: 10,
-          right: 10,
+          left: 6,
+          right: 6,
           height: itemHeight,
-          backgroundColor: "rgba(124, 58, 237, 0.06)",
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: "rgba(124, 58, 237, 0.15)",
+          backgroundColor: isEmerald ? "rgba(16, 185, 129, 0.08)" : "rgba(124, 58, 237, 0.08)",
+          borderRadius: 14,
+          borderWidth: 1.5,
+          borderColor: isEmerald ? "rgba(16, 185, 129, 0.25)" : "rgba(124, 58, 237, 0.25)",
           pointerEvents: "none",
         }}
       />
@@ -459,13 +462,182 @@ const TactileWheelPicker = ({
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true },
         )}
-        onMomentumScrollEnd={onMomentumScrollEnd}
+        onMomentumScrollEnd={handleScrollEnd}
+        onScrollEndDrag={handleScrollEnd}
         getItemLayout={(data, index) => ({
           length: itemHeight,
           offset: itemHeight * index,
           index,
         })}
       />
+    </View>
+  );
+};
+
+const GoogleFitHeightWeightPicker = ({
+  heightCm,
+  weightKg,
+  onHeightChange,
+  onWeightChange,
+}) => {
+  const [heightUnit, setHeightUnit] = useState("cm");
+
+  const heightCmData = useMemo(() => {
+    return Array.from({ length: 151 }, (_, i) => {
+      const val = 90 + i;
+      return { label: `${val}`, value: val };
+    });
+  }, []);
+
+  const feetData = useMemo(() => {
+    return Array.from({ length: 6 }, (_, i) => {
+      const val = 3 + i;
+      return { label: `${val} ft`, value: val };
+    });
+  }, []);
+
+  const inchesData = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      return { label: `${i} in`, value: i };
+    });
+  }, []);
+
+  const weightKgData = useMemo(() => {
+    return Array.from({ length: 191 }, (_, i) => {
+      const val = 30 + i;
+      return { label: `${val}`, value: val };
+    });
+  }, []);
+
+  const parsedCm = Math.max(90, Math.min(240, Math.round(Number(heightCm) || 170)));
+  const parsedKg = Math.max(30, Math.min(220, Math.round(Number(weightKg) || 70)));
+
+  const totalInches = parsedCm / 2.54;
+  const currentFeet = Math.max(3, Math.min(8, Math.floor(totalInches / 12)));
+  const currentInches = Math.max(0, Math.min(11, Math.round(totalInches % 12)));
+
+  const handleFeetChange = (newFt) => {
+    const newCm = Math.round((newFt * 12 + currentInches) * 2.54);
+    onHeightChange(String(newCm));
+  };
+
+  const handleInchesChange = (newIn) => {
+    const newCm = Math.round((currentFeet * 12 + newIn) * 2.54);
+    onHeightChange(String(newCm));
+  };
+
+  return (
+    <View style={{ gap: 16 }}>
+      {/* ── HEIGHT CAROUSEL CARD ── */}
+      <View style={s.fitMetricCard}>
+        <View style={s.fitHeaderRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Activity size={16} color="#8B5CF6" />
+            <Text style={s.fitCardLabel}>HEIGHT</Text>
+          </View>
+
+          <View style={s.unitToggleWrap}>
+            <Pressable
+              style={[s.unitTogglePill, heightUnit === "cm" && s.unitTogglePillActive]}
+              onPress={() => {
+                HapticPatterns.selection();
+                setHeightUnit("cm");
+              }}
+            >
+              <Text style={[s.unitToggleText, heightUnit === "cm" && s.unitToggleTextActive]}>
+                CM
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[s.unitTogglePill, heightUnit === "ft_in" && s.unitTogglePillActive]}
+              onPress={() => {
+                HapticPatterns.selection();
+                setHeightUnit("ft_in");
+              }}
+            >
+              <Text style={[s.unitToggleText, heightUnit === "ft_in" && s.unitToggleTextActive]}>
+                FT + IN
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={s.fitReadoutRow}>
+          {heightUnit === "cm" ? (
+            <Text style={s.fitValueBig}>
+              {parsedCm} <Text style={s.fitUnitSmall}>CM</Text>
+            </Text>
+          ) : (
+            <Text style={s.fitValueBig}>
+              {currentFeet} <Text style={s.fitUnitSmall}>FT</Text> {currentInches} <Text style={s.fitUnitSmall}>IN</Text>
+            </Text>
+          )}
+          <Text style={s.fitSubConversion}>
+            {heightUnit === "cm"
+              ? `≈ ${currentFeet} ft ${currentInches} in`
+              : `≈ ${parsedCm} cm`}
+          </Text>
+        </View>
+
+        <View style={{ marginTop: 6 }}>
+          {heightUnit === "cm" ? (
+            <TactileWheelPicker
+              data={heightCmData}
+              selectedValue={parsedCm}
+              onValueChange={(val) => onHeightChange(String(val))}
+              itemHeight={42}
+            />
+          ) : (
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <TactileWheelPicker
+                  data={feetData}
+                  selectedValue={currentFeet}
+                  onValueChange={handleFeetChange}
+                  itemHeight={42}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <TactileWheelPicker
+                  data={inchesData}
+                  selectedValue={currentInches}
+                  onValueChange={handleInchesChange}
+                  itemHeight={42}
+                />
+              </View>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* ── WEIGHT CAROUSEL CARD ── */}
+      <View style={s.fitMetricCard}>
+        <View style={s.fitHeaderRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Scale size={16} color="#10B981" />
+            <Text style={s.fitCardLabel}>WEIGHT (KG)</Text>
+          </View>
+        </View>
+
+        <View style={s.fitReadoutRow}>
+          <Text style={[s.fitValueBig, { color: "#10B981" }]}>
+            {parsedKg} <Text style={s.fitUnitSmall}>KG</Text>
+          </Text>
+          <Text style={[s.fitSubConversion, { color: "#10B981" }]}>
+            ≈ {Math.round(parsedKg / 0.45359237)} lbs
+          </Text>
+        </View>
+
+        <View style={{ marginTop: 6 }}>
+          <TactileWheelPicker
+            data={weightKgData}
+            selectedValue={parsedKg}
+            onValueChange={(val) => onWeightChange(String(val))}
+            itemHeight={42}
+            activeColor="#10B981"
+          />
+        </View>
+      </View>
     </View>
   );
 };
@@ -519,8 +691,9 @@ export default function HealthProfileScreen({ navigation }) {
         }),
         icon: HeartPulse,
         iconColor: "#EF4444",
-        ref: healthScoreRingRef.current ? healthScoreRingRef : healthScoreCardRef,
-        spotlightPadding: 6,
+        ref: healthScoreCardRef,
+        spotlightPadding: 4,
+        borderRadius: 24,
         scrollOffset: 0,
         visible: true,
       },
@@ -534,8 +707,9 @@ export default function HealthProfileScreen({ navigation }) {
         }),
         icon: ShieldCheck,
         iconColor: "#10B981",
-        ref: profileCompletenessHeaderRef.current ? profileCompletenessHeaderRef : profileSetupCardRef,
-        spotlightPadding: 6,
+        ref: profileSetupCardRef,
+        spotlightPadding: 4,
+        borderRadius: 20,
         scrollOffset: 0,
         visible: true,
       },
@@ -549,8 +723,9 @@ export default function HealthProfileScreen({ navigation }) {
         }),
         icon: AlertTriangle,
         iconColor: "#F59E0B",
-        ref: alertsHeaderRef.current ? alertsHeaderRef : alertsCardRef,
-        spotlightPadding: 6,
+        ref: alertsCardRef,
+        spotlightPadding: 4,
+        borderRadius: 20,
         scrollOffset: 0,
         visible: true,
       },
@@ -564,8 +739,9 @@ export default function HealthProfileScreen({ navigation }) {
         }),
         icon: FileText,
         iconColor: "#8B5CF6",
-        ref: medicalRecordsHeaderRef.current ? medicalRecordsHeaderRef : medicalRecordsCardRef,
-        spotlightPadding: 6,
+        ref: medicalRecordsCardRef,
+        spotlightPadding: 4,
+        borderRadius: 20,
         scrollOffset: 250,
         visible: true,
       },
@@ -3812,46 +3988,16 @@ export default function HealthProfileScreen({ navigation }) {
             </>
           )}
           {editingType === "vitals" && (
-            <>
-              <View style={s.formGroup}>
-                <SmartInput
-                  label={t("health_profile.height", {
-                    defaultValue: "Height (cm)",
-                  })}
-                  value={formState.height_cm ? String(formState.height_cm) : ""}
-                  onChangeText={(txt) => setFormState({ ...formState, height_cm: txt })}
-                  placeholder={t("health_profile.select_height", {
-                    defaultValue: "e.g. 182",
-                  })}
-                  keyboardType="decimal-pad"
-                  leftAccessory={inputLeftIcon(Activity, "#8B5CF6")}
-                />
-                {formState.height_cm && !isNaN(parseFloat(formState.height_cm)) && parseFloat(formState.height_cm) > 0 ? (
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#8B5CF6", marginTop: 4, marginLeft: 4 }}>
-                    ≈ {cmToFtIn(parseFloat(formState.height_cm))}
-                  </Text>
-                ) : null}
-              </View>
-              <View style={s.formGroup}>
-                <SmartInput
-                  label={t("health_profile.weight", {
-                    defaultValue: "Weight (kg)",
-                  })}
-                  value={formState.weight_kg ? String(formState.weight_kg) : ""}
-                  onChangeText={(txt) => setFormState({ ...formState, weight_kg: txt })}
-                  placeholder={t("health_profile.select_weight", {
-                    defaultValue: "e.g. 93",
-                  })}
-                  keyboardType="decimal-pad"
-                  leftAccessory={inputLeftIcon(Scale, "#10B981")}
-                />
-                {formState.weight_kg && !isNaN(parseFloat(formState.weight_kg)) && parseFloat(formState.weight_kg) > 0 ? (
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#10B981", marginTop: 4, marginLeft: 4 }}>
-                    ≈ {Math.round(parseFloat(formState.weight_kg) / 0.45359237)} lbs
-                  </Text>
-                ) : null}
-              </View>
-            </>
+            <GoogleFitHeightWeightPicker
+              heightCm={formState.height_cm || 170}
+              weightKg={formState.weight_kg || 70}
+              onHeightChange={(newCm) =>
+                setFormState((prev) => ({ ...prev, height_cm: newCm }))
+              }
+              onWeightChange={(newKg) =>
+                setFormState((prev) => ({ ...prev, weight_kg: newKg }))
+              }
+            />
           )}
           {editingType === "habits" && (
             <>
@@ -4329,36 +4475,29 @@ export default function HealthProfileScreen({ navigation }) {
                   })}
                 />
               </View>
-              <View style={s.formGroup}>
-                <Text style={s.formLabel}>
-                  {t("common.date", { defaultValue: "Date *" })}
-                </Text>
-                <Pressable
-                  style={[s.input, { justifyContent: "center" }]}
-                  onPress={() => {
-                    setDatePickerField("date");
-                    setShowDatePicker(true);
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: formState.date
-                        ? colors.textPrimary
-                        : colors.textMuted,
-                      fontSize: 15,
-                    }}
-                  >
-                    {formState.date
+              <Pressable
+                onPress={() => {
+                  setDatePickerField("date");
+                  setShowDatePicker(true);
+                }}
+              >
+                <SmartInput
+                  label={t("common.date", { defaultValue: "Date *" })}
+                  value={
+                    formState.date
                       ? new Date(formState.date).toLocaleDateString(
                           t("common.locale_date", { defaultValue: "en-US" }),
                           { year: "numeric", month: "short", day: "numeric" },
                         )
-                      : t("common.select_date", {
-                          defaultValue: "Select date",
-                        })}
-                  </Text>
-                </Pressable>
-              </View>
+                      : ""
+                  }
+                  placeholder={t("common.select_date", {
+                    defaultValue: "Select date",
+                  })}
+                  editable={false}
+                  pointerEvents="none"
+                />
+              </Pressable>
               <View style={s.formGroup}>
                 <SmartInput
                   label={t("health_profile.detailed_notes", {
@@ -4390,38 +4529,31 @@ export default function HealthProfileScreen({ navigation }) {
                   })}
                 />
               </View>
-              <View style={s.formGroup}>
-                <Text style={s.formLabel}>
-                  {t("health_profile.date_given", {
+              <Pressable
+                onPress={() => {
+                  setDatePickerField("date_given");
+                  setShowDatePicker(true);
+                }}
+              >
+                <SmartInput
+                  label={t("health_profile.date_given", {
                     defaultValue: "Date Given *",
                   })}
-                </Text>
-                <Pressable
-                  style={[s.input, { justifyContent: "center" }]}
-                  onPress={() => {
-                    setDatePickerField("date_given");
-                    setShowDatePicker(true);
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: formState.date_given
-                        ? colors.textPrimary
-                        : colors.textMuted,
-                      fontSize: 15,
-                    }}
-                  >
-                    {formState.date_given
+                  value={
+                    formState.date_given
                       ? new Date(formState.date_given).toLocaleDateString(
                           t("common.locale_date", { defaultValue: "en-US" }),
                           { year: "numeric", month: "short", day: "numeric" },
                         )
-                      : t("common.select_date", {
-                          defaultValue: "Select date",
-                        })}
-                  </Text>
-                </Pressable>
-              </View>
+                      : ""
+                  }
+                  placeholder={t("common.select_date", {
+                    defaultValue: "Select date",
+                  })}
+                  editable={false}
+                  pointerEvents="none"
+                />
+              </Pressable>
             </>
           )}
           {editingType === "appointment" && (
@@ -8524,5 +8656,77 @@ const s = StyleSheet.create({
   },
   pickerToggleTextActive: {
     color: "#7C3AED",
+  },
+  fitMetricCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  fitHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  fitCardLabel: {
+    fontSize: 12,
+    ...FONT.bold,
+    color: "#64748B",
+    letterSpacing: 0.8,
+  },
+  unitToggleWrap: {
+    flexDirection: "row",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 12,
+    padding: 3,
+  },
+  unitTogglePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 9,
+  },
+  unitTogglePillActive: {
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  unitToggleText: {
+    fontSize: 11,
+    ...FONT.bold,
+    color: "#64748B",
+  },
+  unitToggleTextActive: {
+    color: "#7C3AED",
+  },
+  fitReadoutRow: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 4,
+  },
+  fitValueBig: {
+    fontSize: 32,
+    ...FONT.heavy,
+    color: "#7C3AED",
+  },
+  fitUnitSmall: {
+    fontSize: 14,
+    ...FONT.bold,
+    color: "#94A3B8",
+  },
+  fitSubConversion: {
+    fontSize: 12.5,
+    ...FONT.semibold,
+    color: "#8B5CF6",
+    marginTop: 2,
   },
 });

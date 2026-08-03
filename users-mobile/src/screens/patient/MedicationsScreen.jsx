@@ -386,33 +386,41 @@ const SlotHeader = ({ slot, callTime }) => {
   );
 };
 
-// ── Medication Card ───────────────────────────────────────────────────────────
-const MedCard = ({ med, onToggle, onSnooze, onRefill, onPressDetails }) => {
-  const { t } = useTranslation();
-  const cardScale = useRef(new Animated.Value(1)).current;
+  const cardLiftAnim = useRef(new Animated.Value(0)).current;
+  const takenBadgeScale = useRef(new Animated.Value(med.taken ? 1 : 0.95)).current;
+  const checkScale = useRef(new Animated.Value(med.taken ? 1 : 0)).current;
+  const cfg = SLOT_CONFIG[med.type] || SLOT_CONFIG.as_needed;
 
   useEffect(() => {
     if (med.taken) {
-      Animated.sequence([
-        Animated.timing(cardScale, {
-          toValue: 1.02,
-          duration: 120,
+      // Integrated Card Response: Lift -2px, scale taken badge, spring checkmark
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(cardLiftAnim, {
+            toValue: -2,
+            duration: 120,
+            useNativeDriver: true,
+          }),
+          Animated.spring(cardLiftAnim, {
+            toValue: 0,
+            friction: 6,
+            tension: 70,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.spring(checkScale, {
+          toValue: 1,
+          friction: 5,
+          tension: 80,
           useNativeDriver: true,
         }),
-        Animated.spring(cardScale, {
+        Animated.spring(takenBadgeScale, {
           toValue: 1,
           friction: 6,
           tension: 70,
           useNativeDriver: true,
         }),
       ]).start();
-
-      Animated.spring(checkScale, {
-        toValue: 1,
-        friction: 5,
-        tension: 70,
-        useNativeDriver: true,
-      }).start();
     }
   }, [med.taken]);
 
@@ -517,7 +525,7 @@ const MedCard = ({ med, onToggle, onSnooze, onRefill, onPressDetails }) => {
         leftThreshold={40}
         rightThreshold={40}
       >
-        <Animated.View style={{ transform: [{ scale: cardScale }] }}>
+        <Animated.View style={{ transform: [{ translateY: cardLiftAnim }] }}>
           <Pressable
             onPress={() => onPressDetails && onPressDetails(med)}
             style={[styles.medCard, med.taken && styles.medCardTaken]}
@@ -566,16 +574,18 @@ const MedCard = ({ med, onToggle, onSnooze, onRefill, onPressDetails }) => {
                   {med.name}
                 </Text>
                 {med.taken && (
-                  <View style={styles.takenBadge}>
-                    <CheckCircle2 size={10} color="#10B981" />
-                    <Text style={styles.takenBadgeTxt}>
-                      {med.marked_by === "caller"
-                        ? t("medications.by_caller", {
-                            defaultValue: "By Caller",
-                          })
-                        : t("medications.taken", { defaultValue: "Taken" })}
-                    </Text>
-                  </View>
+                  <Animated.View style={{ transform: [{ scale: takenBadgeScale }] }}>
+                    <View style={styles.takenBadge}>
+                      <CheckCircle2 size={10} color="#10B981" />
+                      <Text style={styles.takenBadgeTxt}>
+                        {med.marked_by === "caller"
+                          ? t("medications.by_caller", {
+                              defaultValue: "By Caller",
+                            })
+                          : t("medications.taken", { defaultValue: "Taken" })}
+                      </Text>
+                    </View>
+                  </Animated.View>
                 )}
                 {med.verifiedByCaller && (
                   <View style={styles.verifiedBadge}>
@@ -1022,43 +1032,46 @@ export default function MedicationsScreen({ navigation, route }) {
     const steps = [];
 
     steps.push({
-      title: t("home.guide_meds_title", { defaultValue: "💊 Daily Schedule" }),
+      title: t("home.guide_meds_title", { defaultValue: "Daily Schedule" }),
       desc: t("home.guide_meds_desc", {
         defaultValue:
-          "Swipe or tap a medicine card to mark it as taken once consumed. Your care caller reviews this daily to keep you safe.",
+          "Swipe or tap a medicine card to mark it as taken. Your care caller reviews this daily to keep you safe.",
       }),
       icon: Pill,
       iconColor: "#10B981",
-      ref: scheduleHeaderRef.current ? scheduleHeaderRef : (schedule && Object.values(schedule).flat().length > 0 ? slotsRef : medsListCardRef),
-      spotlightPadding: 6,
+      ref: adherenceCardRef.current ? adherenceCardRef : medsListCardRef,
+      spotlightPadding: 4,
+      borderRadius: 20,
       scrollOffset: 0,
       visible: true,
     });
 
     steps.push({
-      title: t("medications.guide_adherence_title", { defaultValue: "📊 Adherence Trend" }),
+      title: t("medications.guide_adherence_title", { defaultValue: "Adherence Trend" }),
       desc: t("medications.guide_adherence_desc", {
         defaultValue:
           "Track your 7-day adherence percentage and habit consistency. Higher adherence unlocks milestone badges!",
       }),
       icon: TrendingUp,
       iconColor: "#6366F1",
-      ref: adherenceBadgeRef.current ? adherenceBadgeRef : adherenceCardRef,
-      spotlightPadding: 6,
+      ref: adherenceCardRef,
+      spotlightPadding: 4,
+      borderRadius: 20,
       scrollOffset: 0,
       visible: true,
     });
 
     steps.push({
-      title: t("medications.guide_temp_title", { defaultValue: "⚡ Temporary Meds" }),
+      title: t("medications.guide_temp_title", { defaultValue: "Temporary Meds" }),
       desc: t("medications.guide_temp_desc", {
         defaultValue:
-          "Log short-term prescriptions like antibiotics or pain relievers, or request a prescription slip review directly from your care team.",
+          "Log short-term prescriptions like antibiotics or pain relievers, or request a prescription slip review directly.",
       }),
       icon: Zap,
       iconColor: "#A855F7",
-      ref: addTempMedBtnRef.current ? addTempMedBtnRef : tempMedsRef,
-      spotlightPadding: 6,
+      ref: tempMedsRef,
+      spotlightPadding: 4,
+      borderRadius: 20,
       scrollOffset: 300,
       visible: true,
     });

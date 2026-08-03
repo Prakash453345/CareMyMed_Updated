@@ -327,12 +327,13 @@ export default function MyCallerScreen({ navigation }) {
 
     steps.push({
       title: "Call Your Coordinator",
-      desc: "Tap 'Call Now' anytime to connect directly with your dedicated caller for check-ins, medication logs, and wellness updates.",
+      desc: "Tap anytime to connect directly with your dedicated caller for check-ins, medication logs, and wellness updates.",
       icon: Phone,
       iconColor: "#6366F1",
-      ref: callBtnRef.current ? callBtnRef : callerCardRef,
-      spotlightPadding: 6,
-      shape: "pill",
+      ref: callerCardRef,
+      spotlightPadding: 4,
+      borderRadius: 24,
+      hero: true,
       visible: !!caller,
     });
 
@@ -342,29 +343,31 @@ export default function MyCallerScreen({ navigation }) {
       icon: UserCheck,
       iconColor: "#10B981",
       ref: managerCardRef,
-      spotlightPadding: 6,
+      spotlightPadding: 4,
+      borderRadius: 20,
       visible: !!manager,
     });
 
     steps.push({
       title: "Add Trusted Contact",
-      desc: "Tap '+' to add family members or close friends for emergency SOS notifications or shared health logs.",
+      desc: "Add family members or close friends for emergency SOS notifications or shared health logs.",
       icon: Heart,
       iconColor: "#EF4444",
-      ref: addContactBtnRef.current ? addContactBtnRef : contactsCardRef,
-      spotlightPadding: 6,
-      shape: "circle",
+      ref: contactsCardRef,
+      spotlightPadding: 4,
+      borderRadius: 20,
       visible: true,
     });
 
     if (calls.length > 0) {
       steps.push({
         title: "Check-In Log History",
-        desc: "Review dates of past check-ins, along with AI-generated summaries capturing your check-in calls.",
+        desc: "Review dates of past check-ins, along with AI-generated summaries capturing your calls.",
         icon: Clock,
         iconColor: "#F59E0B",
-        ref: recentCallsTitleRef.current ? recentCallsTitleRef : callsCardRef,
-        spotlightPadding: 6,
+        ref: callsCardRef,
+        spotlightPadding: 4,
+        borderRadius: 20,
         visible: true,
       });
     }

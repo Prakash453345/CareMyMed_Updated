@@ -72,6 +72,7 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import usePatientStore from "../../store/usePatientStore";
 import TabScreenTransition from "../../components/ui/TabScreenTransition";
+import RecoverableBoundary from "../../components/RecoverableBoundary";
 import RecapStoryModal from "../../components/adherence/RecapStoryModal";
 import { layout } from "../../theme";
 import {
@@ -1912,6 +1913,11 @@ export default function AdherenceScreen({ navigation }) {
             }
           >
             {/* ── [0] Hero Gradient Card (Redesigned Light Theme Fitbit style) ── */}
+            <RecoverableBoundary
+              featureName="Adherence Chart"
+              screenName="AdherenceScreen"
+              preset="chart"
+            >
             <Animated.View style={[anim(0), { position: "relative" }]}>
               <View
                 style={[
@@ -2073,6 +2079,7 @@ export default function AdherenceScreen({ navigation }) {
                 </View>
               </View>
             </Animated.View>
+            </RecoverableBoundary>
 
             {/* ── [1] Streak Banner with Companion ── */}
             <Animated.View style={anim(1)}>

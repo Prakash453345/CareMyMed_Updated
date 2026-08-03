@@ -59,26 +59,9 @@ jest.mock('lucide-react-native', () => {
     const React = require('react');
     const { View } = require('react-native');
     const dummy = () => React.createElement(View);
-    return {
-        ChevronLeft: dummy,
-        Shield: dummy,
-        Lock: dummy,
-        Bell: dummy,
-        BellRing: dummy,
-        Smartphone: dummy,
-        Globe: dummy,
-        Activity: dummy,
-        RefreshCw: dummy,
-        Moon: dummy,
-        Sparkles: dummy,
-        LogOut: dummy,
-        Check: dummy,
-        AlertCircle: dummy,
-        KeyRound: dummy,
-        ChevronRight: dummy,
-        Zap: dummy,
-        Eye: dummy,
-    };
+    return new Proxy({}, {
+        get: (target, prop) => dummy,
+    });
 });
 
 // Mock Patient Store
@@ -143,8 +126,11 @@ describe('SettingsScreen', () => {
         });
         expect(toJSON()).toBeTruthy();
         expect(getByText('Settings & Preferences')).toBeTruthy();
+        expect(getByText('SYSTEM SECURITY SCORE')).toBeTruthy();
+        expect(getByText('98% Protected')).toBeTruthy();
         expect(getByText('Security & Access')).toBeTruthy();
         expect(getByText('Notifications & Health Alarms')).toBeTruthy();
-        expect(getByText('Preferences & Wearable Sync')).toBeTruthy();
+        expect(getByText('Connected Devices & Health Sync')).toBeTruthy();
+        expect(getByText('Preferences & Interface')).toBeTruthy();
     });
 });

@@ -74,6 +74,7 @@ import {
 } from "../../theme";
 import { useAuth } from "../../context/AuthContext";
 import TabScreenTransition from "../../components/ui/TabScreenTransition";
+import RecoverableBoundary from "../../components/RecoverableBoundary";
 import { apiService } from "../../lib/api";
 import { useFocusEffect } from "@react-navigation/native";
 import HealthSyncService from "../../services/HealthSyncService";
@@ -427,58 +428,63 @@ export default function PatientHomeScreen({ navigation }) {
     return [
       {
         title: t("home.guide_orb_title", {
-          defaultValue: "🔮 Glass Health Orb",
+          defaultValue: "Glass Health Orb",
         }),
         desc: t("home.guide_orb_desc", {
           defaultValue:
-            "This is your daily health score. It combines your medication adherence, sleep patterns, active minutes, and vital logs into a single biological wellness estimate.",
+            "Your daily health grade combines medication adherence, sleep, and vitals into a single wellness score.",
         }),
         icon: Sparkles,
         iconColor: "#A78BFA",
         ref: orbRef,
         spotlightPadding: 6,
+        borderRadius: 24,
+        hero: true,
         visible: true,
       },
       {
         title: t("home.guide_insight_title", {
-          defaultValue: "✨ AI Coach Guidance",
+          defaultValue: "AI Coach Guidance",
         }),
         desc: t("home.guide_insight_desc", {
           defaultValue:
-            "Your personal AI coach provides custom check-in insights based on your recent health trends and daily habits. Swipe through the cards to read tips.",
+            "Personalized check-in insights based on your recent health trends and daily habits. Swipe to read recommendations.",
         }),
         icon: Sparkles,
         iconColor: "#A855F7",
-        ref: aiCoachHeaderRef,
-        spotlightPadding: 6,
+        ref: insightCardRef,
+        spotlightPadding: 4,
+        borderRadius: 20,
         visible: true,
       },
       {
         title: t("home.guide_meds_title", {
-          defaultValue: "📅 Today's Plan",
+          defaultValue: "Today's Plan",
         }),
         desc: t("home.guide_meds_desc", {
           defaultValue:
-            "Keep track of your scheduled medication dosages throughout the day. Mark slots as taken here or in the Medications tab to keep your adherence high.",
+            "Track your scheduled medication dosages. Mark slots as taken here or in the Medications tab to maintain your streak.",
         }),
         icon: Pill,
         iconColor: "#3B82F6",
-        ref: todaysPlanHeaderRef,
-        spotlightPadding: 6,
+        ref: medsCardRef,
+        spotlightPadding: 4,
+        borderRadius: 20,
         visible: true,
       },
       {
         title: t("home.guide_vitals_title", {
-          defaultValue: "📊 Wearables & Vitals",
+          defaultValue: "Wearables & Vitals",
         }),
         desc: t("home.guide_vitals_desc", {
           defaultValue:
-            "Monitor physiological vitals (blood pressure, blood glucose, temperature, weight). Connect your wearables (like Health Connect or Fitbit) to sync active minutes automatically.",
+            "Monitor blood pressure, heart rate, and glucose. Connect Health Connect or Apple Health for auto-sync.",
         }),
         icon: Heart,
         iconColor: "#EF4444",
-        ref: vitalsHeaderRef,
-        spotlightPadding: 6,
+        ref: vitalsCardRef,
+        spotlightPadding: 4,
+        borderRadius: 20,
         visible: true,
       },
     ];
@@ -2664,6 +2670,11 @@ export default function PatientHomeScreen({ navigation }) {
             </Animated.View>
 
             {/* ── 1. GLASS HEALTH ORB (Brand Focus, 60% Width) ── */}
+            <RecoverableBoundary
+              featureName="Health Score"
+              screenName="HomeScreen"
+              resetKeys={[patient?._id]}
+            >
             <View ref={orbRef} collapsable={false}>
               <Animated.View style={[entranceStyle(1), styles.orbContainer]}>
               <Animated.View
@@ -2824,6 +2835,7 @@ export default function PatientHomeScreen({ navigation }) {
               </Text>
             </Animated.View>
             </View>
+            </RecoverableBoundary>
 
             {/* ── 2. DAILY CHECK-IN (Directly under the Orb) ── */}
             <Animated.View style={[entranceStyle(2), styles.section]}>

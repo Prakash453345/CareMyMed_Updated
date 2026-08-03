@@ -9,6 +9,9 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { RefreshCw, AlertTriangle } from 'lucide-react-native';
 import * as SplashScreen from 'expo-splash-screen';
+import RecoveryManager, { ErrorSeverity } from '../services/RecoveryManager';
+
+export { default as RecoverableBoundary, ResilientFeature, withRecoverableBoundary } from './RecoverableBoundary';
 
 export default class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -23,7 +26,15 @@ export default class ErrorBoundary extends React.Component {
 
     componentDidCatch(error, errorInfo) {
         SplashScreen.hideAsync().catch(() => { });
-        console.error('[ErrorBoundary] Caught:', error?.message);
+        console.error('[ErrorBoundary] Root boundary caught:', error?.message);
+        RecoveryManager.reportTelemetry({
+            featureName: 'RootApp',
+            screenName: 'AppRoot',
+            error,
+            severity: ErrorSeverity.ROOT_ERROR,
+            recoveryStatus: 'unrecovered',
+            metadata: { componentStack: errorInfo?.componentStack },
+        });
     }
 
     handleReset = () => {

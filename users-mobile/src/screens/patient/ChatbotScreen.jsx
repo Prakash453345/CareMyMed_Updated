@@ -25,6 +25,8 @@ import AlertManager from '../../utils/AlertManager';
 import { globalChatCache, removeCachedSession } from './ChatHistoryScreen';
 import TabScreenTransition from '../../components/ui/TabScreenTransition';
 import HeroTransition from '../../livingGlass/components/HeroTransition';
+import RecoveryManager, { RecordingResult, RecordingResultStatus } from '../../services/RecoveryManager';
+import RecoverableBoundary from '../../components/RecoverableBoundary';
 
 const INITIAL_SUGGESTIONS = [
     '📋 What should I do today?',
@@ -1091,21 +1093,26 @@ export default function ChatbotScreen({ navigation, route }) {
         }
     }, [route.params, handleSend]);
 
-    // Helper to safely stop and unload audio recording without unhandled promise rejections
+    // Helper to safely stop and unload audio recording using RecoveryManager
     const safeStopAndUnload = async (rec) => {
         if (!rec) return null;
-        try {
-            const status = await rec.getStatusAsync().catch(() => null);
-            let uri = null;
-            try { uri = rec.getURI(); } catch (e) {}
-            if (status && (status.isRecording || status.isLoaded)) {
-                await rec.stopAndUnloadAsync().catch(() => {});
-            }
-            return uri;
-        } catch (e) {
-            return null;
-        }
+        return await RecoveryManager.recoverVoiceRecorder(rec);
     };
+
+    // Register Voice Recorder recovery handler with RecoveryManager
+    useEffect(() => {
+        RecoveryManager.registerRecoveryHandler('Voice Recorder', async () => {
+            if (recording) {
+                await RecoveryManager.recoverVoiceRecorder(recording);
+                setRecording(null);
+            }
+            setRecordedAudioUri(null);
+            setVoiceState('idle');
+        });
+        return () => {
+            RecoveryManager.unregisterRecoveryHandler('Voice Recorder');
+        };
+    }, [recording]);
 
     // Cleanup audio and abort active stream on unmount
     useEffect(() => {
@@ -1118,11 +1125,11 @@ export default function ChatbotScreen({ navigation, route }) {
         return () => {
             subscription.remove();
             if (recording) {
-                safeStopAndUnload(recording);
+                RecoveryManager.recoverVoiceRecorder(recording);
             }
             // Abort any in-flight SSE stream when leaving screen
             if (xhrRef.current) {
-                xhrRef.current.abort();
+                RecoveryManager.recoverChatStream(xhrRef.current);
                 xhrRef.current = null;
             }
         };
@@ -1599,7 +1606,7 @@ export default function ChatbotScreen({ navigation, route }) {
                     [{ text: 'OK' }],
                     { type: 'warning' }
                 );
-                return;
+                return RecordingResult.permissionDenied('Failed to request permission.');
             }
 
             if (permission.status !== 'granted') {
@@ -1610,7 +1617,7 @@ export default function ChatbotScreen({ navigation, route }) {
                     { type: 'warning' }
                 );
                 setVoiceState('idle');
-                return;
+                return RecordingResult.permissionDenied();
             }
 
             // ── Set audio mode for recording ──
@@ -1621,7 +1628,6 @@ export default function ChatbotScreen({ navigation, route }) {
                 });
             } catch (modeErr) {
                 console.warn('Failed to set audio mode:', modeErr);
-                // Continue anyway — some devices still allow recording without this
             }
 
             // ── Create recording (try HIGH_QUALITY first, fallback to LOW_QUALITY) ──
@@ -1647,7 +1653,7 @@ export default function ChatbotScreen({ navigation, route }) {
                         { type: 'error' }
                     );
                     setVoiceState('idle');
-                    return;
+                    return RecordingResult.error('All recording presets failed.');
                 }
             }
 
@@ -1662,6 +1668,7 @@ export default function ChatbotScreen({ navigation, route }) {
             timerIntervalRef.current = setInterval(() => {
                 setRecordingDuration(prev => prev + 1);
             }, 1000);
+            return RecordingResult.success(null);
         } catch (err) {
             console.error('Failed to start recording:', err);
             AlertManager.alert(
@@ -1671,6 +1678,7 @@ export default function ChatbotScreen({ navigation, route }) {
                 { type: 'error' }
             );
             setVoiceState('idle');
+            return RecordingResult.error(err?.message);
         }
     };
 
@@ -1681,7 +1689,7 @@ export default function ChatbotScreen({ navigation, route }) {
         }
         if (!recording) {
             setVoiceState('idle');
-            return;
+            return RecordingResult.alreadyStopped();
         }
         const currentRec = recording;
         setRecording(null);
@@ -1691,12 +1699,15 @@ export default function ChatbotScreen({ navigation, route }) {
             if (uri) {
                 setRecordedAudioUri(uri);
                 setVoiceState('review');
+                return RecordingResult.success(uri);
             } else {
                 setVoiceState('idle');
+                return RecordingResult.emptyAudio();
             }
         } catch (err) {
-            console.error('Failed to stop recording', err);
+            console.error('Failed to stop recording cleanly:', err);
             setVoiceState('idle');
+            return RecordingResult.interrupted(err?.message);
         }
     };
 
@@ -1708,16 +1719,13 @@ export default function ChatbotScreen({ navigation, route }) {
         if (recording) {
             const currentRec = recording;
             setRecording(null);
-            try {
-                await safeStopAndUnload(currentRec);
-            } catch (err) {
-                console.error('Failed to cancel recording', err);
-            }
+            await safeStopAndUnload(currentRec);
         }
         setRecordedAudioUri(null);
         setRecordingDuration(0);
         setVoiceState('idle');
         Vibration.vibrate([0, 40, 40, 40]); // Buzz on cancel
+        return RecordingResult.alreadyStopped();
     };
 
     const renderMessage = useCallback(({ item }) => {
@@ -1867,6 +1875,13 @@ export default function ChatbotScreen({ navigation, route }) {
                 )}
 
                 {/* ── Input Bar State Machine ── */}
+                <RecoverableBoundary
+                    featureName="Voice Recorder"
+                    screenName="ChatbotScreen"
+                    resetKeys={[activeSessionId]}
+                    preset="voice"
+                    compact
+                >
                 <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom + 8, 20) }]}>
                     {voiceState === 'recording' ? (
                         /* 🎙️ RECORDING STATE (Telegram Visual Polish) */
@@ -1962,6 +1977,7 @@ export default function ChatbotScreen({ navigation, route }) {
                         </Pressable>
                     ) : null}
                 </View>
+                </RecoverableBoundary>
             </KeyboardAvoidingView>
         </View>
         </TabScreenTransition>
