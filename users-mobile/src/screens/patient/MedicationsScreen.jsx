@@ -383,9 +383,10 @@ const SlotHeader = ({ slot, callTime }) => {
         </View>
       ) : null}
     </View>
-  );
 };
 
+const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef, onPressDetails, tourRef, isHighlighted }) => {
+  const { t } = useTranslation();
   const cardLiftAnim = useRef(new Animated.Value(0)).current;
   const takenBadgeScale = useRef(new Animated.Value(med.taken ? 1 : 0.95)).current;
   const checkScale = useRef(new Animated.Value(med.taken ? 1 : 0)).current;
