@@ -2114,13 +2114,13 @@ export default function PatientHomeScreen({ navigation }) {
             >
               <View style={styles.cardIconBadge}>
                 {nextAction.iconType === "medication" ? (
-                  <Pill size={16} color="#FFFFFF" />
+                  <Pill size={16} color="#7C3AED" />
                 ) : nextAction.iconType === "vital" ? (
-                  <Heart size={16} color="#FFFFFF" />
+                  <Heart size={16} color="#7C3AED" />
                 ) : nextAction.iconType === "alert" ? (
-                  <AlertTriangle size={16} color="#FFFFFF" />
+                  <AlertTriangle size={16} color="#EF4444" />
                 ) : (
-                  <Sparkles size={16} color="#FFFFFF" />
+                  <Sparkles size={16} color="#7C3AED" />
                 )}
               </View>
 
@@ -2174,7 +2174,7 @@ export default function PatientHomeScreen({ navigation }) {
                   }}
                 >
                   <View style={styles.arrowCircle}>
-                    <ChevronRight size={15} color="#94A3B8" />
+                    <ChevronRight size={15} color="#64748B" />
                   </View>
                 </Animated.View>
 
@@ -2187,7 +2187,7 @@ export default function PatientHomeScreen({ navigation }) {
                 >
                   <View style={styles.dockedCtaBadge}>
                     <Text style={styles.dockedCtaText}>View</Text>
-                    <ChevronRight size={13} color="#C084FC" />
+                    <ChevronRight size={13} color="#7C3AED" />
                   </View>
                 </Animated.View>
               </View>
@@ -5155,13 +5155,17 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     zIndex: 120,
-    backgroundColor: "#0F172A",
+    backgroundColor: "#FFFFFF",
     paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 22,
     borderWidth: 1,
-    shadowColor: "#0F172A",
+    borderColor: "rgba(124, 58, 237, 0.15)",
+    shadowColor: "#7C3AED",
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.22,
-    shadowRadius: 12,
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
   },
   cardInternalPressable: {
     flexDirection: "row",
@@ -5169,43 +5173,45 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   cardIconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(124, 58, 237, 0.32)",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#F3E8FF",
     alignItems: "center",
     justifyContent: "center",
   },
   eyebrowCapsule: {
     alignSelf: "flex-start",
-    backgroundColor: "rgba(124, 58, 237, 0.2)",
+    backgroundColor: "#FAF5FF",
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 100,
+    borderWidth: 1,
+    borderColor: "#F3E8FF",
   },
   eyebrowText: {
     fontSize: 9,
     fontWeight: "900",
-    color: "#C084FC",
+    color: "#7C3AED",
     letterSpacing: 0.6,
   },
   dockedEyebrowText: {
     fontSize: 9,
     fontWeight: "900",
-    color: "#C084FC",
+    color: "#7C3AED",
     letterSpacing: 0.8,
   },
   cardMainText: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#F8FAFC",
+    color: "#0F172A",
     marginTop: 2,
   },
   arrowCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -5213,16 +5219,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(124, 58, 237, 0.25)",
+    backgroundColor: "#FAF5FF",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(192, 132, 252, 0.3)",
+    borderColor: "#F3E8FF",
   },
   dockedCtaText: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#E9D5FF",
+    color: "#7C3AED",
   },
 });
