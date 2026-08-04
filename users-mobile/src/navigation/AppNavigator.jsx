@@ -73,9 +73,18 @@ import HealthCopilotScreen from "../screens/patient/HealthCopilotScreen";
 import InterventionCenterScreen from "../screens/app/InterventionCenterScreen";
 import BottomSheetProvider from "../components/ui/BottomSheetProvider";
 import LivingGlassProvider from "../livingGlass/runtime/LivingGlassRuntime";
+import { withRecoverableBoundary } from "../components/RecoverableBoundary";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+
+// ── Resilient Wrapped Screens (prevents full-screen app error takeovers) ─────
+const ResilientHomeScreen = withRecoverableBoundary(PatientHomeScreen, { featureName: 'PatientHome', screenName: 'HomeScreen' });
+const ResilientMyCallerScreen = withRecoverableBoundary(MyCallerScreen, { featureName: 'MyCaller', screenName: 'MyCallerScreen' });
+const ResilientMedicationsScreen = withRecoverableBoundary(MedicationsScreen, { featureName: 'Medications', screenName: 'MedicationsScreen' });
+const ResilientHealthProfileScreen = withRecoverableBoundary(HealthProfileScreen, { featureName: 'HealthProfile', screenName: 'HealthProfileScreen' });
+const ResilientProfileScreen = withRecoverableBoundary(PatientProfileScreen, { featureName: 'Profile', screenName: 'ProfileScreen' });
+const ResilientSettingsScreen = withRecoverableBoundary(SettingsScreen, { featureName: 'Settings', screenName: 'SettingsScreen' });
 
 export const TAB_BAR_HEIGHT = layout.TAB_BAR_HEIGHT;
 export const TAB_BAR_BOTTOM = layout.TAB_BAR_BOTTOM;
@@ -150,11 +159,11 @@ function PatientTabNavigator() {
     return (
         <View style={{ flex: 1 }}>
             <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, sceneContainerStyle: { backgroundColor: colors.background } }}>
-                <Tab.Screen name="PatientHome" component={PatientHomeScreen} options={{ tabBarIconComponent: LayoutDashboard }} />
-                <Tab.Screen name="MyCaller" component={MyCallerScreen} options={{ tabBarIconComponent: Users }} />
-                <Tab.Screen name="Medications" component={MedicationsScreen} options={{ tabBarIconComponent: Pill }} />
-                <Tab.Screen name="HealthProfile" component={HealthProfileScreen} options={{ tabBarIconComponent: ShieldPlus }} />
-                <Tab.Screen name="Profile" component={PatientProfileScreen} options={{ tabBarIconComponent: UserCircle }} />
+                <Tab.Screen name="PatientHome" component={ResilientHomeScreen} options={{ tabBarIconComponent: LayoutDashboard }} />
+                <Tab.Screen name="MyCaller" component={ResilientMyCallerScreen} options={{ tabBarIconComponent: Users }} />
+                <Tab.Screen name="Medications" component={ResilientMedicationsScreen} options={{ tabBarIconComponent: Pill }} />
+                <Tab.Screen name="HealthProfile" component={ResilientHealthProfileScreen} options={{ tabBarIconComponent: ShieldPlus }} />
+                <Tab.Screen name="Profile" component={ResilientProfileScreen} options={{ tabBarIconComponent: UserCircle }} />
             </Tab.Navigator>
             <ChatFAB onPress={() => navigate('ChatHistory')} bottomOffset={fabBottom} />
         </View>
@@ -220,7 +229,7 @@ const MainAppStack = () => (
         <Stack.Screen name="DeveloperObservability" component={DeveloperObservabilityScreen} options={{ presentation: "modal", animation: "slide_from_bottom" }} />
         <Stack.Screen name="PatientDiagnostics" component={PatientDiagnosticsScreen} options={{ presentation: "modal", animation: "slide_from_bottom" }} />
         <Stack.Screen name="HealthCopilot" component={HealthCopilotScreen} />
-        <Stack.Screen name="Settings" component={SettingsScreen} options={{ animation: "slide_from_right" }} />
+        <Stack.Screen name="Settings" component={ResilientSettingsScreen} options={{ animation: "slide_from_right" }} />
     </Stack.Navigator>
 );
 

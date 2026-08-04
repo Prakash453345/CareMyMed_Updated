@@ -23,6 +23,7 @@ import {
   AppState,
   RefreshControl,
   Alert,
+  Image,
 } from "react-native";
 import * as Haptics from 'expo-haptics';
 import { getStreakState } from "../../utils/streakHelper";
