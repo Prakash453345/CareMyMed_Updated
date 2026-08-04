@@ -966,6 +966,7 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
       style={[
         {
           width: isSmall ? 70 : "48%",
+          height: isSmall ? 100 : 156,
           borderRadius: 20,
           borderWidth: 1.5,
           borderColor: data.unlocked
@@ -991,24 +992,24 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
         }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={{ padding: 14, width: "100%" }}
+        style={{ padding: 12, width: "100%", height: "100%", justifyContent: "space-between" }}
       >
         {renderWatermark()}
-        <Animated.View style={{ transform: [{ scale: pressScale }] }}>
-          {/* Top Row: Emblem Icon on Left, Status Badge on Right */}
+        <Animated.View style={{ flex: 1, justifyContent: "space-between", transform: [{ scale: pressScale }] }}>
+          {/* Top Row: Emblem Icon on Left, Status Badge Pill on Right */}
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
-              marginBottom: 10,
+              marginBottom: 6,
             }}
           >
             <View
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
+                width: 38,
+                height: 38,
+                borderRadius: 19,
                 alignItems: "center",
                 justifyContent: "center",
                 position: "relative",
@@ -1030,13 +1031,13 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
                 style={{
                   width: "100%",
                   height: "100%",
-                  borderRadius: 20,
+                  borderRadius: 19,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
                 <IconComponent
-                  size={19}
+                  size={18}
                   color={data.unlocked ? "#FFFFFF" : "#94A3B8"}
                 />
               </LinearGradient>
@@ -1049,15 +1050,15 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
                     right: -2,
                     backgroundColor: "#10B981",
                     borderRadius: 8,
-                    width: 16,
-                    height: 16,
+                    width: 15,
+                    height: 15,
                     alignItems: "center",
                     justifyContent: "center",
                     borderWidth: 1.5,
                     borderColor: "#FFFFFF",
                   }}
                 >
-                  <CheckCircle2 size={10} color="#FFFFFF" strokeWidth={3} />
+                  <CheckCircle2 size={9} color="#FFFFFF" strokeWidth={3} />
                 </View>
               )}
             </View>
@@ -1069,18 +1070,17 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
                   backgroundColor: "#ECFDF5",
                   borderColor: "#A7F3D0",
                   borderWidth: 1,
-                  borderRadius: 10,
-                  paddingHorizontal: 6,
-                  paddingVertical: 2.5,
-                  maxWidth: "52%",
-                  flexShrink: 1,
+                  borderRadius: 12,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  maxWidth: "55%",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
                 <Text
                   style={{
-                    fontSize: 9,
+                    fontSize: 9.5,
                     fontWeight: "800",
                     color: "#059669",
                   }}
@@ -1091,26 +1091,39 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
                 </Text>
               </View>
             ) : (
-              <Text
+              <View
                 style={{
-                  fontSize: 9.5,
-                  fontWeight: "800",
-                  color: accentColor,
+                  backgroundColor: accentColor + "12",
+                  borderColor: accentColor + "30",
+                  borderWidth: 1,
+                  borderRadius: 12,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                {pct}%
-              </Text>
+                <Text
+                  style={{
+                    fontSize: 9.5,
+                    fontWeight: "800",
+                    color: accentColor,
+                  }}
+                >
+                  {pct}%
+                </Text>
+              </View>
             )}
           </View>
 
           {/* Content Block: Full Width Title & Subtitle */}
-          <View style={{ width: "100%", marginTop: 2 }}>
+          <View style={{ width: "100%", flex: 1, justifyContent: "center", marginVertical: 2 }}>
             <Text
               style={{
-                fontSize: 13,
+                fontSize: 12.5,
                 fontWeight: "800",
                 color: data.unlocked ? "#0F172A" : "#334155",
-                lineHeight: 17,
+                lineHeight: 16,
               }}
               numberOfLines={2}
             >
@@ -1119,39 +1132,39 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
 
             <Text
               style={{
-                fontSize: 10.5,
+                fontSize: 10,
                 fontWeight: "500",
                 color: "#64748B",
                 marginTop: 3,
-                lineHeight: 14,
+                lineHeight: 13,
               }}
-              numberOfLines={1}
+              numberOfLines={2}
               ellipsizeMode="tail"
             >
               {displayDesc}
             </Text>
+          </View>
 
-            {/* Locked Progress Bar */}
+          {/* Locked Progress Bar Space */}
+          <View style={{ width: "100%", height: 5, justifyContent: "center" }}>
             {!data.unlocked && (
-              <View style={{ width: "100%", marginTop: 8 }}>
+              <View
+                style={{
+                  width: "100%",
+                  height: 5,
+                  borderRadius: 2.5,
+                  backgroundColor: "#E2E8F0",
+                  overflow: "hidden",
+                }}
+              >
                 <View
                   style={{
-                    width: "100%",
-                    height: 5,
+                    width: `${pct}%`,
+                    height: "100%",
                     borderRadius: 2.5,
-                    backgroundColor: "#E2E8F0",
-                    overflow: "hidden",
+                    backgroundColor: accentColor,
                   }}
-                >
-                  <View
-                    style={{
-                      width: `${pct}%`,
-                      height: "100%",
-                      borderRadius: 2.5,
-                      backgroundColor: accentColor,
-                    }}
-                  />
-                </View>
+                />
               </View>
             )}
           </View>
