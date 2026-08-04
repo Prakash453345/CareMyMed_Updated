@@ -1096,7 +1096,12 @@ export default function ChatbotScreen({ navigation, route }) {
     // Helper to safely stop and unload audio recording using RecoveryManager
     const safeStopAndUnload = async (rec) => {
         if (!rec) return null;
-        return await RecoveryManager.recoverVoiceRecorder(rec);
+        try {
+            return await RecoveryManager.recoverVoiceRecorder(rec);
+        } catch (e) {
+            console.warn('[ChatbotScreen] safeStopAndUnload exception:', e?.message);
+            return null;
+        }
     };
 
     // Register Voice Recorder recovery handler with RecoveryManager
@@ -1683,48 +1688,58 @@ export default function ChatbotScreen({ navigation, route }) {
     };
 
     const stopRecordingAndReview = async () => {
-        if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-            timerIntervalRef.current = null;
-        }
-        if (!recording) {
-            setVoiceState('idle');
-            return RecordingResult.alreadyStopped();
-        }
-        const currentRec = recording;
-        setRecording(null);
-        Vibration.vibrate(50);
         try {
+            if (timerIntervalRef.current) {
+                clearInterval(timerIntervalRef.current);
+                timerIntervalRef.current = null;
+            }
+            try { Vibration.vibrate(50); } catch (e) {}
+            
+            if (!recording) {
+                setVoiceState('idle');
+                return RecordingResult.alreadyStopped();
+            }
+            const currentRec = recording;
+            setRecording(null);
+            
             const uri = await safeStopAndUnload(currentRec);
             if (uri) {
                 setRecordedAudioUri(uri);
                 setVoiceState('review');
                 return RecordingResult.success(uri);
             } else {
+                setRecordedAudioUri(null);
                 setVoiceState('idle');
                 return RecordingResult.emptyAudio();
             }
         } catch (err) {
             console.error('Failed to stop recording cleanly:', err);
+            setRecordedAudioUri(null);
             setVoiceState('idle');
             return RecordingResult.interrupted(err?.message);
         }
     };
 
     const cancelRecording = async () => {
-        if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-            timerIntervalRef.current = null;
+        try {
+            if (timerIntervalRef.current) {
+                clearInterval(timerIntervalRef.current);
+                timerIntervalRef.current = null;
+            }
+            try { Vibration.vibrate([0, 40, 40, 40]); } catch (e) {}
+
+            if (recording) {
+                const currentRec = recording;
+                setRecording(null);
+                await safeStopAndUnload(currentRec);
+            }
+        } catch (err) {
+            console.warn('[ChatbotScreen] cancelRecording error:', err?.message);
+        } finally {
+            setRecordedAudioUri(null);
+            setRecordingDuration(0);
+            setVoiceState('idle');
         }
-        if (recording) {
-            const currentRec = recording;
-            setRecording(null);
-            await safeStopAndUnload(currentRec);
-        }
-        setRecordedAudioUri(null);
-        setRecordingDuration(0);
-        setVoiceState('idle');
-        Vibration.vibrate([0, 40, 40, 40]); // Buzz on cancel
         return RecordingResult.alreadyStopped();
     };
 
