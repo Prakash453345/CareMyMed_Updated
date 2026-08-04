@@ -85,6 +85,7 @@ const ResilientMedicationsScreen = withRecoverableBoundary(MedicationsScreen, { 
 const ResilientHealthProfileScreen = withRecoverableBoundary(HealthProfileScreen, { featureName: 'HealthProfile', screenName: 'HealthProfileScreen' });
 const ResilientProfileScreen = withRecoverableBoundary(PatientProfileScreen, { featureName: 'Profile', screenName: 'ProfileScreen' });
 const ResilientSettingsScreen = withRecoverableBoundary(SettingsScreen, { featureName: 'Settings', screenName: 'SettingsScreen' });
+const ResilientChatbotScreen = withRecoverableBoundary(ChatbotScreen, { featureName: 'Chatbot', screenName: 'ChatbotScreen' });
 
 export const TAB_BAR_HEIGHT = layout.TAB_BAR_HEIGHT;
 export const TAB_BAR_BOTTOM = layout.TAB_BAR_BOTTOM;
@@ -220,7 +221,7 @@ const MainAppStack = () => (
         <Stack.Screen name="HealthConnectSetup" component={HealthConnectSetupScreen} options={{ presentation: "modal", animation: "slide_from_bottom" }} />
         <Stack.Screen name="AdherenceDetails" component={AdherenceScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
         <Stack.Screen name="ChatHistory" component={ChatHistoryScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
-        <Stack.Screen name="Chatbot" component={ChatbotScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
+        <Stack.Screen name="Chatbot" component={ResilientChatbotScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
         <Stack.Screen name="PrescriptionVerification" component={PrescriptionVerificationScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
         <Stack.Screen name="CallHistory" component={CallHistoryScreen} />
         <Stack.Screen name="PremiumShowcase" component={PremiumShowcaseScreen} />

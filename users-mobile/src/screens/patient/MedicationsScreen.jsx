@@ -2240,7 +2240,7 @@ export default function MedicationsScreen({ navigation, route }) {
                         <SlotHeader slot={slot} callTime={preferences[slot]} />
                         {meds.map((med) => (
                           <View key={med.id} style={{ marginBottom: 10 }}>
-                            <MedCard
+                            <SwipeableMedCard
                               med={med}
                               onToggle={handleMedIconPress}
                               onSnooze={handleSnooze}
