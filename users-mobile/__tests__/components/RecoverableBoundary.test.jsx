@@ -64,7 +64,7 @@ describe('RecoverableBoundary Component Tests', () => {
         );
 
         expect(getByText("Health Score Unavailable")).toBeTruthy();
-        expect(getByText("Retry Health Score")).toBeTruthy();
+        expect(getByText("Reload Health Score")).toBeTruthy();
     });
 
     it('resets error state when Retry button is pressed', async () => {
@@ -82,7 +82,7 @@ describe('RecoverableBoundary Component Tests', () => {
         // Mutate state reference before press so re-render succeeds
         state.shouldThrow = false;
         await act(async () => {
-            fireEvent.press(getByText("Retry Voice Recorder"));
+            fireEvent.press(getByText("Reload Voice Recorder"));
         });
 
         expect(onRetryMock).toHaveBeenCalled();
@@ -130,7 +130,7 @@ describe('RecoverableBoundary Component Tests', () => {
         );
 
         expect(getByText("Microphone Unavailable")).toBeTruthy();
-        expect(getByText("Retry Voice")).toBeTruthy();
+        expect(getByText("Retry")).toBeTruthy();
     });
 
     it('works correctly with withRecoverableBoundary HOC wrapper', () => {

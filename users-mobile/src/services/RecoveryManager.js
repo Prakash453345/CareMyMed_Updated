@@ -78,8 +78,15 @@ class RecoveryManagerService {
             } catch (e) {
                 // Ignore URI extraction error
             }
+
             if (status && (status.isRecording || status.isLoaded)) {
-                await recordingInstance.stopAndUnloadAsync().catch(() => {});
+                // Guard against premature stopAndUnloadAsync call on uninitialized native recorder (duration < 300ms)
+                if (typeof status.durationMillis === 'number' && status.durationMillis < 300) {
+                    await new Promise(resolve => setTimeout(resolve, 300 - status.durationMillis));
+                }
+                await recordingInstance.stopAndUnloadAsync().catch((stopErr) => {
+                    console.warn('[RecoveryManager] stopAndUnloadAsync suppressed native error:', stopErr?.message);
+                });
             }
             // Reset audio mode back to default playback mode safely
             try {

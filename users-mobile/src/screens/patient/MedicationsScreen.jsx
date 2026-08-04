@@ -1074,7 +1074,6 @@ export default function MedicationsScreen({ navigation, route }) {
       ref: tempMedsRef,
       spotlightPadding: 4,
       borderRadius: 20,
-      scrollOffset: 300,
       visible: true,
     });
 

@@ -724,25 +724,24 @@ export default function HealthProfileScreen({ navigation }) {
         icon: AlertTriangle,
         iconColor: "#F59E0B",
         ref: alertsCardRef,
-        spotlightPadding: 4,
+        spotlightPadding: 8,
         borderRadius: 20,
         scrollOffset: 0,
         visible: true,
       },
       {
         title: t("health_profile.guide_records_title", {
-          defaultValue: "Medical Vault",
+          defaultValue: "Current Conditions",
         }),
         desc: t("health_profile.guide_records_desc", {
           defaultValue:
-            "Add active medications, vaccination records, appointments, and primary doctor details here to keep your records unified.",
+            "Track and manage active or resolved medical conditions. Tap any condition to view details or update status.",
         }),
-        icon: FileText,
-        iconColor: "#8B5CF6",
+        icon: HeartPulse,
+        iconColor: "#EF4444",
         ref: medicalRecordsCardRef,
-        spotlightPadding: 4,
+        spotlightPadding: 6,
         borderRadius: 20,
-        scrollOffset: 250,
         visible: true,
       },
     ];
@@ -3036,11 +3035,7 @@ export default function HealthProfileScreen({ navigation }) {
           </Animated.View>
 
           {/* ── STACKED CARDS ── */}
-          <View
-            ref={medicalRecordsCardRef}
-            collapsable={false}
-            style={{ gap: 16 }}
-          >
+          <View style={{ gap: 16 }}>
             {/* Current Conditions */}
             <Animated.View style={anim(2)}>
               <View ref={medicalRecordsCardRef} collapsable={false} style={s.gridCard}>

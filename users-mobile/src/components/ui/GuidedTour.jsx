@@ -236,6 +236,12 @@ export default function GuidedTour({
       const finalArrowLeft = isNaN(computedArrowLeft) ? 40 : computedArrowLeft;
 
       setArrowConfig({ isUp, arrowLeft: finalArrowLeft });
+      setSpotlightCoords({
+        top: finalSpotTop,
+        left: finalSpotLeft,
+        width: finalSpotWidth,
+        height: finalSpotHeight,
+      });
 
       if (isFirstMeasureRef.current || reduceMotion) {
         animSpotTop.setValue(finalSpotTop);
@@ -550,19 +556,20 @@ export default function GuidedTour({
   };
 
   const maskId = `spotlightMask_${tourKey || 'default'}_${instanceIdRef.current}`;
+  const screenWidth = Dimensions.get('window').width || 360;
+  const screenHeight = Dimensions.get('window').height || 640;
 
-  const pad = Number(stepData.spotlightPadding ?? spotlightCoords?.padding) || 4;
-  const spotX = spotlightCoords ? Math.max(14, spotlightCoords.left - pad) : 0;
-  const spotY = spotlightCoords ? Math.max(10, spotlightCoords.top - pad) : 0;
-  const spotW = spotlightCoords ? spotlightCoords.width + pad * 2 : 0;
-  const spotH = spotlightCoords ? spotlightCoords.height + pad * 2 : 0;
+  const spotX = spotlightCoords ? spotlightCoords.left : 0;
+  const spotY = spotlightCoords ? spotlightCoords.top : 0;
+  const spotW = spotlightCoords ? spotlightCoords.width : 0;
+  const spotH = spotlightCoords ? spotlightCoords.height : 0;
 
   return (
     <Modal transparent visible={visible} animationType="fade" statusBarTranslucent={true}>
       <View style={[s.wtOverlay, !spotlightCoords && s.wtOverlayCentered]} pointerEvents="box-none">
         {/* Lighter 30% Opacity SVG Mask Cutout */}
         {spotlightCoords ? (
-          <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Svg width={screenWidth} height={screenHeight} style={StyleSheet.absoluteFill} pointerEvents="none">
             <Defs>
               <Mask id={maskId}>
                 <SvgRect width="100%" height="100%" fill="white" />
@@ -680,8 +687,8 @@ export default function GuidedTour({
               </Pressable>
             </View>
 
-            {/* Description capped at 2 concise lines */}
-            <Text style={s.wtDesc} numberOfLines={2} ellipsizeMode="tail">
+            {/* Description allowed up to 3 lines */}
+            <Text style={s.wtDesc} numberOfLines={3} ellipsizeMode="tail">
               {stepData.desc}
             </Text>
 

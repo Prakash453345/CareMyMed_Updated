@@ -18,6 +18,30 @@ jest.mock('expo-notifications', () => ({
   addPushTokenListener: jest.fn().mockReturnValue({ remove: jest.fn() }),
 }));
 
+// @sentry/react-native
+jest.mock('@sentry/react-native', () => ({
+  captureException: jest.fn(),
+  captureMessage: jest.fn(),
+  withScope: jest.fn(cb => cb({ setTag: jest.fn(), setExtra: jest.fn() })),
+}));
+
+// expo-av
+jest.mock('expo-av', () => ({
+  Audio: {
+    requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+    setAudioModeAsync: jest.fn().mockResolvedValue(null),
+    Recording: {
+      createAsync: jest.fn().mockResolvedValue({
+        recording: {
+          getStatusAsync: jest.fn().mockResolvedValue({ isRecording: true }),
+          getURI: jest.fn().mockReturnValue('file://test.m4a'),
+          stopAndUnloadAsync: jest.fn().mockResolvedValue(),
+        },
+      }),
+    },
+  },
+}));
+
 
 
 // react-native-worklets

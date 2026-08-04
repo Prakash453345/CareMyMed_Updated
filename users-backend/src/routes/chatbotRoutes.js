@@ -28,6 +28,11 @@ const upload = multer({
       'audio/webm',
       'audio/x-m4a',
       'audio/aac',
+      'audio/wav',
+      'audio/x-wav',
+      'audio/3gp',
+      'audio/caf',
+      'application/octet-stream',
     ];
     const allowedImages = [
       'image/jpeg',

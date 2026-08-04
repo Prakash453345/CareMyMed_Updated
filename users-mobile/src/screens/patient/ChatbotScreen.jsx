@@ -1702,6 +1702,11 @@ export default function ChatbotScreen({ navigation, route }) {
             const currentRec = recording;
             setRecording(null);
             
+            // Guard against premature native MediaRecorder stop exception on Android/iOS
+            if (recordingDuration < 1) {
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+
             const uri = await safeStopAndUnload(currentRec);
             if (uri) {
                 setRecordedAudioUri(uri);
@@ -1710,12 +1715,24 @@ export default function ChatbotScreen({ navigation, route }) {
             } else {
                 setRecordedAudioUri(null);
                 setVoiceState('idle');
+                AlertManager.alert(
+                    'Voice Note Too Short',
+                    'Voice recording was too short or could not be processed. Please hold the button or try again.',
+                    [{ text: 'OK' }],
+                    { type: 'warning' }
+                );
                 return RecordingResult.emptyAudio();
             }
         } catch (err) {
             console.error('Failed to stop recording cleanly:', err);
             setRecordedAudioUri(null);
             setVoiceState('idle');
+            AlertManager.alert(
+                'Recording Error 🎙️',
+                'Could not process voice recording cleanly. Please try again.',
+                [{ text: 'OK' }],
+                { type: 'error' }
+            );
             return RecordingResult.interrupted(err?.message);
         }
     };
