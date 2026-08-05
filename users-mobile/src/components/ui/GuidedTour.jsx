@@ -184,9 +184,11 @@ export default function GuidedTour({
 
       let isUp; // isUp = true means tooltip sits BELOW spotlight (arrow points UP)
       if (preferred === 'top' || preferred === 'above') {
+        // Prefer tooltip ABOVE spotlight (isUp = false); fall back to below if not enough room
         isUp = clearAbove < estimatedCardHeight + 14;
       } else if (preferred === 'bottom' || preferred === 'below') {
-        isUp = true;
+        // Prefer tooltip BELOW spotlight (isUp = true); fall back to above if not enough room
+        isUp = clearBelow >= estimatedCardHeight + 14 ? true : clearAbove < estimatedCardHeight + 14;
       } else {
         // Auto placement logic: Pick side with generous clearance
         if (clearBelow >= estimatedCardHeight + 14 && spotTop < screenHeight * 0.55) {

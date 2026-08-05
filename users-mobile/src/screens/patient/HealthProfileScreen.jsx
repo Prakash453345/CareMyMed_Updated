@@ -683,22 +683,6 @@ export default function HealthProfileScreen({ navigation }) {
   const getProfileTourSteps = () => {
     return [
       {
-        title: t("health_profile.guide_score_title", {
-          defaultValue: "Health Score",
-        }),
-        desc: t("health_profile.guide_score_desc", {
-          defaultValue:
-            "Calculates your daily health grade based on active conditions and vitals. Tap to view coaching and health breakdown.",
-        }),
-        icon: HeartPulse,
-        iconColor: "#EF4444",
-        ref: healthScoreCardRef,
-        spotlightPadding: 4,
-        borderRadius: 24,
-        scrollOffset: 0,
-        visible: true,
-      },
-      {
         title: t("health_profile.guide_complete_title", {
           defaultValue: "Profile Completion",
         }),
@@ -712,6 +696,24 @@ export default function HealthProfileScreen({ navigation }) {
         spotlightPadding: 4,
         borderRadius: 20,
         scrollOffset: 0,
+        preferredPlacement: "below",
+        visible: true,
+      },
+      {
+        title: t("health_profile.guide_score_title", {
+          defaultValue: "Health Score",
+        }),
+        desc: t("health_profile.guide_score_desc", {
+          defaultValue:
+            "Calculates your daily health grade based on active conditions and vitals. Tap to view coaching and health breakdown.",
+        }),
+        icon: HeartPulse,
+        iconColor: "#EF4444",
+        ref: healthScoreCardRef,
+        spotlightPadding: 4,
+        borderRadius: 24,
+        scrollOffset: 0,
+        preferredPlacement: "below",
         visible: true,
       },
       {
@@ -727,7 +729,7 @@ export default function HealthProfileScreen({ navigation }) {
         ref: alertsCardRef,
         spotlightPadding: 8,
         borderRadius: 20,
-        scrollOffset: 0,
+        preferredPlacement: "above",
         visible: true,
       },
       {
@@ -743,6 +745,7 @@ export default function HealthProfileScreen({ navigation }) {
         ref: medicalRecordsCardRef,
         spotlightPadding: 6,
         borderRadius: 20,
+        preferredPlacement: "above",
         visible: true,
       },
     ];
@@ -2599,7 +2602,7 @@ export default function HealthProfileScreen({ navigation }) {
           </Animated.View>
 
           {/* ── COMPACT HEALTH SCORE CARD (tappable) ── */}
-          <Animated.View ref={healthScoreCardRef} collapsable={false} style={[anim(0), { marginTop: 0 }]}>
+          <Animated.View collapsable={false} style={[anim(0), { marginTop: 0 }]}>
             <Pressable
               style={({ pressed }) => [{ opacity: pressed ? 0.96 : 1 }]}
               onPress={() => {
