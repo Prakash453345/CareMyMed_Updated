@@ -475,7 +475,7 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPre
       <Pressable
         style={[styles.swipeRightAction]}
         onPress={() => {
-          swRef.current?.close();
+          swRef?.current?.close?.();
           onSnooze?.(med);
         }}
       >
@@ -519,10 +519,11 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPre
         renderRightActions={med.taken ? null : renderRight}
         onSwipeableLeftOpen={() => {
           if (!med.taken) onToggle?.(med);
-          swRef.current?.close();
+          swRef?.current?.close?.();
         }}
         onSwipeableRightOpen={() => {
-          if (med.taken) swRef.current?.close();
+          if (!med.taken) onSnooze?.(med);
+          swRef?.current?.close?.();
         }}
         enabled={!med.taken}
         friction={2}
