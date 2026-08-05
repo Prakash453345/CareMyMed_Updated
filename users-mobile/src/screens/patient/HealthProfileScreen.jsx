@@ -86,6 +86,7 @@ import Svg, {
   Rect,
 } from "react-native-svg";
 import * as Haptics from "expo-haptics";
+import { HapticPatterns } from "../../utils/haptics";
 import { apiService } from "../../lib/api";
 import usePatientStore from "../../store/usePatientStore";
 import GuidedTour from "../../components/ui/GuidedTour";
@@ -540,7 +541,7 @@ const GoogleFitHeightWeightPicker = ({
             <Pressable
               style={[s.unitTogglePill, heightUnit === "cm" && s.unitTogglePillActive]}
               onPress={() => {
-                HapticPatterns.selection();
+                HapticPatterns?.selection?.();
                 setHeightUnit("cm");
               }}
             >
@@ -551,7 +552,7 @@ const GoogleFitHeightWeightPicker = ({
             <Pressable
               style={[s.unitTogglePill, heightUnit === "ft_in" && s.unitTogglePillActive]}
               onPress={() => {
-                HapticPatterns.selection();
+                HapticPatterns?.selection?.();
                 setHeightUnit("ft_in");
               }}
             >
