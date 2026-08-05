@@ -4,13 +4,8 @@ import LivingGlassOrb from "../../livingGlass/components/LivingGlassOrb";
 import usePatientStore from "../../store/usePatientStore";
 
 export default function ChatFAB({ onPress, bottomOffset = 90 }) {
-  const adherenceDetails = usePatientStore((state) => state.adherenceDetails);
-  const adherenceRate = adherenceDetails?.rate ?? 100;
-
-  // Context-aware health spectrum: emerald if 100% adherence, amber if low, violet default
-  let healthStatus = "violet";
-  if (adherenceRate >= 100) healthStatus = "emerald";
-  else if (adherenceRate < 70) healthStatus = "amber";
+  // Consistent AI brand theme: vibrant violet/indigo living orb
+  const healthStatus = "violet";
 
   return (
     <View style={[styles.container, { bottom: bottomOffset }]}>
