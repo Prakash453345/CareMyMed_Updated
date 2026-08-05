@@ -333,6 +333,7 @@ export default function MyCallerScreen({ navigation }) {
       ref: callerCardRef,
       spotlightPadding: 4,
       borderRadius: 24,
+      preferredPlacement: "below",
       hero: true,
       visible: !!caller,
     });
@@ -345,6 +346,7 @@ export default function MyCallerScreen({ navigation }) {
       ref: managerCardRef,
       spotlightPadding: 4,
       borderRadius: 20,
+      preferredPlacement: "below",
       visible: !!manager,
     });
 
@@ -356,6 +358,7 @@ export default function MyCallerScreen({ navigation }) {
       ref: contactsCardRef,
       spotlightPadding: 4,
       borderRadius: 20,
+      preferredPlacement: "above",
       visible: true,
     });
 
@@ -368,6 +371,7 @@ export default function MyCallerScreen({ navigation }) {
         ref: callsCardRef,
         spotlightPadding: 4,
         borderRadius: 20,
+        preferredPlacement: "above",
         visible: true,
       });
     }

@@ -440,6 +440,7 @@ export default function PatientHomeScreen({ navigation }) {
         ref: orbRef,
         spotlightPadding: 6,
         borderRadius: 24,
+        preferredPlacement: "below",
         hero: true,
         visible: true,
       },
@@ -456,6 +457,7 @@ export default function PatientHomeScreen({ navigation }) {
         ref: insightCardRef,
         spotlightPadding: 4,
         borderRadius: 20,
+        preferredPlacement: "below",
         visible: true,
       },
       {
@@ -471,6 +473,7 @@ export default function PatientHomeScreen({ navigation }) {
         ref: medsCardRef,
         spotlightPadding: 4,
         borderRadius: 20,
+        preferredPlacement: "above",
         visible: true,
       },
       {
@@ -486,6 +489,7 @@ export default function PatientHomeScreen({ navigation }) {
         ref: vitalsCardRef,
         spotlightPadding: 4,
         borderRadius: 20,
+        preferredPlacement: "above",
         visible: true,
       },
     ];

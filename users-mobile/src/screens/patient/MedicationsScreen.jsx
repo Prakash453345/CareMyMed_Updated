@@ -1044,10 +1044,11 @@ export default function MedicationsScreen({ navigation, route }) {
       }),
       icon: Pill,
       iconColor: "#10B981",
-      ref: adherenceCardRef.current ? adherenceCardRef : medsListCardRef,
+      ref: medsListCardRef,
       spotlightPadding: 4,
       borderRadius: 20,
       scrollOffset: 0,
+      preferredPlacement: "below",
       visible: true,
     });
 
@@ -1062,7 +1063,7 @@ export default function MedicationsScreen({ navigation, route }) {
       ref: adherenceCardRef,
       spotlightPadding: 4,
       borderRadius: 20,
-      scrollOffset: 0,
+      preferredPlacement: "above",
       visible: true,
     });
 
@@ -1077,6 +1078,7 @@ export default function MedicationsScreen({ navigation, route }) {
       ref: tempMedsRef,
       spotlightPadding: 4,
       borderRadius: 20,
+      preferredPlacement: "above",
       visible: true,
     });
 
