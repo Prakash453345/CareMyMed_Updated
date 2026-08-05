@@ -321,8 +321,8 @@ router.post(
             console.log(`[ChatbotRoute] Fallback to Groq Whisper STT API...`);
             const groqForm = new FormData();
             groqForm.append('file', audioFile.buffer, {
-              filename: audioFile.originalname || 'voice_note.m4a',
-              contentType: audioFile.mimetype || 'audio/m4a',
+              filename: 'voice_note.m4a',
+              contentType: 'audio/m4a',
             });
             groqForm.append('model', 'whisper-large-v3-turbo');
 

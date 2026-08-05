@@ -380,8 +380,16 @@ const ScalePressable = ({ children, onPress, style }) => {
     );
 };
 
+function formatDuration(secs) {
+    if (!secs || isNaN(secs)) return '0:02';
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
 // ── Single chat bubble ─────────────────────────────────────────────────────
-function ChatBubble({ message, isUser }) {
+function ChatBubble({ message }) {
+    const isUser = message.isUser;
     const scale = useSharedValue(0.97);
     const borderScale = useSharedValue(1);
     const borderOpacity = useSharedValue(0.2);
@@ -428,16 +436,6 @@ function ChatBubble({ message, isUser }) {
         return null;
     }
 
-function formatDuration(secs) {
-    if (!secs || isNaN(secs)) return '0:02';
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
-}
-
-const ChatBubble = React.memo(({ message, isTyping, typingStage, typingStages, isLastMessage, onSelectSuggestion }) => {
-    const isUser = message.isUser;
-
     if (isUser) {
         return (
             <Reanimated.View 
@@ -448,18 +446,16 @@ const ChatBubble = React.memo(({ message, isTyping, typingStage, typingStages, i
                     layout={Layout.springify().damping(20).stiffness(150)}
                     style={[styles.bubble, styles.bubbleUser, message.image && styles.bubbleImageContainer]}
                 >
-                    {!message.image ? (
-                        <LinearGradient colors={['#6366F1', '#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-                    ) : null}
+                    <LinearGradient colors={['#6366F1', '#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
                     
                     {message.image ? (
                         <Image source={{ uri: message.image }} style={styles.chatImage} resizeMode="cover" />
                     ) : null}
 
                     {message.audio ? (
-                        <View style={styles.audioBubble}>
+                        <View style={[styles.audioBubble, styles.audioBubbleUser]}>
                             <Mic size={14} color="#FFFFFF" />
-                            <Text style={styles.audioBubbleText}>Voice Message • {formatDuration(message.audioDuration)}</Text>
+                            <Text style={[styles.audioBubbleText, { color: '#E0E7FF' }]}>Voice Message • {formatDuration(message.audioDuration)}</Text>
                         </View>
                     ) : null}
 
@@ -1942,7 +1938,7 @@ export default function ChatbotScreen({ navigation, route }) {
                     preset="voice"
                     compact
                 >
-                <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom + 8, 20) }]}>
+                <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
                     {voiceState === 'recording' ? (
                         /* 🎙️ RECORDING STATE (Telegram Visual Polish) */
                         <View style={styles.recordingOverlayBar}>
@@ -2278,8 +2274,9 @@ const styles = StyleSheet.create({
     bubbleImageContainer: { paddingHorizontal: 4, paddingVertical: 4, backgroundColor: 'transparent' },
     bubbleAudioContainer: { paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#FFFFFF' },
     chatImage: { width: 200, height: 200, borderRadius: 16 },
-    audioBubble: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    audioBubbleText: { fontSize: 14, color: '#6366F1', fontWeight: '600' },
+    audioBubble: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 12 },
+    audioBubbleUser: { backgroundColor: 'rgba(255,255,255,0.15)' },
+    audioBubbleText: { fontSize: 13, color: '#6366F1', fontWeight: '600' },
     bubbleBot: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderBottomLeftRadius: 6 },
     bubbleUser: { borderBottomRightRadius: 6 },
     bubbleText: { fontSize: 14, color: '#1E293B', lineHeight: 20, fontWeight: '500' },
