@@ -11,7 +11,7 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Send, Sparkles, Bot, User, Mic, Paperclip, Trash2, Pill, Flame, TrendingUp, CheckCircle2, Activity, Heart, Wind, Calendar, Shield, Plus, Square, X } from 'lucide-react-native';
+import { ArrowLeft, Send, Sparkles, Bot, User, Mic, Paperclip, Trash2, Pill, Flame, TrendingUp, CheckCircle2, Activity, Heart, Wind, Calendar, Shield, Plus, Square, X, CheckCheck, ArrowRight } from 'lucide-react-native';
 import { colors } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -433,6 +433,19 @@ function ChatBubble({ message }) {
         height: '100%',
     }));
 
+    if (message.isSystem || message.type === 'system') {
+        return (
+            <Reanimated.View 
+                entering={FadeIn.duration(300)}
+                style={styles.systemDividerContainer}
+            >
+                <View style={styles.systemDividerLine} />
+                <Text style={styles.systemDividerText}>{message.text}</Text>
+                <View style={styles.systemDividerLine} />
+            </Reanimated.View>
+        );
+    }
+
     if (!message.text && !message.image && !message.audio && (!message.cards || message.cards.length === 0)) {
         return null;
     }
@@ -464,9 +477,12 @@ function ChatBubble({ message }) {
                         <Text style={[styles.bubbleText, styles.bubbleTextUser]}>{message.text}</Text>
                     ) : null}
                     
-                    <Text style={[styles.bubbleTime, styles.bubbleTimeUser]}>
-                        {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </Text>
+                    <View style={styles.userTimeRow}>
+                        <Text style={[styles.bubbleTime, styles.bubbleTimeUser]}>
+                            {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                        <CheckCheck size={13} color="rgba(255,255,255,0.75)" style={{ marginLeft: 3 }} />
+                    </View>
                 </Reanimated.View>
                 <View style={styles.avatarCircleUser}>
                     <User size={16} color="#FFFFFF" strokeWidth={2.5} />
@@ -1995,15 +2011,12 @@ export default function ChatbotScreen({ navigation, route }) {
                             />
                         </View>
                     ) : (
-                        /* 🟣 IDLE STATE */
+                        /* 🟣 IDLE STATE (Swiggy-Style Impactful Pill Layout) */
                         <>
-                            <Pressable style={styles.inputAction} onPress={handlePickImage}>
-                                <Paperclip size={20} color={attachments.length > 0 ? "#6366F1" : "#94A3B8"} strokeWidth={2} />
-                            </Pressable>
                             <View style={styles.inputWrapper}>
                                 <TextInput
                                     style={styles.textInput}
-                                    placeholder={attachments.length > 0 ? "Add optional caption..." : "Ask anything about your health..."}
+                                    placeholder={attachments.length > 0 ? "Add optional caption..." : "Type your message here..."}
                                     placeholderTextColor="#94A3B8"
                                     value={inputText}
                                     onChangeText={setInputText}
@@ -2013,30 +2026,33 @@ export default function ChatbotScreen({ navigation, route }) {
                                     onSubmitEditing={() => handleSend()}
                                     blurOnSubmit={false}
                                 />
+                                
+                                {isGenerating ? (
+                                    <Pressable style={styles.sendInsideBtn} onPress={handleStopGeneration}>
+                                        <LinearGradient colors={['#EF4444', '#DC2626']} style={styles.sendGradient}>
+                                            <Square size={12} color="#FFF" fill="#FFF" />
+                                        </LinearGradient>
+                                    </Pressable>
+                                ) : (inputText.trim().length > 0 || attachments.length > 0 || recordedAudioUri) ? (
+                                    <Pressable style={styles.sendInsideBtn} onPress={() => handleSend()}>
+                                        <LinearGradient colors={['#F97316', '#EA580C']} style={styles.sendGradient}>
+                                            <ArrowRight size={18} color="#FFF" strokeWidth={2.5} />
+                                        </LinearGradient>
+                                    </Pressable>
+                                ) : voiceState === 'idle' ? (
+                                    <Pressable style={styles.sendInsideBtn} onPress={startRecording}>
+                                        <LinearGradient colors={['#6366F1', '#4F46E5']} style={styles.sendGradient}>
+                                            <Mic size={18} color="#FFF" strokeWidth={2.5} />
+                                        </LinearGradient>
+                                    </Pressable>
+                                ) : null}
                             </View>
+
+                            <Pressable style={styles.plusAttachBtn} onPress={handlePickImage}>
+                                <Plus size={22} color={attachments.length > 0 ? "#6366F1" : "#1E293B"} strokeWidth={2.5} />
+                            </Pressable>
                         </>
                     )}
-
-                    {/* Primary Button Action: Stop Gen, Send or Tap-to-Talk Mic */}
-                    {isGenerating ? (
-                        <Pressable style={styles.sendBtn} onPress={handleStopGeneration}>
-                            <LinearGradient colors={['#EF4444', '#DC2626']} style={styles.sendGradient}>
-                                <Square size={14} color="#FFF" fill="#FFF" />
-                            </LinearGradient>
-                        </Pressable>
-                    ) : (inputText.trim().length > 0 || attachments.length > 0 || recordedAudioUri) ? (
-                        <Pressable style={styles.sendBtn} onPress={() => handleSend()}>
-                            <LinearGradient colors={['#818CF8', '#4F46E5']} style={styles.sendGradient}>
-                                <Send size={18} color="#FFF" strokeWidth={2.5} />
-                            </LinearGradient>
-                        </Pressable>
-                    ) : voiceState === 'idle' ? (
-                        <Pressable style={styles.sendBtn} onPress={startRecording}>
-                            <LinearGradient colors={['#6366F1', '#4F46E5']} style={styles.sendGradient}>
-                                <Mic size={20} color="#FFF" strokeWidth={2.5} />
-                            </LinearGradient>
-                        </Pressable>
-                    ) : null}
                 </View>
                 </RecoverableBoundary>
             </KeyboardAvoidingView>
@@ -2342,20 +2358,84 @@ const styles = StyleSheet.create({
         backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center',
     },
 
-    // ── Input bar ──
+    // ── System Status Divider ──
+    systemDividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginVertical: 14,
+        paddingHorizontal: 20,
+    },
+    systemDividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: '#E2E8F0',
+    },
+    systemDividerText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#64748B',
+        paddingHorizontal: 12,
+        textAlign: 'center',
+    },
+    userTimeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        alignSelf: 'flex-end',
+        marginTop: 2,
+    },
+
+    // ── Input bar (Swiggy-Style Impactful Pill Layout) ──
     inputBar: {
-        flexDirection: 'row', alignItems: 'flex-end', gap: 6,
-        paddingHorizontal: 12, paddingTop: 10,
-        backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#F1F5F9',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 14,
+        paddingTop: 10,
+        backgroundColor: '#FFFFFF',
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
     },
-    inputAction: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+    plusAttachBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1.5,
+        borderColor: '#E2E8F0',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     inputWrapper: {
-        flex: 1, backgroundColor: '#F1F5F9', borderRadius: 22,
-        borderWidth: 1, borderColor: '#E2E8F0',
-        paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 10 : 4,
-        maxHeight: 100,
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 26,
+        borderWidth: 1.5,
+        borderColor: '#0F172A',
+        paddingLeft: 16,
+        paddingRight: 6,
+        paddingVertical: Platform.OS === 'ios' ? 4 : 2,
+        minHeight: 48,
+        maxHeight: 110,
     },
-    textInput: { fontSize: 14, color: '#0F172A', fontWeight: '500', maxHeight: 80 },
+    textInput: {
+        flex: 1,
+        fontSize: 15,
+        color: '#0F172A',
+        fontWeight: '500',
+        paddingVertical: 6,
+        maxHeight: 85,
+    },
+    sendInsideBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        overflow: 'hidden',
+        marginLeft: 6,
+    },
     sendBtn: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' },
     sendBtnDisabled: { opacity: 0.6 },
     sendGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
