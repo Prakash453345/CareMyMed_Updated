@@ -312,6 +312,12 @@ const getConsistencyStyle = (score) => {
   return { label: "Limited Tracking", color: "#64748B" };
 };
 
+const safeParseVitalsNum = (val, fallback) => {
+  if (val == null) return fallback;
+  const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/[^0-9.]/g, ''));
+  return (!isNaN(num) && num > 0) ? Math.round(num) : fallback;
+};
+
 const TactileWheelPicker = ({
   data,
   selectedValue,
@@ -333,14 +339,18 @@ const TactileWheelPicker = ({
   }, [data]);
 
   const handleScrollEnd = (event) => {
-    const y = event.nativeEvent.contentOffset.y;
-    const index = Math.round(y / itemHeight);
-    if (index >= 0 && index < data.length) {
-      const newValue = data[index].value;
-      if (newValue !== selectedValue) {
-        onValueChange(newValue);
-        Haptics.selectionAsync().catch(() => {});
+    try {
+      const y = event.nativeEvent?.contentOffset?.y || 0;
+      const dataIndex = Math.round(y / itemHeight);
+      if (dataIndex >= 0 && dataIndex < data.length) {
+        const item = data[dataIndex];
+        if (item && item.value !== undefined && item.value !== selectedValue) {
+          onValueChange(item.value);
+          Haptics.selectionAsync().catch(() => {});
+        }
       }
+    } catch (e) {
+      console.warn('[TactileWheelPicker] Scroll end error:', e);
     }
   };
 
@@ -510,8 +520,8 @@ const GoogleFitHeightWeightPicker = ({
     });
   }, []);
 
-  const parsedCm = Math.max(90, Math.min(240, Math.round(Number(heightCm) || 170)));
-  const parsedKg = Math.max(30, Math.min(220, Math.round(Number(weightKg) || 70)));
+  const parsedCm = Math.max(90, Math.min(240, safeParseVitalsNum(heightCm, 170)));
+  const parsedKg = Math.max(30, Math.min(220, safeParseVitalsNum(weightKg, 70)));
 
   const totalInches = parsedCm / 2.54;
   const currentFeet = Math.max(3, Math.min(8, Math.floor(totalInches / 12)));
