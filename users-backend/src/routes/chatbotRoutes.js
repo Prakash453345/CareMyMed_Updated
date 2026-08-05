@@ -279,14 +279,17 @@ router.post(
       // 1. Audio Proxy Phase (STT) — runs BEFORE we open the SSE stream
       if (audioFile) {
         console.log(
-          `[ChatbotRoute] Received audio file: ${audioFile.originalname} (${audioFile.mimetype})`
+          `[ChatbotRoute] Received audio file: ${audioFile.originalname} (${audioFile.mimetype}, ${audioFile.size || 0} bytes)`
         );
 
+        let audioTranscriptionSuccess = false;
+
+        // 1a. Attempt primary Python STT Service
         try {
           const internalForm = new FormData();
           internalForm.append('audio_file', audioFile.buffer, {
             filename: audioFile.originalname || 'voice_note.m4a',
-            contentType: audioFile.mimetype,
+            contentType: audioFile.mimetype || 'audio/m4a',
           });
 
           console.log(`[ChatbotRoute] Proxying audio to Python STT Service...`);
@@ -295,7 +298,7 @@ router.post(
             internalForm,
             {
               headers: { ...internalForm.getHeaders() },
-              timeout: 30000, // 30 second timeout for Whisper
+              timeout: 15000,
             }
           );
 
@@ -304,21 +307,56 @@ router.post(
             sttResponse.data.success &&
             sttResponse.data.text
           ) {
-            extractedQuery = sttResponse.data.text;
-            transcribedText = extractedQuery;
-            console.log(`[ChatbotRoute] STT Success: "${extractedQuery}"`);
-          } else {
-            return res
-              .status(500)
-              .json(
-                buildErrorResponse(
-                  'transcription',
-                  'Transcription failed or returned empty.'
-                )
-              );
+            transcribedText = sttResponse.data.text.trim();
+            audioTranscriptionSuccess = true;
+            console.log(`[ChatbotRoute] Python STT Success: "${transcribedText}"`);
           }
         } catch (sttError) {
-          console.error(`[ChatbotRoute] STT Proxy Error:`, sttError.message);
+          console.warn(`[ChatbotRoute] Python STT Proxy Error:`, sttError.message);
+        }
+
+        // 1b. Fallback to Groq Whisper STT API if Python STT is offline or failed
+        if (!audioTranscriptionSuccess && process.env.GROQ_API_KEY) {
+          try {
+            console.log(`[ChatbotRoute] Fallback to Groq Whisper STT API...`);
+            const groqForm = new FormData();
+            groqForm.append('file', audioFile.buffer, {
+              filename: audioFile.originalname || 'voice_note.m4a',
+              contentType: audioFile.mimetype || 'audio/m4a',
+            });
+            groqForm.append('model', 'whisper-large-v3-turbo');
+
+            const groqRes = await axios.post(
+              'https://api.groq.com/openai/v1/audio/transcriptions',
+              groqForm,
+              {
+                headers: {
+                  ...groqForm.getHeaders(),
+                  Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+                },
+                timeout: 25000,
+              }
+            );
+
+            if (groqRes.data && groqRes.data.text) {
+              transcribedText = groqRes.data.text.trim();
+              audioTranscriptionSuccess = true;
+              console.log(`[ChatbotRoute] Groq Whisper STT Success: "${transcribedText}"`);
+            }
+          } catch (groqErr) {
+            console.error(`[ChatbotRoute] Groq Whisper STT Fallback Error:`, groqErr.message);
+          }
+        }
+
+        // Combine text query & audio transcription safely
+        if (transcribedText) {
+          if (extractedQuery) {
+            extractedQuery = `${extractedQuery}\n[Voice Note Transcribed: "${transcribedText}"]`;
+          } else {
+            extractedQuery = transcribedText;
+          }
+        } else if (!extractedQuery) {
+          // Both STT failed AND user provided no text query
           return res
             .status(500)
             .json(
@@ -327,6 +365,10 @@ router.post(
                 'Could not understand audio or STT service is down.'
               )
             );
+        } else {
+          console.log(
+            `[ChatbotRoute] Audio STT unavailable/failed, but user text query provided: "${extractedQuery}". Proceeding with text query.`
+          );
         }
       }
 

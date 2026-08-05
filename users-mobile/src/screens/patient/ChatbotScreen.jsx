@@ -428,17 +428,27 @@ function ChatBubble({ message, isUser }) {
         return null;
     }
 
+function formatDuration(secs) {
+    if (!secs || isNaN(secs)) return '0:02';
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+const ChatBubble = React.memo(({ message, isTyping, typingStage, typingStages, isLastMessage, onSelectSuggestion }) => {
+    const isUser = message.isUser;
+
     if (isUser) {
         return (
             <Reanimated.View 
                 entering={FadeIn.duration(200)}
-                style={[styles.bubbleRow, styles.bubbleRowUser, userAnimatedStyle]}
+                style={[styles.bubbleRow, styles.bubbleRowUser]}
             >
                 <Reanimated.View 
                     layout={Layout.springify().damping(20).stiffness(150)}
-                    style={[styles.bubble, styles.bubbleUser, message.image && styles.bubbleImageContainer, message.audio && styles.bubbleAudioContainer]}
+                    style={[styles.bubble, styles.bubbleUser, message.image && styles.bubbleImageContainer]}
                 >
-                    {!message.image && !message.audio ? (
+                    {!message.image ? (
                         <LinearGradient colors={['#6366F1', '#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
                     ) : null}
                     
@@ -448,8 +458,8 @@ function ChatBubble({ message, isUser }) {
 
                     {message.audio ? (
                         <View style={styles.audioBubble}>
-                            <Mic size={16} color="#6366F1" />
-                            <Text style={styles.audioBubbleText}>Voice Message • 0:02</Text>
+                            <Mic size={14} color="#FFFFFF" />
+                            <Text style={styles.audioBubbleText}>Voice Message • {formatDuration(message.audioDuration)}</Text>
                         </View>
                     ) : null}
 
@@ -1210,8 +1220,10 @@ export default function ChatbotScreen({ navigation, route }) {
                         type: `audio/${extension}`,
                         name: `voice_note.${extension}`
                     });
-                } else {
-                    if (!imageAttachment) {
+                }
+
+                if (userMsg && userMsg.trim().length > 0) {
+                    if (!imageAttachment && !isAudio) {
                         setTypingStage('🧠 Thinking...');
                     }
                     let finalQuery = userMsg;
@@ -1220,6 +1232,8 @@ export default function ChatbotScreen({ navigation, route }) {
                         finalQuery = `${userMsg}\n\n[Context: Current Health Score is ${healthContext.score} (${healthContext.label}, Grade ${healthContext.grade}). Weakest driver is ${healthContext.weakestDriver} at ${healthContext.weakestScore}%. Suggested action is: ${healthContext.suggestedAction}. Projected boost is +${healthContext.projectedBoost} to ${healthContext.projectedScore}.]`;
                     }
                     formData.append('query', finalQuery);
+                } else if (!isAudio && !imageAttachment) {
+                    setTypingStage('🧠 Thinking...');
                 }
 
                 const baseUrl = process.env.EXPO_PUBLIC_CHATBOT_URL || api.defaults.baseURL || process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -1389,18 +1403,21 @@ export default function ChatbotScreen({ navigation, route }) {
         }
 
         const targetAudioUri = audioUri || recordedAudioUri;
+        const targetAudioDuration = recordingDuration;
         const isAudioMsg = !!targetAudioUri;
         let currentRecordingUri = isAudioMsg ? targetAudioUri : null;
 
         // Reset voice state machine after send
         setVoiceState('idle');
         setRecordedAudioUri(null);
+        setRecordingDuration(0);
 
         const userMessage = { 
             id: Date.now().toString(), 
-            text: isAudioMsg ? '' : msg, 
+            text: msg, 
             image: activeAttachment ? activeAttachment.uri : null,
             audio: currentRecordingUri,
+            audioDuration: targetAudioDuration,
             isUser: true, 
             timestamp: Date.now() 
         };
