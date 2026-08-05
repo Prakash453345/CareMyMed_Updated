@@ -386,8 +386,10 @@ const SlotHeader = ({ slot, callTime }) => {
   );
 };
 
-const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef, onPressDetails, tourRef, isHighlighted }) => {
+const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPressDetails, tourRef, isHighlighted }) => {
   const { t } = useTranslation();
+  const internalSwRef = useRef(null);
+  const swRef = externalSwRef || internalSwRef;
   const cardLiftAnim = useRef(new Animated.Value(0)).current;
   const takenBadgeScale = useRef(new Animated.Value(med.taken ? 1 : 0.95)).current;
   const checkScale = useRef(new Animated.Value(med.taken ? 1 : 0)).current;
@@ -437,7 +439,7 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef, onPressDetails, tour
         style={[styles.swipeLeftAction]}
         onPress={() => {
           swRef.current?.close();
-          if (!med.taken) onToggle(med);
+          if (!med.taken) onToggle?.(med);
         }}
       >
         <Animated.View
@@ -474,7 +476,7 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef, onPressDetails, tour
         style={[styles.swipeRightAction]}
         onPress={() => {
           swRef.current?.close();
-          onSnooze(med);
+          onSnooze?.(med);
         }}
       >
         <Animated.View
@@ -516,7 +518,7 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef, onPressDetails, tour
         renderLeftActions={med.taken ? null : renderLeft}
         renderRightActions={med.taken ? null : renderRight}
         onSwipeableLeftOpen={() => {
-          if (!med.taken) onToggle(med);
+          if (!med.taken) onToggle?.(med);
           swRef.current?.close();
         }}
         onSwipeableRightOpen={() => {
