@@ -15,7 +15,6 @@ const AuditLog = require('../models/AuditLog');
 const emergencyConfig = require('../config/emergency_phrases.json');
 const AIChatSession = require('../models/AIChatSession');
 
-const PYTHON_API = process.env.PYTHON_API || null;
 
 // Configure Multer for in-memory storage and strict filtering (audio + image attachments)
 const upload = multer({
@@ -276,51 +275,14 @@ router.post(
       let extractedQuery = (query || '').trim();
       let transcribedText = null;
 
-      // 1. Audio Proxy Phase (STT) — runs BEFORE we open the SSE stream
+      // 1. Audio Processing Phase (Groq Whisper STT)
       if (audioFile) {
         console.log(
-          `[ChatbotRoute] Received audio file: ${audioFile.originalname} (${audioFile.mimetype}, ${audioFile.size || 0} bytes)`
+          `[ChatbotRoute] Processing audio file with Groq Whisper: ${audioFile.originalname} (${audioFile.mimetype}, ${audioFile.size || 0} bytes)`
         );
 
-        let audioTranscriptionSuccess = false;
-
-        // 1a. Attempt primary Python STT Service if PYTHON_API is explicitly configured
-        if (PYTHON_API) {
+        if (process.env.GROQ_API_KEY) {
           try {
-            const internalForm = new FormData();
-            internalForm.append('audio_file', audioFile.buffer, {
-              filename: audioFile.originalname || 'voice_note.m4a',
-              contentType: audioFile.mimetype || 'audio/m4a',
-            });
-
-            console.log(`[ChatbotRoute] Proxying audio to Python STT Service (${PYTHON_API})...`);
-            const sttResponse = await axios.post(
-              `${PYTHON_API}/analyze-audio`,
-              internalForm,
-              {
-                headers: { ...internalForm.getHeaders() },
-                timeout: 10000,
-              }
-            );
-
-            if (
-              sttResponse.data &&
-              sttResponse.data.success &&
-              sttResponse.data.text
-            ) {
-              transcribedText = sttResponse.data.text.trim();
-              audioTranscriptionSuccess = true;
-              console.log(`[ChatbotRoute] Python STT Success: "${transcribedText}"`);
-            }
-          } catch (sttError) {
-            console.warn(`[ChatbotRoute] Python STT Proxy Error:`, sttError.message);
-          }
-        }
-
-        // 1b. Fallback to Groq Whisper STT API if Python STT is offline or failed
-        if (!audioTranscriptionSuccess && process.env.GROQ_API_KEY) {
-          try {
-            console.log(`[ChatbotRoute] Fallback to Groq Whisper STT API...`);
             const groqForm = new FormData();
             groqForm.append('file', audioFile.buffer, {
               filename: 'voice_note.m4a',
@@ -342,11 +304,10 @@ router.post(
 
             if (groqRes.data && groqRes.data.text) {
               transcribedText = groqRes.data.text.trim();
-              audioTranscriptionSuccess = true;
               console.log(`[ChatbotRoute] Groq Whisper STT Success: "${transcribedText}"`);
             }
           } catch (groqErr) {
-            console.error(`[ChatbotRoute] Groq Whisper STT Fallback Error:`, groqErr.message);
+            console.error(`[ChatbotRoute] Groq Whisper STT Error:`, groqErr.response?.data || groqErr.message);
           }
         }
 
@@ -358,19 +319,14 @@ router.post(
             extractedQuery = transcribedText;
           }
         } else if (!extractedQuery) {
-          // Both STT failed AND user provided no text query
           return res
             .status(500)
             .json(
               buildErrorResponse(
                 'transcription',
-                'Could not understand audio or STT service is down.'
+                'Could not understand audio or STT service is down. Please try again or type your message.'
               )
             );
-        } else {
-          console.log(
-            `[ChatbotRoute] Audio STT unavailable/failed, but user text query provided: "${extractedQuery}". Proceeding with text query.`
-          );
         }
       }
 
@@ -380,39 +336,8 @@ router.post(
           `[ChatbotRoute] Received medical image attachment: ${imageFile.originalname} (${imageFile.mimetype}, ${imageFile.size} bytes)`
         );
 
-        let visionContextText = '';
+        let visionContextText = `Medical image attached (${imageFile.originalname}).`;
         let docClassification = 'General Medical Document';
-
-        if (PYTHON_API) {
-          try {
-            // Attempt to proxy to Python Vision AI endpoint
-            const visionForm = new FormData();
-            visionForm.append('image_file', imageFile.buffer, {
-              filename: imageFile.originalname || 'medical_image.jpg',
-              contentType: imageFile.mimetype,
-            });
-
-            console.log(`[ChatbotRoute] Proxying image to Python Vision AI Service...`);
-            const visionRes = await axios.post(
-              `${PYTHON_API}/analyze-vision`,
-              visionForm,
-              {
-                headers: { ...visionForm.getHeaders() },
-                timeout: 15000,
-              }
-            );
-
-            if (visionRes.data && visionRes.data.extractedText) {
-              visionContextText = visionRes.data.extractedText;
-              docClassification = visionRes.data.classification || docClassification;
-            }
-          } catch (visionErr) {
-            console.warn(`[ChatbotRoute] Python Vision service offline/fallback:`, visionErr.message);
-            visionContextText = `Medical image uploaded (${imageFile.originalname}).`;
-          }
-        } else {
-          visionContextText = `Medical image uploaded (${imageFile.originalname}).`;
-        }
 
         const userCaption = extractedQuery;
         const structuredContext = [
