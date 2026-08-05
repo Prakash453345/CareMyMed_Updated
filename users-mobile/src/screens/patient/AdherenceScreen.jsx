@@ -23,6 +23,8 @@ import {
   Image,
   PanResponder,
 } from "react-native";
+import * as Notifications from "expo-notifications";
+import AlertManager from "../../utils/AlertManager";
 import { getStreakState } from "../../utils/streakHelper";
 import StreakCompanion from "../../components/ui/StreakCompanion";
 import { LinearGradient } from "expo-linear-gradient";
@@ -1457,6 +1459,60 @@ export default function AdherenceScreen({ navigation }) {
   const badgeScaleAnim = useRef(new Animated.Value(0)).current;
   const badgeRotateAnim = useRef(new Animated.Value(0)).current;
 
+  const handleSetReminder = async (insightItem) => {
+    try {
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      if (finalStatus !== "granted") {
+        AlertManager.alert(
+          t("common.permission_required", {
+            defaultValue: "Permission Required",
+          }),
+          t("medications.enable_notifications", {
+            defaultValue:
+              "Please enable notifications to schedule medication reminders.",
+          }),
+        );
+        return;
+      }
+
+      // Schedule real repeating Expo notifications for afternoon & evening slots
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "☀️ Afternoon Medication Reminder",
+          body: "Time to take your scheduled afternoon medications!",
+          data: { screen: "Medications", type: "medication_reminder" },
+          sound: "default",
+        },
+        trigger: { hour: 14, minute: 0, repeats: true },
+      });
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "🌙 Evening Medication Reminder",
+          body: "Time to take your scheduled evening medications!",
+          data: { screen: "Medications", type: "medication_reminder" },
+          sound: "default",
+        },
+        trigger: { hour: 20, minute: 0, repeats: true },
+      });
+
+      try {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (e) {}
+      setReminderModalVisible(true);
+    } catch (err) {
+      console.warn("[AdherenceScreen] Failed to schedule reminders:", err.message);
+      setReminderModalVisible(true);
+    }
+  };
+
   const handleBadgePress = (badge) => {
     try {
       Haptics.selectionAsync();
@@ -2352,7 +2408,7 @@ export default function AdherenceScreen({ navigation }) {
                 insights={insights}
                 feedback={feedback}
                 t={t}
-                onSetReminder={() => setReminderModalVisible(true)}
+                onSetReminder={handleSetReminder}
               />
             </Animated.View>
 
