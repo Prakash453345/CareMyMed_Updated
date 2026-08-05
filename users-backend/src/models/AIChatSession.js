@@ -15,6 +15,9 @@ const ChatMessageSchema = new mongoose.Schema({
   audio: {
     type: String,
   },
+  audioDuration: {
+    type: Number,
+  },
   cards: {
     type: Array,
     default: [],

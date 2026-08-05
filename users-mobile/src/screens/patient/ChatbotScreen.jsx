@@ -381,7 +381,8 @@ const ScalePressable = ({ children, onPress, style }) => {
 };
 
 function formatDuration(secs) {
-    if (!secs || isNaN(secs)) return '0:02';
+    if (secs == null || isNaN(secs) || secs < 0) secs = 0;
+    secs = Math.round(secs);
     const m = Math.floor(secs / 60);
     const s = secs % 60;
     return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
@@ -1045,7 +1046,8 @@ export default function ChatbotScreen({ navigation, route }) {
                     cards: m.cards || [],
                     suggestions: m.suggestions || [],
                     image: m.image,
-                    audio: m.audio
+                    audio: m.audio,
+                    audioDuration: m.audioDuration || null
                 }));
 
                 setMessages(sessionMessages);
@@ -1171,7 +1173,7 @@ export default function ChatbotScreen({ navigation, route }) {
     }, [isTyping, typingStages]);
 
     // ── SSE Streaming API Integration ────────────
-    const streamFromBackend = (userMsg, botMessageId, isAudio = false, recordingUri = null, currentSessionId = null, imageAttachment = null) => {
+    const streamFromBackend = (userMsg, botMessageId, isAudio = false, recordingUri = null, currentSessionId = null, imageAttachment = null, audioDuration = null) => {
         return new Promise(async (resolve, reject) => {
             try {
                 // Abort any previous in-flight stream
@@ -1216,6 +1218,9 @@ export default function ChatbotScreen({ navigation, route }) {
                         type: `audio/${extension}`,
                         name: `voice_note.${extension}`
                     });
+                    if (audioDuration != null) {
+                        formData.append('audioDuration', String(audioDuration));
+                    }
                 }
 
                 if (userMsg && userMsg.trim().length > 0) {
@@ -1487,7 +1492,7 @@ export default function ChatbotScreen({ navigation, route }) {
                 }
             }
 
-            await streamFromBackend(msg, botMessageId, isAudioMsg, currentRecordingUri, currentSessionId, activeAttachment);
+            await streamFromBackend(msg, botMessageId, isAudioMsg, currentRecordingUri, currentSessionId, activeAttachment, targetAudioDuration);
         } catch (error) {
             setMessages(prev =>
                 prev.map(m =>

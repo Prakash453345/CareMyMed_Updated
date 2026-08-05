@@ -254,7 +254,7 @@ router.post(
     let sessionId = req.body.sessionId;
 
     try {
-      const { targetLanguage, query, patientId: bodyPatientId } = req.body;
+      const { targetLanguage, query, audioDuration, patientId: bodyPatientId } = req.body;
 
       // Securely resolve patient context
       patientId = await getPatientId(req, bodyPatientId);
@@ -542,6 +542,7 @@ router.post(
         session.messages.push({
           role: 'user',
           text: extractedQuery,
+          audioDuration: audioDuration ? Number(audioDuration) : undefined,
           timestamp: new Date(),
         });
 
