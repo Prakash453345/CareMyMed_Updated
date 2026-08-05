@@ -15,7 +15,7 @@ const AuditLog = require('../models/AuditLog');
 const emergencyConfig = require('../config/emergency_phrases.json');
 const AIChatSession = require('../models/AIChatSession');
 
-const PYTHON_API = process.env.PYTHON_API || 'http://localhost:8000';
+const PYTHON_API = process.env.PYTHON_API || null;
 
 // Configure Multer for in-memory storage and strict filtering (audio + image attachments)
 const upload = multer({
@@ -284,35 +284,37 @@ router.post(
 
         let audioTranscriptionSuccess = false;
 
-        // 1a. Attempt primary Python STT Service
-        try {
-          const internalForm = new FormData();
-          internalForm.append('audio_file', audioFile.buffer, {
-            filename: audioFile.originalname || 'voice_note.m4a',
-            contentType: audioFile.mimetype || 'audio/m4a',
-          });
+        // 1a. Attempt primary Python STT Service if PYTHON_API is explicitly configured
+        if (PYTHON_API) {
+          try {
+            const internalForm = new FormData();
+            internalForm.append('audio_file', audioFile.buffer, {
+              filename: audioFile.originalname || 'voice_note.m4a',
+              contentType: audioFile.mimetype || 'audio/m4a',
+            });
 
-          console.log(`[ChatbotRoute] Proxying audio to Python STT Service...`);
-          const sttResponse = await axios.post(
-            `${PYTHON_API}/analyze-audio`,
-            internalForm,
-            {
-              headers: { ...internalForm.getHeaders() },
-              timeout: 15000,
+            console.log(`[ChatbotRoute] Proxying audio to Python STT Service (${PYTHON_API})...`);
+            const sttResponse = await axios.post(
+              `${PYTHON_API}/analyze-audio`,
+              internalForm,
+              {
+                headers: { ...internalForm.getHeaders() },
+                timeout: 10000,
+              }
+            );
+
+            if (
+              sttResponse.data &&
+              sttResponse.data.success &&
+              sttResponse.data.text
+            ) {
+              transcribedText = sttResponse.data.text.trim();
+              audioTranscriptionSuccess = true;
+              console.log(`[ChatbotRoute] Python STT Success: "${transcribedText}"`);
             }
-          );
-
-          if (
-            sttResponse.data &&
-            sttResponse.data.success &&
-            sttResponse.data.text
-          ) {
-            transcribedText = sttResponse.data.text.trim();
-            audioTranscriptionSuccess = true;
-            console.log(`[ChatbotRoute] Python STT Success: "${transcribedText}"`);
+          } catch (sttError) {
+            console.warn(`[ChatbotRoute] Python STT Proxy Error:`, sttError.message);
           }
-        } catch (sttError) {
-          console.warn(`[ChatbotRoute] Python STT Proxy Error:`, sttError.message);
         }
 
         // 1b. Fallback to Groq Whisper STT API if Python STT is offline or failed
@@ -381,31 +383,34 @@ router.post(
         let visionContextText = '';
         let docClassification = 'General Medical Document';
 
-        try {
-          // Attempt to proxy to Python Vision AI endpoint
-          const visionForm = new FormData();
-          visionForm.append('image_file', imageFile.buffer, {
-            filename: imageFile.originalname || 'medical_image.jpg',
-            contentType: imageFile.mimetype,
-          });
+        if (PYTHON_API) {
+          try {
+            // Attempt to proxy to Python Vision AI endpoint
+            const visionForm = new FormData();
+            visionForm.append('image_file', imageFile.buffer, {
+              filename: imageFile.originalname || 'medical_image.jpg',
+              contentType: imageFile.mimetype,
+            });
 
-          console.log(`[ChatbotRoute] Proxying image to Python Vision AI Service...`);
-          const visionRes = await axios.post(
-            `${PYTHON_API}/analyze-vision`,
-            visionForm,
-            {
-              headers: { ...visionForm.getHeaders() },
-              timeout: 25000,
+            console.log(`[ChatbotRoute] Proxying image to Python Vision AI Service...`);
+            const visionRes = await axios.post(
+              `${PYTHON_API}/analyze-vision`,
+              visionForm,
+              {
+                headers: { ...visionForm.getHeaders() },
+                timeout: 15000,
+              }
+            );
+
+            if (visionRes.data && visionRes.data.extractedText) {
+              visionContextText = visionRes.data.extractedText;
+              docClassification = visionRes.data.classification || docClassification;
             }
-          );
-
-          if (visionRes.data && visionRes.data.extractedText) {
-            visionContextText = visionRes.data.extractedText;
-            docClassification = visionRes.data.classification || docClassification;
+          } catch (visionErr) {
+            console.warn(`[ChatbotRoute] Python Vision service offline/fallback:`, visionErr.message);
+            visionContextText = `Medical image uploaded (${imageFile.originalname}).`;
           }
-        } catch (visionErr) {
-          console.warn(`[ChatbotRoute] Python Vision service offline/fallback:`, visionErr.message);
-          // Fallback metadata context
+        } else {
           visionContextText = `Medical image uploaded (${imageFile.originalname}).`;
         }
 
