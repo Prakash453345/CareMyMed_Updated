@@ -310,13 +310,13 @@ export const SKELETON_MESSAGES = [
 ];
 
 function ChatBubbleSkeleton({ isUser, width }) {
-    const pulseAnim = useRef(new Animated.Value(0.3)).current;
+    const pulseAnim = useRef(new Animated.Value(0.4)).current;
     
     useEffect(() => {
         const anim = Animated.loop(
             Animated.sequence([
-                Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-                Animated.timing(pulseAnim, { toValue: 0.3, duration: 1000, useNativeDriver: true })
+                Animated.timing(pulseAnim, { toValue: 0.9, duration: 800, useNativeDriver: true }),
+                Animated.timing(pulseAnim, { toValue: 0.4, duration: 800, useNativeDriver: true })
             ])
         );
         anim.start();
@@ -324,9 +324,9 @@ function ChatBubbleSkeleton({ isUser, width }) {
     }, [pulseAnim]);
 
     return (
-        <View style={[styles.bubbleRow, isUser && styles.bubbleRowUser]}>
+        <View style={[styles.bubbleRow, isUser ? styles.bubbleRowUser : { justifyContent: 'flex-start' }]}>
             {!isUser && (
-                <View style={[styles.botAvatarCircle, { backgroundColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' }]} />
+                <Animated.View style={[styles.botAvatarCircle, { backgroundColor: '#E2E8F0', opacity: pulseAnim }]} />
             )}
             <Animated.View 
                 style={[
@@ -335,15 +335,26 @@ function ChatBubbleSkeleton({ isUser, width }) {
                     { 
                         opacity: pulseAnim, 
                         width: width || '70%', 
-                        height: 55,
-                        backgroundColor: isUser ? '#E0E7FF' : '#E2E8F0',
-                        borderRadius: 16,
+                        paddingVertical: 14,
+                        paddingHorizontal: 14,
+                        gap: 8,
+                        borderRadius: 20,
+                        backgroundColor: isUser ? '#EEF2FF' : '#F1F5F9',
                         borderWidth: 0,
+                        minHeight: 48,
+                        justifyContent: 'center',
                     }
                 ]}
-            />
+            >
+                {/* Skeleton Text Line 1 */}
+                <View style={{ height: 10, width: '85%', borderRadius: 5, backgroundColor: isUser ? '#C7D2FE' : '#CBD5E1' }} />
+                {/* Skeleton Text Line 2 (shorter line for natural speech bubble appearance) */}
+                {width !== '45%' && (
+                    <View style={{ height: 10, width: '55%', borderRadius: 5, backgroundColor: isUser ? '#D9E2FE' : '#E2E8F0' }} />
+                )}
+            </Animated.View>
             {isUser && (
-                <View style={[styles.avatarCircleUser, { backgroundColor: '#E2E8F0' }]} />
+                <Animated.View style={[styles.avatarCircleUser, { backgroundColor: '#E2E8F0', opacity: pulseAnim }]} />
             )}
         </View>
     );
@@ -1794,7 +1805,7 @@ export default function ChatbotScreen({ navigation, route }) {
                             ) : (
                                 <View style={styles.onlineDot} />
                             )}
-                            <Text style={styles.onlineText}>
+                            <Text style={[styles.onlineText, isHydrating && { color: '#6366F1' }]}>
                                 {isHydrating ? 'Syncing...' : lastSyncedAt ? 'Updated just now' : 'Online'}
                             </Text>
                         </View>
@@ -2036,8 +2047,8 @@ const styles = StyleSheet.create({
     headerMascotAvatar: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' },
     headerTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', letterSpacing: -0.3 },
     onlineRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
-    onlineDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#22C55E' },
-    onlineText: { fontSize: 11, fontWeight: '600', color: '#22C55E' },
+    onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
+    onlineText: { fontSize: 11, fontWeight: '500', color: '#64748B' },
 
     // ── Welcome card ──
     welcomeCard: {
