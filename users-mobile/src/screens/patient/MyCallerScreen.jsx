@@ -1140,7 +1140,6 @@ export default function MyCallerScreen({ navigation }) {
               )}
             </View>
           )}
-          </View>
         </Animated.View>
 
         {/* ── CARE MANAGER ──────────────────────────────────────────────── */}
@@ -1285,6 +1284,7 @@ export default function MyCallerScreen({ navigation }) {
               </View>
             </View>
           )}
+          </View>
         </Animated.View>
 
         {/* ── TRUSTED CONTACTS ───────────────────────────────────────── */}
