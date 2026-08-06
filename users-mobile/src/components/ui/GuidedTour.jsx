@@ -29,6 +29,16 @@ import { useReduceMotion } from '../../theme';
 import { HapticPatterns } from '../../utils/haptics';
 import { TourService } from '../../lib/TourService';
 
+let AnimatedSvgRect = SvgRect;
+let AnimatedSvgCircle = SvgCircle;
+try {
+  AnimatedSvgRect = Animated.createAnimatedComponent(SvgRect);
+  AnimatedSvgCircle = Animated.createAnimatedComponent(SvgCircle);
+} catch (e) {
+  AnimatedSvgRect = SvgRect;
+  AnimatedSvgCircle = SvgCircle;
+}
+
 export default function GuidedTour({
   visible,
   steps = [],
@@ -42,6 +52,7 @@ export default function GuidedTour({
   const [computedShapeConfig, setComputedShapeConfig] = useState({ shape: 'roundedRect', radius: 18 });
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [measuredCardHeight, setMeasuredCardHeight] = useState(148);
   const reduceMotion = useReduceMotion();
 
   const cardFade = useRef(new Animated.Value(1)).current;
@@ -139,7 +150,7 @@ export default function GuidedTour({
       const screenHeight = rawScreenHeight - keyboardHeight;
       const SAFE_MARGIN = 16;
 
-      const pad = Number(stepData.spotlightPadding ?? coords.padding) ?? 4;
+      const pad = Number(stepData.spotlightPadding ?? coords.padding) ?? 6;
       const rawTop = Number(coords.top);
       const rawLeft = Number(coords.left);
       const rawWidth = Number(coords.width);
@@ -179,21 +190,21 @@ export default function GuidedTour({
 
       const clearAbove = spotTop - topHeaderOffset;
       const clearBelow = screenHeight - bottomBarOffset - (spotTop + spotHeight);
-      const estimatedCardHeight = Number(stepData.cardHeight || 112);
+      const estimatedCardHeight = Number(stepData.cardHeight || measuredCardHeight || 148);
       const preferred = stepData.preferredPlacement || stepData.arrow || 'auto';
 
       let isUp; // isUp = true means tooltip sits BELOW spotlight (arrow points UP)
       if (preferred === 'top' || preferred === 'above') {
         // Prefer tooltip ABOVE spotlight (isUp = false); fall back to below if not enough room
-        isUp = clearAbove < estimatedCardHeight + 14;
+        isUp = clearAbove < estimatedCardHeight + 16;
       } else if (preferred === 'bottom' || preferred === 'below') {
         // Prefer tooltip BELOW spotlight (isUp = true); fall back to above if not enough room
-        isUp = clearBelow >= estimatedCardHeight + 14 ? true : clearAbove < estimatedCardHeight + 14;
+        isUp = clearBelow >= estimatedCardHeight + 16 ? true : clearAbove < estimatedCardHeight + 16;
       } else {
         // Auto placement logic: Pick side with generous clearance
-        if (clearBelow >= estimatedCardHeight + 14 && spotTop < screenHeight * 0.55) {
+        if (clearBelow >= estimatedCardHeight + 16 && spotTop < screenHeight * 0.55) {
           isUp = true;
-        } else if (clearAbove >= estimatedCardHeight + 14) {
+        } else if (clearAbove >= estimatedCardHeight + 16) {
           isUp = false;
         } else {
           isUp = clearBelow >= clearAbove;
@@ -205,7 +216,7 @@ export default function GuidedTour({
       const targetCenterX = safeLeft + safeWidth * anchorRatio;
 
       // 5. Adaptive Card Width with strict horizontal edge clamping
-      const cardWidth = Math.min(stepData.maxCardWidth || 275, screenWidth - 32);
+      const cardWidth = Math.min(stepData.maxCardWidth || 285, screenWidth - 32);
       const cardLeft = Math.max(
         SAFE_MARGIN,
         Math.min(targetCenterX - cardWidth / 2, screenWidth - cardWidth - SAFE_MARGIN)
@@ -217,15 +228,17 @@ export default function GuidedTour({
         Math.min(targetCenterX - cardLeft - 5, cardWidth - 26)
       );
 
-      // 7. Non-Overlapping Card Top Position with 12px Kissing Gap
+      // 7. Non-Overlapping Card Top Position with Strict Anti-Overlap Clamping
       let cardTop;
       if (isUp) {
         // Tooltip sits BELOW spotlight
-        cardTop = spotTop + spotHeight + 12;
+        cardTop = spotTop + spotHeight + 16;
+        cardTop = Math.max(spotTop + spotHeight + 12, cardTop);
         cardTop = Math.min(screenHeight - bottomBarOffset - estimatedCardHeight - 4, cardTop);
       } else {
         // Tooltip sits ABOVE spotlight
-        cardTop = spotTop - estimatedCardHeight - 12;
+        cardTop = spotTop - estimatedCardHeight - 16;
+        cardTop = Math.min(spotTop - estimatedCardHeight - 12, cardTop);
         cardTop = Math.max(topHeaderOffset + 6, cardTop);
       }
 
@@ -329,6 +342,7 @@ export default function GuidedTour({
       cardScale,
       cardTranslateY,
       keyboardHeight,
+      measuredCardHeight,
       reduceMotion,
     ]
   );
@@ -491,7 +505,7 @@ export default function GuidedTour({
 
   const Icon = stepData.icon;
   const cardWidthConst = Math.min(
-    stepData.maxCardWidth || 275,
+    stepData.maxCardWidth || 285,
     Dimensions.get('window').width - 32
   );
 
@@ -561,34 +575,29 @@ export default function GuidedTour({
   const screenWidth = Dimensions.get('window').width || 360;
   const screenHeight = Dimensions.get('window').height || 640;
 
-  const spotX = spotlightCoords ? spotlightCoords.left : 0;
-  const spotY = spotlightCoords ? spotlightCoords.top : 0;
-  const spotW = spotlightCoords ? spotlightCoords.width : 0;
-  const spotH = spotlightCoords ? spotlightCoords.height : 0;
-
   return (
     <Modal transparent visible={visible} animationType="fade" statusBarTranslucent={true}>
       <View style={[s.wtOverlay, !spotlightCoords && s.wtOverlayCentered]} pointerEvents="box-none">
-        {/* Lighter 30% Opacity SVG Mask Cutout */}
+        {/* Lighter 30% Opacity SVG Mask Cutout - 60fps Lockstep Sync */}
         {spotlightCoords ? (
           <Svg width={screenWidth} height={screenHeight} style={StyleSheet.absoluteFill} pointerEvents="none">
             <Defs>
               <Mask id={maskId}>
                 <SvgRect width="100%" height="100%" fill="white" />
                 {computedShapeConfig.shape === 'circle' ? (
-                  <SvgCircle
-                    cx={spotX + spotW / 2}
-                    cy={spotY + spotH / 2}
-                    r={Math.max(spotW, spotH) / 2}
+                  <AnimatedSvgCircle
+                    cx={Animated.add(animSpotLeft, Animated.divide(animSpotWidth, 2))}
+                    cy={Animated.add(animSpotTop, Animated.divide(animSpotHeight, 2))}
+                    r={Animated.divide(Animated.add(animSpotWidth, animSpotHeight), 4)}
                     fill="black"
                   />
                 ) : (
-                  <SvgRect
-                    x={spotX}
-                    y={spotY}
-                    width={spotW}
-                    height={spotH}
-                    rx={computedShapeConfig.radius}
+                  <AnimatedSvgRect
+                    x={animSpotLeft}
+                    y={animSpotTop}
+                    width={animSpotWidth}
+                    height={animSpotHeight}
+                    rx={animRadius}
                     fill="black"
                   />
                 )}
@@ -605,7 +614,7 @@ export default function GuidedTour({
           <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(15, 23, 42, 0.30)' }]} pointerEvents="none" />
         )}
 
-        {/* Soft Violet Glow Halo around Target Element */}
+        {/* Soft Violet Glow Halo around Target Element - 60fps Lockstep Sync */}
         {spotlightCoords && (
           <Animated.View
             style={[
@@ -629,6 +638,12 @@ export default function GuidedTour({
           accessible={true}
           accessibilityRole="alert"
           accessibilityLabel={`Step ${activeStep + 1} of ${steps.length}. ${stepData.title}. ${stepData.desc}`}
+          onLayout={(e) => {
+            const h = e.nativeEvent?.layout?.height;
+            if (h && Math.abs(h - measuredCardHeight) > 2) {
+              setMeasuredCardHeight(h);
+            }
+          }}
           style={[
             s.wtCard,
             spotlightCoords
@@ -739,7 +754,7 @@ const s = StyleSheet.create({
     flex: 1,
   },
   wtOverlayCentered: {
-    justify: 'center',
+    justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
   },
@@ -759,7 +774,7 @@ const s = StyleSheet.create({
     position: 'absolute',
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
-    padding: 12,
+    padding: 14,
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,
@@ -780,7 +795,7 @@ const s = StyleSheet.create({
     borderRadius: 7,
     backgroundColor: '#F3E8FF',
     alignItems: 'center',
-    justify: 'center',
+    justifyContent: 'center',
   },
   wtHeroIconWrap: {
     backgroundColor: '#EDE9FE',
@@ -808,12 +823,12 @@ const s = StyleSheet.create({
     fontWeight: '500',
     color: '#475569',
     lineHeight: 16,
-    marginBottom: 9,
+    marginBottom: 10,
   },
   wtFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    justify: 'space-between',
+    justifyContent: 'space-between',
   },
   wtDotsRow: {
     flexDirection: 'row',
