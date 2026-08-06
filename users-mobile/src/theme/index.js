@@ -162,6 +162,41 @@ export const TYPOGRAPHY = {
     },
 };
 
+export const TEXT = {
+    pageTitle:       { ...TYPOGRAPHY.h1, color: colors.textPrimary },
+    sectionTitle:    { ...TYPOGRAPHY.h3, color: colors.textPrimary },
+    bodyPrimary:     { ...TYPOGRAPHY.body, color: colors.textPrimary },
+    bodySecondary:   { ...TYPOGRAPHY.body, color: colors.textSecondary },
+    captionMuted:    { ...TYPOGRAPHY.caption, color: colors.textMuted },
+    metricHero:      { ...TYPOGRAPHY.metricLarge, color: colors.textPrimary },
+    metricSecondary: { ...TYPOGRAPHY.metric, color: colors.primary },
+};
+
+export const ICON_SIZE = {
+    xs: 14,
+    sm: 16,
+    md: 20,
+    lg: 24,
+    xl: 32,
+};
+
+export const SPACING = {
+    xs: 4,
+    sm: 8,
+    md: 16,
+    lg: 24,
+    xl: 32,
+    screen: 20,
+};
+
+export const RADIUS = {
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 20,
+    pill: 999,
+};
+
 export const typography = {
     fontFamily: 'PlusJakartaSans_400Regular',
     heading: { fontFamily: 'PlusJakartaSans_700Bold' },
@@ -281,4 +316,4 @@ export { motion, anim, useReduceMotion };
 import { MotionProvider, useMotion } from './MotionProvider';
 export { MotionProvider, useMotion };
 
-export default { colors, typography, FONT, METRIC_FONT, TEXT_SIZE, TYPOGRAPHY, radius, spacing, shadows, layout, motion, anim, useReduceMotion, MotionProvider, useMotion };
+export default { colors, typography, FONT, METRIC_FONT, TEXT_SIZE, TYPOGRAPHY, TEXT, ICON_SIZE, SPACING, RADIUS, radius, spacing, shadows, layout, motion, anim, useReduceMotion, MotionProvider, useMotion };

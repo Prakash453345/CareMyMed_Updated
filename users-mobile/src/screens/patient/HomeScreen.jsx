@@ -72,6 +72,14 @@ import {
   motion,
   anim,
   useReduceMotion,
+  FONT,
+  METRIC_FONT,
+  TYPOGRAPHY,
+  TEXT,
+  TEXT_SIZE,
+  ICON_SIZE,
+  SPACING,
+  RADIUS,
 } from "../../theme";
 import { useAuth } from "../../context/AuthContext";
 import TabScreenTransition from "../../components/ui/TabScreenTransition";
@@ -3937,7 +3945,7 @@ const styles = StyleSheet.create({
   },
   brandText: {
     fontSize: 12,
-    fontWeight: "900",
+    ...FONT.heavy,
     color: "#7C3AED",
     letterSpacing: 0.5,
   },
@@ -3947,7 +3955,7 @@ const styles = StyleSheet.create({
   },
   greetingName: {
     fontSize: 30,
-    fontWeight: "900",
+    ...FONT.heavy,
     color: "#7C3AED",
     letterSpacing: -1,
     lineHeight: 38,
@@ -3956,7 +3964,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#64748B",
     marginTop: 4,
-    fontWeight: "500",
+    ...FONT.medium,
     lineHeight: 20,
   },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 10 },
