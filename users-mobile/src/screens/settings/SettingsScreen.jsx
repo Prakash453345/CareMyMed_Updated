@@ -431,62 +431,26 @@ export default function SettingsScreen({ navigation }) {
                     style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
                 >
                     {/* ══════════════════════════════════════════════════════════════ */}
-                    {/* ── MACRO HERO: SECURITY & SYSTEM HEALTH SCORE DASHBOARD CARD ── */}
                     {/* ══════════════════════════════════════════════════════════════ */}
-                    <LinearGradient
-                        colors={['#312E81', '#4338CA', '#4F46E5']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={s.heroDashboardCard}
-                    >
-                        <View style={s.heroTopRow}>
-                            <View style={s.heroShieldWrap}>
-                                <ShieldCheck size={22} color="#818CF8" strokeWidth={2.5} />
-                            </View>
+                    {/* ── ACCOUNT & PREFERENCES PROFILE HEADER CARD ── */}
+                    {/* ══════════════════════════════════════════════════════════════ */}
+                    <View style={s.profileCard}>
+                        <View style={s.profileHeaderRow}>
+                            <LinearGradient colors={['#EEF2FF', '#E0E7FF']} style={s.avatarCircle}>
+                                <Text style={s.avatarTxt}>
+                                    {(patient?.full_name || patient?.name || 'User').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                </Text>
+                            </LinearGradient>
                             <View style={{ flex: 1 }}>
-                                <Text style={s.heroScoreEyebrow}>SYSTEM SECURITY SCORE</Text>
-                                <Text style={s.heroScoreTitle}>{securityScore}% Protected</Text>
+                                <Text style={s.profileName}>{patient?.full_name || patient?.name || 'Account Settings'}</Text>
+                                <Text style={s.profileSub}>{patient?.email || 'CareMyMed Account & Preferences'}</Text>
                             </View>
-                            <View style={s.heroPulseBadge}>
-                                <Animated.View style={[s.heroPulseDot, { opacity: pulseAnim }]} />
-                                <Text style={s.heroPulseTxt}>LIVE</Text>
-                            </View>
-                        </View>
-
-                        {/* Animated Progress Bar */}
-                        <View style={s.heroProgressBarBg}>
-                            <LinearGradient
-                                colors={['#34D399', '#10B981']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={[s.heroProgressBarFill, { width: `${securityScore}%` }]}
-                            />
-                        </View>
-
-                        {/* Metric Chips Row */}
-                        <View style={s.heroMetricsGrid}>
-                            <View style={s.heroMetricChip}>
-                                <Fingerprint size={12} color="#A5B4FC" />
-                                <Text style={s.heroMetricTxt}>
-                                    {biometricEnabled ? 'Biometric Active' : 'PIN Lock Active'}
-                                </Text>
-                            </View>
-
-                            <View style={s.heroMetricChip}>
-                                <BellRing size={12} color="#A5B4FC" />
-                                <Text style={s.heroMetricTxt}>
-                                    {medReminders ? '3 Dose Alarms Set' : 'Alarms Off'}
-                                </Text>
-                            </View>
-
-                            <View style={s.heroMetricChip}>
-                                <Activity size={12} color="#34D399" />
-                                <Text style={s.heroMetricTxt}>
-                                    {lastSyncStr ? `Synced ${lastSyncStr}` : 'Health Connect'}
-                                </Text>
+                            <View style={s.verifiedBadge}>
+                                <ShieldCheck size={14} color="#059669" strokeWidth={2.5} />
+                                <Text style={s.verifiedTxt}>Protected</Text>
                             </View>
                         </View>
-                    </LinearGradient>
+                    </View>
 
                     {/* ══════════════════════════════════════════════════════════════ */}
                     {/* ── SECTION 1: SECURITY & ACCESS ── */}
@@ -921,76 +885,65 @@ const s = StyleSheet.create({
 
     scrollContent: { padding: 18, paddingBottom: 44 },
 
-    // ── MACRO HERO CARD ──
-    heroDashboardCard: {
-        borderRadius: 26,
-        padding: 18,
+    // ── PROFILE HEADER CARD ──
+    profileCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 22,
+        padding: 16,
         marginBottom: 18,
-        shadowColor: '#4338CA',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.22,
-        shadowRadius: 16,
-        elevation: 5,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.04,
+        shadowRadius: 10,
+        elevation: 2,
     },
-    heroTopRow: {
+    profileHeaderRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
     },
-    heroShieldWrap: {
-        width: 44,
-        height: 44,
-        borderRadius: 15,
-        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    avatarCircle: {
+        width: 46,
+        height: 46,
+        borderRadius: 23,
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 1.5,
+        borderColor: '#C7D2FE',
     },
-    heroScoreEyebrow: {
-        fontSize: 10.5,
+    avatarTxt: {
+        fontSize: 16,
         fontWeight: '800',
-        color: '#C7D2FE',
-        letterSpacing: 0.8,
+        color: '#4F46E5',
     },
-    heroScoreTitle: {
-        fontSize: 22,
-        fontWeight: '900',
-        color: '#FFFFFF',
-        letterSpacing: -0.4,
+    profileName: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+    profileSub: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: '#64748B',
         marginTop: 2,
     },
-    heroPulseBadge: {
+    verifiedBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 5,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        paddingHorizontal: 9,
-        paddingVertical: 4,
+        gap: 4,
+        backgroundColor: '#ECFDF5',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
         borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#A7F3D0',
     },
-    heroPulseDot: {
-        width: 7,
-        height: 7,
-        borderRadius: 3.5,
-        backgroundColor: '#34D399',
-    },
-    heroPulseTxt: { fontSize: 10, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5 },
-
-    heroProgressBarBg: {
-        height: 6,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        borderRadius: 3,
-        marginVertical: 14,
-        overflow: 'hidden',
-    },
-    heroProgressBarFill: {
-        height: '100%',
-        borderRadius: 3,
-    },
-
-    heroMetricsGrid: {
-        flexDirection: 'row',
-        gap: 8,
-        flexWrap: 'wrap',
+    verifiedTxt: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#065F46',
     },
     heroMetricChip: {
         flexDirection: 'row',
