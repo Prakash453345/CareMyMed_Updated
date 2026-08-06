@@ -1935,7 +1935,7 @@ export default function ChatbotScreen({ navigation, route }) {
                     }
                 />
 
-                {/* ── Attachment Preview Bar ── */}
+                {/* ── Attachment Preview Bar (Images) ── */}
                 {attachments.length > 0 && (
                     <View style={styles.attachmentBar}>
                         <View style={styles.attachmentCard}>
@@ -1948,6 +1948,20 @@ export default function ChatbotScreen({ navigation, route }) {
                                 <X size={16} color="#64748B" />
                             </Pressable>
                         </View>
+                    </View>
+                )}
+
+                {/* ── Voice Note Preview Shelf ── */}
+                {(voiceState === 'review' || recordedAudioUri) && (
+                    <View style={styles.voiceNotePreviewBar}>
+                        <View style={styles.voiceNoteBadge}>
+                            <Mic size={14} color="#6366F1" strokeWidth={2.5} />
+                            <Text style={styles.voiceNoteBadgeTxt}>Voice Note • {formatDuration(recordingDuration)}</Text>
+                        </View>
+                        <Text style={styles.voiceNoteSubtitle} numberOfLines={1}>Voice note attached</Text>
+                        <Pressable onPress={cancelRecording} hitSlop={10} style={styles.clearVoiceBtn}>
+                            <X size={14} color="#64748B" />
+                        </Pressable>
                     </View>
                 )}
 
@@ -1988,35 +2002,21 @@ export default function ChatbotScreen({ navigation, route }) {
                                 </LinearGradient>
                             </Pressable>
                         </View>
-                    ) : voiceState === 'review' ? (
-                        /* 📝 REVIEW / TRANSCRIPT STATE */
-                        <View style={styles.reviewInputWrapper}>
-                            <View style={styles.reviewHeaderRow}>
-                                <View style={styles.voiceNoteBadge}>
-                                    <Mic size={13} color="#6366F1" strokeWidth={2.5} />
-                                    <Text style={styles.voiceNoteBadgeTxt}>Voice Note • {formatDuration(recordingDuration)}</Text>
-                                </View>
-                                <Pressable onPress={cancelRecording} hitSlop={8} style={styles.clearVoiceBtn}>
-                                    <X size={14} color="#64748B" />
-                                </Pressable>
-                            </View>
-                            <TextInput
-                                style={styles.textInput}
-                                placeholder="Edit optional text or add caption..."
-                                placeholderTextColor="#94A3B8"
-                                value={inputText}
-                                onChangeText={setInputText}
-                                multiline
-                                maxLength={500}
-                            />
-                        </View>
                     ) : (
-                        /* 🟣 IDLE STATE (Swiggy-Style Impactful Pill Layout) */
+                        /* 🟣 UNIVERSAL INPUT BAR (Idle or Review with attachments/voice notes) */
                         <>
                             <View style={styles.inputWrapper}>
                                 <TextInput
                                     style={styles.textInput}
-                                    placeholder={attachments.length > 0 ? "Add optional caption..." : "Type your message here..."}
+                                    placeholder={
+                                        attachments.length > 0 && recordedAudioUri
+                                            ? "Add caption for voice & image..."
+                                            : recordedAudioUri
+                                            ? "Add optional text or question..."
+                                            : attachments.length > 0
+                                            ? "Add optional caption..."
+                                            : "Type your message here..."
+                                    }
                                     placeholderTextColor="#94A3B8"
                                     value={inputText}
                                     onChangeText={setInputText}
@@ -2033,19 +2033,19 @@ export default function ChatbotScreen({ navigation, route }) {
                                             <Square size={12} color="#FFF" fill="#FFF" />
                                         </LinearGradient>
                                     </Pressable>
-                                ) : (inputText.trim().length > 0 || attachments.length > 0 || recordedAudioUri) ? (
+                                ) : (inputText.trim().length > 0 || attachments.length > 0 || recordedAudioUri != null || voiceState === 'review') ? (
                                     <Pressable style={styles.sendInsideBtn} onPress={() => handleSend()}>
                                         <LinearGradient colors={['#F97316', '#EA580C']} style={styles.sendGradient}>
                                             <ArrowRight size={18} color="#FFF" strokeWidth={2.5} />
                                         </LinearGradient>
                                     </Pressable>
-                                ) : voiceState === 'idle' ? (
+                                ) : (
                                     <Pressable style={styles.sendInsideBtn} onPress={startRecording}>
                                         <LinearGradient colors={['#6366F1', '#4F46E5']} style={styles.sendGradient}>
                                             <Mic size={18} color="#FFF" strokeWidth={2.5} />
                                         </LinearGradient>
                                     </Pressable>
-                                ) : null}
+                                )}
                             </View>
 
                             <Pressable style={styles.plusAttachBtn} onPress={handlePickImage}>
@@ -2458,14 +2458,34 @@ const styles = StyleSheet.create({
     stopSquareBtn: { width: 34, height: 34, borderRadius: 17, overflow: 'hidden' },
 
     // Review / Transcript State Styles
+    voiceNotePreviewBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#EEF2FF',
+        marginHorizontal: 16,
+        marginBottom: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#C7D2FE',
+    },
+    voiceNoteSubtitle: {
+        flex: 1,
+        fontSize: 12,
+        fontWeight: '500',
+        color: '#6366F1',
+        marginLeft: 10,
+    },
     reviewInputWrapper: {
         flex: 1, backgroundColor: '#F8FAFC', borderRadius: 18,
         borderWidth: 1, borderColor: '#C7D2FE', paddingHorizontal: 12, paddingVertical: 8,
     },
     reviewHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-    voiceNoteBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EEF2FF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+    voiceNoteBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFFFFF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, borderWidth: 0.5, borderColor: '#C7D2FE' },
     voiceNoteBadgeTxt: { fontSize: 11, fontWeight: '700', color: '#4F46E5' },
-    clearVoiceBtn: { padding: 2 },
+    clearVoiceBtn: { padding: 4 },
 
     // ── Structured Cards ──
     cardsWrapper: { marginTop: 8, gap: 10, width: '100%' },
