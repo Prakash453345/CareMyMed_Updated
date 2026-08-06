@@ -449,6 +449,11 @@ export default function GuidedTour({
                 setSpotlightCoords(coords);
                 animateToCoords(coords, stepData);
                 if (onDone) onDone();
+
+                // Dual-Measure Settling Pass: re-verify coordinates 140ms later after scroll/entrance anims finish
+                if (attempt === 0) {
+                  setTrackedTimeout(() => measureStep(stepData, 1), 140);
+                }
               } else if (attempt < 4) {
                 setTrackedTimeout(() => measureStep(stepData, attempt + 1, onDone), 60);
               } else {
@@ -467,6 +472,10 @@ export default function GuidedTour({
                 setSpotlightCoords(coords);
                 animateToCoords(coords, stepData);
                 if (onDone) onDone();
+
+                if (attempt === 0) {
+                  setTrackedTimeout(() => measureStep(stepData, 1), 140);
+                }
               } else {
                 applyStaticFallback(stepData);
               }
