@@ -183,6 +183,11 @@ export default function SettingsScreen({ navigation }) {
                 const storedBio = await SecureStore.getItemAsync('biometric_auth_enabled');
                 setBiometricEnabled(storedBio === 'true');
 
+                const storedRM = await SecureStore.getItemAsync('reduce_motion_enabled');
+                if (storedRM !== null) {
+                    setReduceMotion(storedRM === 'true');
+                }
+
                 const perms = await Notifications.getPermissionsAsync();
                 setNotifPermissionGranted(perms.status === 'granted');
 
@@ -204,6 +209,15 @@ export default function SettingsScreen({ navigation }) {
             if (patient.language) setSelectedLang(patient.language);
         }
     }, [patient]);
+
+    // ── Dynamic System Security Score Calculation ──
+    const securityScore = React.useMemo(() => {
+        let score = 65;
+        if (biometricEnabled) score += 25;
+        if (medReminders) score += 5;
+        if (pushEnabled) score += 5;
+        return Math.min(score, 100);
+    }, [biometricEnabled, medReminders, pushEnabled]);
 
     // ── Handlers ──
     const handleToggleBiometrics = async (val) => {
@@ -237,6 +251,14 @@ export default function SettingsScreen({ navigation }) {
             await SecureStore.deleteItemAsync('biometric_auth_enabled');
             setBiometricEnabled(false);
         }
+    };
+
+    const handleToggleReduceMotion = async (val) => {
+        HapticPatterns.selection();
+        setReduceMotion(val);
+        try {
+            await SecureStore.setItemAsync('reduce_motion_enabled', val ? 'true' : 'false');
+        } catch (e) {}
     };
 
     const handleChangePassword = async () => {
@@ -418,7 +440,7 @@ export default function SettingsScreen({ navigation }) {
                             </View>
                             <View style={{ flex: 1 }}>
                                 <Text style={s.heroScoreEyebrow}>SYSTEM SECURITY SCORE</Text>
-                                <Text style={s.heroScoreTitle}>98% Protected</Text>
+                                <Text style={s.heroScoreTitle}>{securityScore}% Protected</Text>
                             </View>
                             <View style={s.heroPulseBadge}>
                                 <Animated.View style={[s.heroPulseDot, { opacity: pulseAnim }]} />
@@ -432,7 +454,7 @@ export default function SettingsScreen({ navigation }) {
                                 colors={['#34D399', '#10B981']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
-                                style={[s.heroProgressBarFill, { width: '98%' }]}
+                                style={[s.heroProgressBarFill, { width: `${securityScore}%` }]}
                             />
                         </View>
 
@@ -441,7 +463,7 @@ export default function SettingsScreen({ navigation }) {
                             <View style={s.heroMetricChip}>
                                 <Fingerprint size={12} color="#A5B4FC" />
                                 <Text style={s.heroMetricTxt}>
-                                    {biometricEnabled ? 'Face ID Ready' : 'PIN Lock Active'}
+                                    {biometricEnabled ? 'Biometric Active' : 'PIN Lock Active'}
                                 </Text>
                             </View>
 
@@ -766,10 +788,7 @@ export default function SettingsScreen({ navigation }) {
                             </View>
                             <CustomSwitch
                                 value={!!reduceMotion}
-                                onValueChange={(val) => {
-                                    HapticPatterns.selection();
-                                    setReduceMotion(val);
-                                }}
+                                onValueChange={handleToggleReduceMotion}
                                 activeColor="#9333EA"
                             />
                         </View>

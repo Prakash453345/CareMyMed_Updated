@@ -158,9 +158,11 @@ const usePatientStore = create((set, get) => ({
     simulateOffline: false,
     networkSimulationMode: 'online', // 'online' | 'offline' | 'flaky' | 'slow'
     lastSyncTimestamp: null,
+    reduceMotion: false,
     _optimisticMeds: {},
     newlyUnlockedAchievement: null,
     clearNewlyUnlockedAchievement: () => set({ newlyUnlockedAchievement: null }),
+    setReduceMotion: (val) => set({ reduceMotion: !!val }),
 
     setPatient: (patient) => {
         const current = get().patient;

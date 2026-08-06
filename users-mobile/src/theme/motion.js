@@ -29,27 +29,30 @@ export const motion = {
     },
 };
 
+import usePatientStore from '../store/usePatientStore';
+
 /**
  * Hook to dynamically track reduced motion accessibility preference.
  */
 export function useReduceMotion() {
-    const [reduceMotion, setReduceMotion] = useState(false);
+    const [osReduceMotion, setOsReduceMotion] = useState(false);
+    const storeReduceMotion = usePatientStore(s => s.reduceMotion);
 
     useEffect(() => {
         let mounted = true;
 
         AccessibilityInfo.isReduceMotionEnabled()
             .then((enabled) => {
-                if (mounted) setReduceMotion(enabled);
+                if (mounted) setOsReduceMotion(enabled);
             })
             .catch(() => {
-                if (mounted) setReduceMotion(false);
+                if (mounted) setOsReduceMotion(false);
             });
 
         const subscription = AccessibilityInfo.addEventListener(
             'reduceMotionChanged',
             (enabled) => {
-                if (mounted) setReduceMotion(enabled);
+                if (mounted) setOsReduceMotion(enabled);
             }
         );
 
@@ -63,7 +66,7 @@ export function useReduceMotion() {
         };
     }, []);
 
-    return reduceMotion;
+    return !!(osReduceMotion || storeReduceMotion);
 }
 
 export const anim = {

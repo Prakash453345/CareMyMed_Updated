@@ -127,7 +127,7 @@ describe('SettingsScreen', () => {
         expect(toJSON()).toBeTruthy();
         expect(getByText('Settings & Preferences')).toBeTruthy();
         expect(getByText('SYSTEM SECURITY SCORE')).toBeTruthy();
-        expect(getByText('98% Protected')).toBeTruthy();
+        expect(getByText(/Protected/i)).toBeTruthy();
         expect(getByText('Security & Access')).toBeTruthy();
         expect(getByText('Notifications & Health Alarms')).toBeTruthy();
         expect(getByText('Connected Devices & Health Sync')).toBeTruthy();
