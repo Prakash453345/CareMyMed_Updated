@@ -17,31 +17,35 @@ const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 44, 340);
 
 const THEME = {
   success: {
-    accent: '#059669',
+    accent: '#10B981',
     gradient: ['#10B981', '#059669'],
-    haloBg: 'rgba(16, 185, 129, 0.12)',
-    haloBorder: 'rgba(16, 185, 129, 0.25)',
+    topBarGradient: ['#34D399', '#10B981'],
+    haloBg: '#ECFDF5',
+    haloBorder: '#A7F3D0',
     Icon: CheckCircle2,
   },
   error: {
-    accent: '#DC2626',
-    gradient: ['#F43F5E', '#DC2626'],
-    haloBg: 'rgba(239, 68, 68, 0.12)',
-    haloBorder: 'rgba(239, 68, 68, 0.25)',
+    accent: '#E11D48',
+    gradient: ['#F43F5E', '#E11D48'],
+    topBarGradient: ['#FB7185', '#E11D48'],
+    haloBg: '#FFF1F2',
+    haloBorder: '#FECDD3',
     Icon: XCircle,
   },
   warning: {
     accent: '#D97706',
     gradient: ['#F59E0B', '#D97706'],
-    haloBg: 'rgba(245, 158, 11, 0.12)',
-    haloBorder: 'rgba(245, 158, 11, 0.25)',
+    topBarGradient: ['#FBBF24', '#F59E0B'],
+    haloBg: '#FEF3C7',
+    haloBorder: '#FDE68A',
     Icon: AlertTriangle,
   },
   info: {
-    accent: '#4F46E5',
-    gradient: ['#6366F1', '#4F46E5'],
-    haloBg: 'rgba(99, 102, 241, 0.12)',
-    haloBorder: 'rgba(99, 102, 241, 0.25)',
+    accent: '#7C3AED',
+    gradient: ['#8B5CF6', '#7C3AED'],
+    topBarGradient: ['#A78BFA', '#7C3AED'],
+    haloBg: '#F3E8FF',
+    haloBorder: '#DDD6FE',
     Icon: Info,
   },
 };
@@ -75,7 +79,7 @@ const CustomAlert = forwardRef((_, ref) => {
     opacityAnim.setValue(0);
 
     Animated.parallel([
-      Animated.spring(scaleAnim, { toValue: 1, speed: 20, bounciness: 7, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, speed: 22, bounciness: 6, useNativeDriver: true }),
       Animated.timing(opacityAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
     ]).start();
   }, [reduceMotion, scaleAnim, opacityAnim]);
@@ -88,8 +92,8 @@ const CustomAlert = forwardRef((_, ref) => {
     }
 
     Animated.parallel([
-      Animated.timing(scaleAnim, { toValue: 0.92, duration: 140, useNativeDriver: true }),
-      Animated.timing(opacityAnim, { toValue: 0, duration: 140, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 0.94, duration: 130, useNativeDriver: true }),
+      Animated.timing(opacityAnim, { toValue: 0, duration: 130, useNativeDriver: true }),
     ]).start(() => {
       setVisible(false);
       if (onDismissCallback) onDismissCallback();
@@ -126,7 +130,7 @@ const CustomAlert = forwardRef((_, ref) => {
         >
           {/* Top Decorative Accent Bar */}
           <LinearGradient
-            colors={theme.gradient}
+            colors={theme.topBarGradient || theme.gradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.topAccentBar}
@@ -136,7 +140,7 @@ const CustomAlert = forwardRef((_, ref) => {
             {/* Dual-ring Gradient Icon Halo */}
             <View style={[styles.iconHaloOuter, { backgroundColor: theme.haloBg, borderColor: theme.haloBorder }]}>
               <View style={[styles.iconHaloInner, { backgroundColor: theme.haloBg }]}>
-                <IconComponent size={24} color={theme.accent} strokeWidth={2.5} />
+                <IconComponent size={26} color={theme.accent} strokeWidth={2.4} />
               </View>
             </View>
 
@@ -169,7 +173,7 @@ const CustomAlert = forwardRef((_, ref) => {
                 >
                   {isPrimary ? (
                     <LinearGradient
-                      colors={isDestructive ? ['#F43F5E', '#DC2626'] : theme.gradient}
+                      colors={isDestructive ? ['#F43F5E', '#E11D48'] : theme.gradient}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={styles.primaryGradient}
@@ -201,7 +205,7 @@ const CustomAlert = forwardRef((_, ref) => {
 
 function inferType(title = '', buttons = []) {
   const t = title.toLowerCase();
-  if (t.includes('error') || t.includes('failed') || t.includes('wrong') || t.includes('cannot')) return 'error';
+  if (t.includes('error') || t.includes('failed') || t.includes('wrong') || t.includes('cannot') || t.includes('rate') || t.includes('too many')) return 'error';
   if (t.includes('success') || t.includes('done') || t.includes('saved') || t.includes('updated')) return 'success';
   if (t.includes('warning') || t.includes('caution') || t.includes('careful') || t.includes('not yet') || t.includes('patience')) return 'warning';
   if (buttons.some(b => b.style === 'destructive')) return 'error';
@@ -211,7 +215,7 @@ function inferType(title = '', buttons = []) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backgroundColor: 'rgba(15, 23, 42, 0.60)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -219,39 +223,39 @@ const styles = StyleSheet.create({
   alertBox: {
     width: ALERT_WIDTH,
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
+    borderColor: 'rgba(241, 245, 249, 0.9)',
     overflow: 'hidden',
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.22,
-    shadowRadius: 28,
-    elevation: 16,
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 18,
   },
   topAccentBar: {
-    height: 5,
+    height: 4,
     width: '100%',
   },
   contentContainer: {
     paddingHorizontal: 24,
     paddingTop: 24,
-    paddingBottom: 20,
+    paddingBottom: 18,
     alignItems: 'center',
   },
   iconHaloOuter: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
   iconHaloInner: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -266,14 +270,14 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 14,
     fontWeight: '400',
-    color: '#475569',
+    color: '#64748B',
     textAlign: 'center',
     lineHeight: 21,
   },
   buttonContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 18,
-    paddingBottom: 18,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
     gap: 10,
   },
   buttonContainerStacked: {
@@ -281,12 +285,14 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    height: 46,
-    borderRadius: 14,
+    height: 48,
+    borderRadius: 16,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   buttonStacked: {
     flex: 0,
@@ -294,9 +300,11 @@ const styles = StyleSheet.create({
   },
   buttonPrimary: {
     backgroundColor: 'transparent',
+    borderWidth: 0,
   },
   buttonDestructive: {
-    backgroundColor: '#EF4444',
+    backgroundColor: '#E11D48',
+    borderWidth: 0,
   },
   buttonCancel: {
     backgroundColor: '#F8FAFC',
@@ -308,10 +316,10 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 14,
+    borderRadius: 16,
   },
   buttonPressed: {
-    opacity: 0.85,
+    opacity: 0.88,
     transform: [{ scale: 0.98 }],
   },
   buttonText: {
