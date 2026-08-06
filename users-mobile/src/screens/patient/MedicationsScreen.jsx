@@ -1912,7 +1912,7 @@ export default function MedicationsScreen({ navigation, route }) {
         >
           {/* Progress card (scrolls with content) */}
           {totalCount > 0 && (
-            <Animated.View style={[anim(0), styles.progressCard]}>
+            <Animated.View ref={medsListCardRef} collapsable={false} style={[anim(0), styles.progressCard]}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.progressLabel}>
                   {t("medications.todays_progress", {

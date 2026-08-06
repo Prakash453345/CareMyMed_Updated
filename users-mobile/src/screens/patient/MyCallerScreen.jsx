@@ -853,13 +853,14 @@ export default function MyCallerScreen({ navigation }) {
       >
         {/* ── YOUR CALLER HERO CARD ──────────────────────────────────── */}
         <Animated.View style={anim(1)}>
-          <View ref={callerCardRef} collapsable={false}>
           <Text style={s.sectionLabel}>
             {t("caller.your_caller", { defaultValue: "YOUR CALLER" })}
           </Text>
 
           {caller ? (
             <Pressable
+              ref={callerCardRef}
+              collapsable={false}
               onPress={() => openModal(caller)}
               style={({ pressed }) => [pressed && { opacity: 0.7 }]}
             >
@@ -1284,12 +1285,10 @@ export default function MyCallerScreen({ navigation }) {
               </View>
             </View>
           )}
-          </View>
         </Animated.View>
 
         {/* ── TRUSTED CONTACTS ───────────────────────────────────────── */}
         <Animated.View style={anim(3)}>
-          <View ref={contactsCardRef} collapsable={false}>
           <View style={s.sectionHeaderRow}>
             <Text style={s.sectionLabel}>
               {t("caller.care_team_contacts", {
