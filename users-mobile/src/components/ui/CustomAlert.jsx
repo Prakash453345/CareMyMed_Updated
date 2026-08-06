@@ -154,8 +154,8 @@ const CustomAlert = forwardRef((_, ref) => {
           <View style={styles.contentContainer}>
             {/* Dual-ring Gradient Icon Halo */}
             <View style={[styles.iconHaloOuter, { backgroundColor: theme.haloBg, borderColor: theme.haloBorder }]}>
-              <View style={[styles.iconHaloInner, { backgroundColor: type === 'success' ? '#10B981' : theme.haloBg }]}>
-                <IconComponent size={26} color={type === 'success' ? '#FFFFFF' : theme.accent} strokeWidth={3} />
+              <View style={[styles.iconHaloInner, { backgroundColor: theme.accent }]}>
+                <IconComponent size={24} color="#FFFFFF" strokeWidth={2.8} />
               </View>
             </View>
 
