@@ -4,6 +4,8 @@ import { Pill, Check, Clock, ChevronDown, Sparkles } from 'lucide-react-native';
 import { colors, radius } from '../../theme';
 import { FONT } from '../health/constants';
 
+import LiquidConfirmButton from './LiquidConfirmButton';
+
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -26,12 +28,14 @@ export default function ProgressiveMedCard({
         setExpandedIdx(idx);
     };
 
+    const currentSlot = slots[expandedIdx];
+
     return (
-        <View style={s.card}>
+        <View style={[s.card, currentSlot?.taken && s.cardTaken]}>
             <View style={s.headerRow}>
                 <View style={s.titleWrap}>
-                    <View style={s.iconWrap}>
-                        <Pill size={18} color="#7C3AED" />
+                    <View style={[s.iconWrap, currentSlot?.taken && s.iconWrapTaken]}>
+                        <Pill size={18} color={currentSlot?.taken ? '#059669' : '#7C3AED'} />
                     </View>
                     <View>
                         <Text style={s.eyebrow}>TODAY'S MEDICATIONS</Text>
@@ -59,7 +63,7 @@ export default function ProgressiveMedCard({
                             onPress={() => handleSelectSlot(idx)}
                         >
                             {isTaken ? (
-                                <Check size={12} color="#10B981" />
+                                <Check size={12} color="#059669" />
                             ) : (
                                 <Clock size={12} color={isExpanded ? '#7C3AED' : '#94A3B8'} />
                             )}
@@ -78,18 +82,18 @@ export default function ProgressiveMedCard({
             </View>
 
             {/* Focused Slot Detail Card (Progressive Disclosure) */}
-            {slots[expandedIdx] && (
-                <View style={s.focusedCard}>
+            {currentSlot && (
+                <View style={[s.focusedCard, currentSlot.taken && s.focusedCardTaken]}>
                     <View style={s.focusedHeader}>
-                        <View style={s.focusedTimeBadge}>
-                            <Clock size={14} color="#7C3AED" />
-                            <Text style={s.focusedTimeTxt}>
-                                {slots[expandedIdx].label || slots[expandedIdx].time}
+                        <View style={[s.focusedTimeBadge, currentSlot.taken && s.focusedTimeBadgeTaken]}>
+                            <Clock size={14} color={currentSlot.taken ? '#059669' : '#7C3AED'} />
+                            <Text style={[s.focusedTimeTxt, currentSlot.taken && s.focusedTimeTxtTaken]}>
+                                {currentSlot.label || currentSlot.time}
                             </Text>
                         </View>
-                        {slots[expandedIdx].taken ? (
+                        {currentSlot.taken ? (
                             <View style={s.takenBadge}>
-                                <Check size={12} color="#10B981" />
+                                <Check size={12} color="#059669" />
                                 <Text style={s.takenBadgeTxt}>Taken</Text>
                             </View>
                         ) : (
@@ -99,9 +103,9 @@ export default function ProgressiveMedCard({
 
                     {/* Medications inside this focused slot */}
                     <View style={s.medsList}>
-                        {(slots[expandedIdx].items || [slots[expandedIdx]]).map((item, mIdx) => (
+                        {(currentSlot.items || [currentSlot]).map((item, mIdx) => (
                             <View key={mIdx} style={s.medRow}>
-                                <View style={s.medBullet} />
+                                <View style={[s.medBullet, currentSlot.taken && s.medBulletTaken]} />
                                 <View style={{ flex: 1 }}>
                                     <Text style={s.medName}>{item.name || item.medicine_name || 'Medication'}</Text>
                                     <Text style={s.medDosage}>{item.dosage || '1 dose'} • {item.instructions || 'With water'}</Text>
@@ -110,25 +114,13 @@ export default function ProgressiveMedCard({
                         ))}
                     </View>
 
-                    {/* Action Button */}
-                    <Pressable
-                        style={({ pressed }) => [
-                            s.actionBtn,
-                            slots[expandedIdx].taken && s.actionBtnTaken,
-                            pressed && { opacity: 0.8 },
-                        ]}
-                        onPress={() => onToggleSlot?.(slots[expandedIdx])}
-                    >
-                        <Check size={16} color={slots[expandedIdx].taken ? '#10B981' : '#FFFFFF'} />
-                        <Text
-                            style={[
-                                s.actionBtnTxt,
-                                slots[expandedIdx].taken && s.actionBtnTxtTaken,
-                            ]}
-                        >
-                            {slots[expandedIdx].taken ? 'Marked as Taken' : 'Mark Slot as Taken'}
-                        </Text>
-                    </Pressable>
+                    {/* Liquid Sweep Action Button */}
+                    <LiquidConfirmButton
+                        taken={currentSlot.taken}
+                        label="Mark Slot as Taken"
+                        takenLabel="Taken"
+                        onPress={() => onToggleSlot?.(currentSlot)}
+                    />
                 </View>
             )}
         </View>
@@ -150,6 +142,10 @@ const s = StyleSheet.create({
         shadowRadius: 8,
         elevation: 2,
     },
+    cardTaken: {
+        borderColor: '#A7F3D0',
+        backgroundColor: '#FFFFFF',
+    },
     headerRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -168,6 +164,9 @@ const s = StyleSheet.create({
         backgroundColor: '#FAF5FF',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    iconWrapTaken: {
+        backgroundColor: '#ECFDF5',
     },
     eyebrow: {
         fontSize: 10,
@@ -230,6 +229,10 @@ const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(124, 58, 237, 0.12)',
     },
+    focusedCardTaken: {
+        backgroundColor: '#F0FDF4',
+        borderColor: '#A7F3D0',
+    },
     focusedHeader: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -247,10 +250,17 @@ const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(124, 58, 237, 0.15)',
     },
+    focusedTimeBadgeTaken: {
+        borderColor: 'rgba(5, 150, 105, 0.25)',
+        backgroundColor: '#ECFDF5',
+    },
     focusedTimeTxt: {
         fontSize: 12,
         ...FONT.bold,
         color: '#7C3AED',
+    },
+    focusedTimeTxtTaken: {
+        color: '#059669',
     },
     takenBadge: {
         flexDirection: 'row',
