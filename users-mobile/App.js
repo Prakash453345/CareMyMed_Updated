@@ -10,9 +10,12 @@ import {
     Inter_400Regular, Inter_500Medium, Inter_600SemiBold,
     Inter_700Bold, Inter_800ExtraBold, Inter_900Black,
 } from '@expo-google-fonts/inter';
+import {
+    PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold,
+} from '@expo-google-fonts/plus-jakarta-sans';
 import * as SplashScreen from 'expo-splash-screen';
 import './src/i18n'; // Initialize i18n
-
 
 // Sentry — must init before anything else
 import sentry from './src/utils/monitoring/sentry';
@@ -61,6 +64,8 @@ export default function App() {
         DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold,
         Inter_400Regular, Inter_500Medium, Inter_600SemiBold,
         Inter_700Bold, Inter_800ExtraBold, Inter_900Black,
+        PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold,
+        PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold,
     });
 
     const [appState, setAppState] = useState(AppState.currentState);

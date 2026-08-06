@@ -55,22 +55,119 @@ export const colors = {
     roleSuperAdmin: '#7C3AED',
 };
 
-export const typography = {
-    fontFamily: 'Inter',
-    heading: { fontWeight: '700' },
-    body: { fontWeight: '400' },
-    label: { fontWeight: '600' },
-    sizes: {
-        display: 32,
-        h1: 28,
-        h2: 22,
-        h3: 18,
-        body: 15,
-        caption: 13,
-        tiny: 11,
-        button: 16,
-        label: 12,
+export const FONT = {
+    regular: { fontFamily: 'PlusJakartaSans_400Regular' },
+    medium: { fontFamily: 'PlusJakartaSans_500Medium' },
+    semibold: { fontFamily: 'PlusJakartaSans_600SemiBold' },
+    bold: { fontFamily: 'PlusJakartaSans_700Bold' },
+    heavy: { fontFamily: 'PlusJakartaSans_800ExtraBold' },
+};
+
+export const METRIC_FONT = {
+    regular: { fontFamily: 'Inter_400Regular' },
+    medium: { fontFamily: 'Inter_500Medium' },
+    semibold: { fontFamily: 'Inter_600SemiBold' },
+    bold: { fontFamily: 'Inter_700Bold' },
+    heavy: { fontFamily: 'Inter_800ExtraBold' },
+};
+
+export const TEXT_SIZE = {
+    display: 32,
+    h1: 28,
+    h2: 24,
+    h3: 20,
+    title: 18,
+    body: 16,
+    small: 14,
+    caption: 12,
+    tiny: 10,
+};
+
+export const TYPOGRAPHY = {
+    display: {
+        fontFamily: FONT.heavy.fontFamily,
+        fontSize: TEXT_SIZE.display,
+        lineHeight: 38,
+        letterSpacing: -0.8,
     },
+    h1: {
+        fontFamily: FONT.bold.fontFamily,
+        fontSize: TEXT_SIZE.h1,
+        lineHeight: 34,
+        letterSpacing: -0.5,
+    },
+    h2: {
+        fontFamily: FONT.bold.fontFamily,
+        fontSize: TEXT_SIZE.h2,
+        lineHeight: 30,
+        letterSpacing: -0.3,
+    },
+    h3: {
+        fontFamily: FONT.semibold.fontFamily,
+        fontSize: TEXT_SIZE.h3,
+        lineHeight: 26,
+    },
+    title: {
+        fontFamily: FONT.semibold.fontFamily,
+        fontSize: TEXT_SIZE.title,
+        lineHeight: 24,
+    },
+    body: {
+        fontFamily: FONT.regular.fontFamily,
+        fontSize: TEXT_SIZE.body,
+        lineHeight: 24,
+    },
+    bodyMedium: {
+        fontFamily: FONT.medium.fontFamily,
+        fontSize: TEXT_SIZE.body,
+        lineHeight: 24,
+    },
+    small: {
+        fontFamily: FONT.regular.fontFamily,
+        fontSize: TEXT_SIZE.small,
+        lineHeight: 20,
+    },
+    caption: {
+        fontFamily: FONT.medium.fontFamily,
+        fontSize: TEXT_SIZE.caption,
+        lineHeight: 18,
+    },
+    button: {
+        fontFamily: FONT.semibold.fontFamily,
+        fontSize: TEXT_SIZE.body,
+        lineHeight: 22,
+    },
+    chip: {
+        fontFamily: FONT.medium.fontFamily,
+        fontSize: 13,
+        lineHeight: 18,
+    },
+
+    // ── Metric Specific Typography (Inter) ──────
+    metricLarge: {
+        fontFamily: METRIC_FONT.heavy.fontFamily,
+        fontSize: 32,
+        lineHeight: 38,
+        letterSpacing: -0.5,
+    },
+    metric: {
+        fontFamily: METRIC_FONT.bold.fontFamily,
+        fontSize: 20,
+        lineHeight: 26,
+    },
+    metricSmall: {
+        fontFamily: METRIC_FONT.semibold.fontFamily,
+        fontSize: 14,
+        lineHeight: 18,
+    },
+};
+
+export const typography = {
+    fontFamily: 'PlusJakartaSans_400Regular',
+    heading: { fontFamily: 'PlusJakartaSans_700Bold' },
+    body: { fontFamily: 'PlusJakartaSans_400Regular' },
+    label: { fontFamily: 'PlusJakartaSans_600SemiBold' },
+    sizes: TEXT_SIZE,
 };
 
 export const radius = {
@@ -184,4 +281,4 @@ export { motion, anim, useReduceMotion };
 import { MotionProvider, useMotion } from './MotionProvider';
 export { MotionProvider, useMotion };
 
-export default { colors, typography, radius, spacing, shadows, layout, motion, anim, useReduceMotion, MotionProvider, useMotion };
+export default { colors, typography, FONT, METRIC_FONT, TEXT_SIZE, TYPOGRAPHY, radius, spacing, shadows, layout, motion, anim, useReduceMotion, MotionProvider, useMotion };
