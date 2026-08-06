@@ -243,7 +243,12 @@ export default function SettingsScreen({ navigation }) {
             if (success) {
                 await SecureStore.setItemAsync('biometric_auth_enabled', 'true');
                 setBiometricEnabled(true);
-                AlertManager.alert('Success ✨', `${biometricType} enabled for fast login.`);
+                AlertManager.alert(
+                    'All set! 🎉',
+                    `${biometricType} is now enabled. You can use your fingerprint or face for faster and more secure login.`,
+                    [{ text: 'Got it' }],
+                    { type: 'success' }
+                );
             } else {
                 setBiometricEnabled(false);
             }

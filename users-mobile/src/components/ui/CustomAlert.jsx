@@ -9,7 +9,8 @@ import {
   Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CheckCircle2, AlertTriangle, Info, XCircle } from 'lucide-react-native';
+import { CheckCircle2, AlertTriangle, Info, XCircle, Sparkles, Check } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import { useMotion } from '../../theme/MotionProvider';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -17,12 +18,12 @@ const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 44, 340);
 
 const THEME = {
   success: {
-    accent: '#10B981',
+    accent: '#059669',
     gradient: ['#10B981', '#059669'],
-    topBarGradient: ['#34D399', '#10B981'],
+    topBarGradient: ['#34D399', '#059669'],
     haloBg: '#ECFDF5',
     haloBorder: '#A7F3D0',
-    Icon: CheckCircle2,
+    Icon: Check,
   },
   error: {
     accent: '#E11D48',
@@ -65,9 +66,23 @@ const CustomAlert = forwardRef((_, ref) => {
   const show = useCallback((t, msg, btns, options) => {
     setTitle(t || '');
     setMessage(msg || '');
-    setType(options?.type || inferType(t, btns));
+    const resolvedType = options?.type || inferType(t, btns);
+    setType(resolvedType);
     setButtons(btns && btns.length > 0 ? btns : [{ text: 'OK' }]);
     setVisible(true);
+
+    // Tactile Haptic Feedback based on alert type
+    try {
+      if (resolvedType === 'success') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      } else if (resolvedType === 'error') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      } else if (resolvedType === 'warning') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      } else {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      }
+    } catch (e) {}
 
     if (reduceMotion) {
       scaleAnim.setValue(1);
@@ -139,8 +154,8 @@ const CustomAlert = forwardRef((_, ref) => {
           <View style={styles.contentContainer}>
             {/* Dual-ring Gradient Icon Halo */}
             <View style={[styles.iconHaloOuter, { backgroundColor: theme.haloBg, borderColor: theme.haloBorder }]}>
-              <View style={[styles.iconHaloInner, { backgroundColor: theme.haloBg }]}>
-                <IconComponent size={26} color={theme.accent} strokeWidth={2.4} />
+              <View style={[styles.iconHaloInner, { backgroundColor: type === 'success' ? '#10B981' : theme.haloBg }]}>
+                <IconComponent size={26} color={type === 'success' ? '#FFFFFF' : theme.accent} strokeWidth={3} />
               </View>
             </View>
 
