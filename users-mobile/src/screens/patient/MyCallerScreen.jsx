@@ -1411,7 +1411,6 @@ export default function MyCallerScreen({ navigation }) {
               );
             })
           )}
-          </View>
         </Animated.View>
 
         {/* ── RECENT CALLS (on main screen) ──────────────────────────── */}
