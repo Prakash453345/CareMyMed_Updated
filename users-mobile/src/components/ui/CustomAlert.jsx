@@ -9,7 +9,7 @@ import {
   Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CheckCircle2, AlertTriangle, Info, XCircle, Sparkles, Check } from 'lucide-react-native';
+import { CheckCircle2, AlertTriangle, Info, XCircle, Sparkles, Check, Trash2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useMotion } from '../../theme/MotionProvider';
 
@@ -120,7 +120,8 @@ const CustomAlert = forwardRef((_, ref) => {
   if (!visible) return null;
 
   const theme = THEME[type] || THEME.info;
-  const IconComponent = theme.Icon;
+  const isDestructive = buttons.some(b => b.style === 'destructive') || title.toLowerCase().includes('delete') || title.toLowerCase().includes('remove');
+  const IconComponent = isDestructive ? Trash2 : theme.Icon;
   const shouldStack = buttons.length > 2 || buttons.some(b => (b.text || '').length > 12);
 
   return (
@@ -220,10 +221,10 @@ const CustomAlert = forwardRef((_, ref) => {
 
 function inferType(title = '', buttons = []) {
   const t = title.toLowerCase();
+  if (buttons.some(b => b.style === 'destructive') || t.includes('delete') || t.includes('remove') || t.includes('erase') || t.includes('clear')) return 'error';
   if (t.includes('error') || t.includes('failed') || t.includes('wrong') || t.includes('cannot') || t.includes('rate') || t.includes('too many')) return 'error';
   if (t.includes('success') || t.includes('done') || t.includes('saved') || t.includes('updated')) return 'success';
   if (t.includes('warning') || t.includes('caution') || t.includes('careful') || t.includes('not yet') || t.includes('patience')) return 'warning';
-  if (buttons.some(b => b.style === 'destructive')) return 'error';
   return 'info';
 }
 
