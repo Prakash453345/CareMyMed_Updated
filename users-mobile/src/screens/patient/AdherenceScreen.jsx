@@ -1600,7 +1600,9 @@ export default function AdherenceScreen({ navigation }) {
   const loadData = useCallback(async () => {
     await Promise.all([
       fetchAdherenceDetails(),
-      fetchAdherenceRecap(activeRecapTabRef.current),
+      fetchAdherenceRecap("weekly"),
+      fetchAdherenceRecap("monthly"),
+      fetchAdherenceRecap("yearly"),
     ]);
     setLoading(false);
     runAnimations();
@@ -1637,7 +1639,9 @@ export default function AdherenceScreen({ navigation }) {
     });
     await Promise.all([
       fetchAdherenceDetails(),
-      fetchAdherenceRecap(activeRecapTabRef.current, true),
+      fetchAdherenceRecap("weekly", true),
+      fetchAdherenceRecap("monthly", true),
+      fetchAdherenceRecap("yearly", true),
       usePatientStore
         .getState()
         .fetchDashboard(true)
@@ -1680,7 +1684,9 @@ export default function AdherenceScreen({ navigation }) {
     activeTabRate ??
     (activeRecapTab === "weekly"
       ? score.weekly
-      : score.monthly);
+      : activeRecapTab === "yearly"
+        ? (adherenceRecaps?.yearly?.adherence_rate ?? score.monthly ?? 0)
+        : score.monthly);
   const feedback = getFeedbackMessage(heroScore, momentum, t);
   const levelColor = LEVEL_COLORS[level.key] || C.light;
 
