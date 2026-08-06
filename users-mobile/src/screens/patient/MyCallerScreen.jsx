@@ -326,8 +326,8 @@ export default function MyCallerScreen({ navigation }) {
     const steps = [];
 
     steps.push({
-      title: "Call Your Coordinator",
-      desc: "Tap anytime to connect directly with your dedicated caller for check-ins, medication logs, and wellness updates.",
+      title: "📞 Call Your Coordinator",
+      desc: "Reach your assigned coordinator instantly whenever you need help or have questions about your care.",
       icon: Phone,
       iconColor: "#6366F1",
       ref: callerCardRef,
@@ -339,8 +339,8 @@ export default function MyCallerScreen({ navigation }) {
     });
 
     steps.push({
-      title: "Care Manager",
-      desc: "Oversees your overall care plan. Contact them directly to request schedule changes or report feedback.",
+      title: "👤 Care Manager",
+      desc: "Oversees your overall health plan. Contact them directly to request schedule adjustments or coordinate updates.",
       icon: UserCheck,
       iconColor: "#10B981",
       ref: managerCardRef,
@@ -351,8 +351,8 @@ export default function MyCallerScreen({ navigation }) {
     });
 
     steps.push({
-      title: "Add Trusted Contact",
-      desc: "Add family members or close friends for emergency SOS notifications or shared health logs.",
+      title: "❤️ Trusted Family & Friends",
+      desc: "Add trusted family members or caregivers to receive automated emergency check-in notifications.",
       icon: Heart,
       iconColor: "#EF4444",
       ref: contactsCardRef,
@@ -364,8 +364,8 @@ export default function MyCallerScreen({ navigation }) {
 
     if (calls.length > 0) {
       steps.push({
-        title: "Check-In Log History",
-        desc: "Review dates of past check-ins, along with AI-generated summaries capturing your calls.",
+        title: "📜 Past Call Summaries",
+        desc: "Review dates and AI-generated summaries capturing your previous coordinator check-ins.",
         icon: Clock,
         iconColor: "#F59E0B",
         ref: callsCardRef,

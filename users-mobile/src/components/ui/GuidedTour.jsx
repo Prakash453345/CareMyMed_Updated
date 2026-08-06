@@ -100,31 +100,52 @@ export default function GuidedTour({
     return () => subscription.remove();
   }, [pulseAnim, animSpotTop, animSpotLeft]);
 
-  // Subtle pulse animation around spotlight
+  const glowOpacityAnim = useRef(new Animated.Value(0.3)).current;
+
+  // 1-Shot scale nudge on step start + breathing glow light
   useEffect(() => {
     if (visible && spotlightCoords && !reduceMotion) {
-      const pulseLoop = Animated.loop(
+      // 1-shot scale pulse (1.0 -> 1.02 -> 1.0)
+      pulseAnim.setValue(1.0);
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.02,
+          duration: 180,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: false,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1.0,
+          duration: 220,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: false,
+        }),
+      ]).start();
+
+      // Soft breathing glow (0.2 -> 0.6 -> 0.2)
+      const glowLoop = Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.025,
-            duration: 1200,
+          Animated.timing(glowOpacityAnim, {
+            toValue: 0.6,
+            duration: 1400,
             easing: Easing.inOut(Easing.ease),
             useNativeDriver: false,
           }),
-          Animated.timing(pulseAnim, {
-            toValue: 1.0,
-            duration: 1200,
+          Animated.timing(glowOpacityAnim, {
+            toValue: 0.2,
+            duration: 1400,
             easing: Easing.inOut(Easing.ease),
             useNativeDriver: false,
           }),
         ])
       );
-      pulseLoop.start();
-      return () => pulseLoop.stop();
+      glowLoop.start();
+      return () => glowLoop.stop();
     } else {
       pulseAnim.setValue(1.0);
+      glowOpacityAnim.setValue(0.3);
     }
-  }, [visible, spotlightCoords, reduceMotion, pulseAnim]);
+  }, [visible, activeStep, reduceMotion, pulseAnim, glowOpacityAnim]);
 
   const setTrackedTimeout = useCallback((fn, delay) => {
     const id = setTimeout(fn, delay);
@@ -615,12 +636,12 @@ export default function GuidedTour({
             <SvgRect
               width="100%"
               height="100%"
-              fill="rgba(15, 23, 42, 0.30)"
+              fill="rgba(15, 23, 42, 0.16)"
               mask={`url(#${maskId})`}
             />
           </Svg>
         ) : (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(15, 23, 42, 0.30)' }]} pointerEvents="none" />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(15, 23, 42, 0.16)' }]} pointerEvents="none" />
         )}
 
         {/* Soft Violet Glow Halo around Target Element - 60fps Lockstep Sync */}
