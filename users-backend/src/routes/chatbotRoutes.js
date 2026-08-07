@@ -338,34 +338,85 @@ router.post(
 
         let visionContextText = `[ATTACHED IMAGE]: ${imageFile.originalname}`;
         const googleVisionKey = process.env.GOOGLE_VISION_API_KEY;
+        const groqApiKey = process.env.GROQ_API_KEY;
 
-        if (googleVisionKey && imageFile.buffer) {
-          try {
-            const base64Content = imageFile.buffer.toString('base64');
-            const gvResponse = await axios.post(
-              `https://vision.googleapis.com/v1/images:annotate?key=${googleVisionKey}`,
-              {
-                requests: [
-                  {
-                    image: { content: base64Content },
-                    features: [
-                      { type: 'DOCUMENT_TEXT_DETECTION' },
-                      { type: 'TEXT_DETECTION' }
-                    ],
-                  },
-                ],
-              },
-              { timeout: 8000 }
-            );
-            const extractedRaw =
-              gvResponse.data.responses?.[0]?.fullTextAnnotation?.text ||
-              gvResponse.data.responses?.[0]?.textAnnotations?.[0]?.description ||
-              '';
-            if (extractedRaw.trim()) {
-              visionContextText = `[EXTRACTED TEXT FROM USER ATTACHED IMAGE / SCREENSHOT / DOCUMENT]:\n${extractedRaw.trim()}`;
+        if (imageFile.buffer) {
+          const base64Content = imageFile.buffer.toString('base64');
+          const mimeType = imageFile.mimetype || 'image/jpeg';
+
+          // Try 1: Google Vision API (if key available)
+          if (googleVisionKey) {
+            try {
+              const gvResponse = await axios.post(
+                `https://vision.googleapis.com/v1/images:annotate?key=${googleVisionKey}`,
+                {
+                  requests: [
+                    {
+                      image: { content: base64Content },
+                      features: [
+                        { type: 'DOCUMENT_TEXT_DETECTION' },
+                        { type: 'TEXT_DETECTION' }
+                      ],
+                    },
+                  ],
+                },
+                { timeout: 8000 }
+              );
+              const extractedRaw =
+                gvResponse.data.responses?.[0]?.fullTextAnnotation?.text ||
+                gvResponse.data.responses?.[0]?.textAnnotations?.[0]?.description ||
+                '';
+              if (extractedRaw.trim()) {
+                visionContextText = `[EXTRACTED TEXT FROM IMAGE]:\n${extractedRaw.trim()}`;
+              }
+            } catch (ocrErr) {
+              console.warn('[ChatbotRoute] Google Vision OCR warning:', ocrErr.message);
             }
-          } catch (ocrErr) {
-            console.warn('[ChatbotRoute] Vision OCR warning:', ocrErr.message);
+          }
+
+          // Try 2: Groq Vision API (llama-3.2-11b-vision-preview using existing GROQ_API_KEY)
+          if (visionContextText.startsWith('[ATTACHED IMAGE]:') && groqApiKey) {
+            try {
+              const groqVisionRes = await axios.post(
+                'https://api.groq.com/openai/v1/chat/completions',
+                {
+                  model: 'llama-3.2-11b-vision-preview',
+                  messages: [
+                    {
+                      role: 'user',
+                      content: [
+                        {
+                          type: 'text',
+                          text: 'Transcribe and describe all visible text, numbers, titles, and card details from this image accurately.'
+                        },
+                        {
+                          type: 'image_url',
+                          image_url: {
+                            url: `data:${mimeType};base64,${base64Content}`
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  temperature: 0.2,
+                  max_tokens: 500
+                },
+                {
+                  headers: {
+                    Authorization: `Bearer ${groqApiKey}`,
+                    'Content-Type': 'application/json'
+                  },
+                  timeout: 10000
+                }
+              );
+
+              const visionAnalysis = groqVisionRes.data.choices?.[0]?.message?.content;
+              if (visionAnalysis && visionAnalysis.trim()) {
+                visionContextText = `[GROQ VISION IMAGE ANALYSIS & TRANSCRIBED CONTENT]:\n${visionAnalysis.trim()}`;
+              }
+            } catch (groqVisionErr) {
+              console.warn('[ChatbotRoute] Groq Vision AI warning:', groqVisionErr?.response?.data || groqVisionErr.message);
+            }
           }
         }
 
