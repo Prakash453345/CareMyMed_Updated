@@ -144,19 +144,40 @@ const CustomAlert = forwardRef((_, ref) => {
             { transform: [{ scale: scaleAnim }] },
           ]}
         >
-          {/* Top Decorative Accent Bar */}
-          <LinearGradient
-            colors={theme.topBarGradient || theme.gradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.topAccentBar}
-          />
+          {/* Micro-Decorations (Top-right & bottom-left subtle dotted grid) */}
+          <View style={styles.dotGridTopRight} pointerEvents="none">
+            <View style={styles.dotRow}><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /></View>
+            <View style={styles.dotRow}><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /></View>
+            <View style={styles.dotRow}><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /></View>
+          </View>
+          <View style={styles.dotGridBottomLeft} pointerEvents="none">
+            <View style={styles.dotRow}><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /></View>
+            <View style={styles.dotRow}><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /></View>
+            <View style={styles.dotRow}><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /></View>
+          </View>
 
           <View style={styles.contentContainer}>
-            {/* Dual-ring Gradient Icon Halo */}
-            <View style={[styles.iconHaloOuter, { backgroundColor: theme.haloBg, borderColor: theme.haloBorder }]}>
-              <View style={[styles.iconHaloInner, { backgroundColor: theme.accent }]}>
-                <IconComponent size={24} color="#FFFFFF" strokeWidth={2.8} />
+            {/* Dual-ring Icon Halo with Floating Sparkle Particles (Pic 2 Aesthetic) */}
+            <View style={styles.iconWrapper}>
+              {/* Floating Sparkle Particles */}
+              <View style={[styles.sparkleParticle, { top: -4, right: -6 }]}>
+                <Sparkles size={14} color="#F59E0B" fill="#F59E0B" />
+              </View>
+              <View style={[styles.sparkleParticle, { bottom: -2, left: -8 }]}>
+                <Sparkles size={12} color="#10B981" fill="#10B981" />
+              </View>
+              <View style={[styles.sparkleParticle, { top: 4, left: -10 }]}>
+                <Text style={{ fontSize: 10, color: '#6366F1' }}>✦</Text>
+              </View>
+              <View style={[styles.sparkleParticle, { bottom: 6, right: -12 }]}>
+                <Text style={{ fontSize: 10, color: '#34D399' }}>✦</Text>
+              </View>
+
+              {/* Dual-ring Translucent Halo */}
+              <View style={[styles.iconHaloOuter, { backgroundColor: theme.haloBg, borderColor: theme.haloBorder }]}>
+                <View style={[styles.iconHaloInner, { backgroundColor: theme.accent }]}>
+                  <IconComponent size={24} color="#FFFFFF" strokeWidth={2.8} />
+                </View>
               </View>
             </View>
 
@@ -239,39 +260,68 @@ const styles = StyleSheet.create({
   alertBox: {
     width: ALERT_WIDTH,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: 28,
     borderWidth: 1,
-    borderColor: 'rgba(241, 245, 249, 0.9)',
-    overflow: 'hidden',
+    borderColor: 'rgba(226, 232, 240, 0.8)',
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    elevation: 18,
+    shadowOpacity: 0.16,
+    shadowRadius: 28,
+    elevation: 16,
+    position: 'relative',
   },
-  topAccentBar: {
-    height: 4,
-    width: '100%',
+  dotGridTopRight: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    gap: 4,
+    opacity: 0.35,
+  },
+  dotGridBottomLeft: {
+    position: 'absolute',
+    bottom: 60,
+    left: 14,
+    gap: 4,
+    opacity: 0.35,
+  },
+  dotRow: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  dot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#94A3B8',
   },
   contentContainer: {
     paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingTop: 28,
     paddingBottom: 18,
     alignItems: 'center',
   },
+  iconWrapper: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  sparkleParticle: {
+    position: 'absolute',
+    zIndex: 10,
+  },
   iconHaloOuter: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
   },
   iconHaloInner: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
   },
