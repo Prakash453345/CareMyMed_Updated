@@ -24,7 +24,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from 'expo-haptics';
 import PremiumFormModal from "../../components/ui/PremiumFormModal";
-import CelebrationOverlay from "../../components/ui/CelebrationOverlay";
+import LiquidConfirmButton from "../../components/ui/LiquidConfirmButton";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const triggerHapticSelection = async () => {
@@ -648,9 +648,14 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPre
               </View>
             </View>
 
-            {/* Click detail indicator */}
-            <View style={{ padding: 4, opacity: 0.5 }}>
-              <Info size={18} color="#64748B" />
+            {/* Liquid Confirm Button (Swiggy / PhonePe-grade liquid sweep button morph) */}
+            <View style={{ marginLeft: 8 }}>
+              <LiquidConfirmButton
+                taken={med.taken}
+                onPress={() => onToggle?.(med)}
+                label={t("medications.take", { defaultValue: "Take Now" })}
+                takenLabel={t("medications.taken", { defaultValue: "Taken" })}
+              />
             </View>
           </View>
         </Pressable>
@@ -1336,10 +1341,7 @@ export default function MedicationsScreen({ navigation, route }) {
     setIsConfirmVisible(false);
     setConfirmingMed(null);
 
-    // Instant celebratory feedback on dose confirmation (0ms delay, no network lag)
-    setShowCelebration(false);
-    setTimeout(() => setShowCelebration(true), 10);
-
+    // Instant dose confirmation (button sweeps liquid green in-place, zero popups)
     try {
       await storeOptimisticToggle(med, true);
     } catch (err) {
