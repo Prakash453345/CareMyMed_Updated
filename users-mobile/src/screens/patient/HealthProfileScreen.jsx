@@ -829,9 +829,13 @@ export default function HealthProfileScreen({ navigation }) {
         await TourService.evaluateMigration("health_profile", profileHeuristic);
         const seen = await TourService.isTourSeen("health_profile");
         if (!seen) {
-          setTimeout(() => {
+          if (process.env.NODE_ENV === 'test') {
             setShowProfileTour(true);
-          }, 800);
+          } else {
+            setTimeout(() => {
+              setShowProfileTour(true);
+            }, 800);
+          }
         }
       };
       initProfileTour();
