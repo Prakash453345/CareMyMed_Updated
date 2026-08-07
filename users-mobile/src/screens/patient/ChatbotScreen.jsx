@@ -2035,7 +2035,7 @@ export default function ChatbotScreen({ navigation, route }) {
                                     </Pressable>
                                 ) : (inputText.trim().length > 0 || attachments.length > 0 || recordedAudioUri != null || voiceState === 'review') ? (
                                     <Pressable style={styles.sendInsideBtn} onPress={() => handleSend()}>
-                                        <LinearGradient colors={['#F97316', '#EA580C']} style={styles.sendGradient}>
+                                        <LinearGradient colors={['#6366F1', '#4F46E5']} style={styles.sendGradient}>
                                             <ArrowRight size={18} color="#FFF" strokeWidth={2.5} />
                                         </LinearGradient>
                                     </Pressable>
