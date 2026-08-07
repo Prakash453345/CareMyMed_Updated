@@ -140,4 +140,46 @@ describe('GuidedTour', () => {
       expect(HapticPatterns.selection).toHaveBeenCalled();
     });
   });
+
+  describe('Non-Overlapping Layout Geometry (calculateTooltipLayout)', () => {
+    const { calculateTooltipLayout } = require('../../src/components/ui/GuideOverlay');
+
+    it('positions tooltip card strictly BELOW target when target is in upper screen half', () => {
+      const targetRect = { x: 20, y: 120, width: 350, height: 180 };
+      const layout = calculateTooltipLayout(targetRect, 390, 844, 'auto', 130);
+
+      expect(layout.placement).toBe('below');
+      expect(layout.top).toBeGreaterThanOrEqual(targetRect.y + targetRect.height + 16);
+    });
+
+    it('positions tooltip card strictly ABOVE target when target is in lower screen half', () => {
+      const targetRect = { x: 20, y: 550, width: 350, height: 160 };
+      const layout = calculateTooltipLayout(targetRect, 390, 844, 'auto', 130);
+
+      const tooltipBottom = layout.top + 130;
+      expect(layout.placement).toBe('above');
+      expect(tooltipBottom).toBeLessThanOrEqual(targetRect.y - 16);
+    });
+
+    it('guarantees 100% Zero Target Overlap invariant across top, middle, and bottom targets', () => {
+      const testCases = [
+        { x: 10, y: 80, width: 370, height: 100 },   // Top screen header
+        { x: 10, y: 320, width: 370, height: 200 },  // Middle caller card
+        { x: 10, y: 680, width: 370, height: 90 },   // Bottom navigation / manager
+      ];
+
+      testCases.forEach((targetRect) => {
+        const layout = calculateTooltipLayout(targetRect, 390, 844, 'auto', 130);
+        const tooltipTop = layout.top;
+        const tooltipBottom = layout.top + 130;
+        const targetTop = targetRect.y;
+        const targetBottom = targetRect.y + targetRect.height;
+
+        const isStrictlyAbove = tooltipBottom <= targetTop - 16;
+        const isStrictlyBelow = tooltipTop >= targetBottom + 16;
+
+        expect(isStrictlyAbove || isStrictlyBelow).toBe(true);
+      });
+    });
+  });
 });
