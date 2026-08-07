@@ -463,18 +463,18 @@ function ChatBubble({ message }) {
                     <LinearGradient colors={['#6366F1', '#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
                     
                     {message.image ? (
-                        <Image source={{ uri: message.image }} style={styles.chatImage} resizeMode="cover" />
+                        <Image source={{ uri: message.image }} style={[styles.chatImage, message.text && { marginBottom: 10 }]} resizeMode="cover" />
                     ) : null}
 
                     {message.audio ? (
-                        <View style={[styles.audioBubble, styles.audioBubbleUser]}>
+                        <View style={[styles.audioBubble, styles.audioBubbleUser, message.text && { marginBottom: 8 }]}>
                             <Mic size={14} color="#FFFFFF" />
                             <Text style={[styles.audioBubbleText, { color: '#E0E7FF' }]}>Voice Message • {formatDuration(message.audioDuration)}</Text>
                         </View>
                     ) : null}
 
                     {message.text ? (
-                        <Text style={[styles.bubbleText, styles.bubbleTextUser]}>{message.text}</Text>
+                        <Text style={[styles.bubbleText, styles.bubbleTextUser, (message.image || message.audio) && { paddingHorizontal: 6, paddingTop: 4 }]}>{message.text}</Text>
                     ) : null}
                     
                     <View style={styles.userTimeRow}>
@@ -2292,9 +2292,9 @@ const styles = StyleSheet.create({
     botAvatarCircle: { width: 30, height: 30, borderRadius: 15, marginBottom: 2, overflow: 'hidden' },
     avatarCircleUser: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#6366F1', alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
     bubble: { maxWidth: '75%', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, overflow: 'hidden' },
-    bubbleImageContainer: { paddingHorizontal: 4, paddingVertical: 4, backgroundColor: 'transparent' },
+    bubbleImageContainer: { paddingHorizontal: 6, paddingTop: 6, paddingBottom: 8, backgroundColor: 'transparent' },
     bubbleAudioContainer: { paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#FFFFFF' },
-    chatImage: { width: 200, height: 200, borderRadius: 16 },
+    chatImage: { width: 220, height: 220, borderRadius: 16 },
     audioBubble: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 12 },
     audioBubbleUser: { backgroundColor: 'rgba(255,255,255,0.15)' },
     audioBubbleText: { fontSize: 13, color: '#6366F1', fontWeight: '600' },

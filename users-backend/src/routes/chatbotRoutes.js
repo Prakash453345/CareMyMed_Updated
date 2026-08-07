@@ -333,18 +333,47 @@ router.post(
       // 2. Vision AI / Image Attachment Phase
       if (imageFile) {
         console.log(
-          `[ChatbotRoute] Received medical image attachment: ${imageFile.originalname} (${imageFile.mimetype}, ${imageFile.size} bytes)`
+          `[ChatbotRoute] Received image attachment: ${imageFile.originalname} (${imageFile.mimetype}, ${imageFile.size} bytes)`
         );
 
-        let visionContextText = `Medical image attached (${imageFile.originalname}).`;
-        let docClassification = 'General Medical Document';
+        let visionContextText = `[ATTACHED IMAGE]: ${imageFile.originalname}`;
+        const googleVisionKey = process.env.GOOGLE_VISION_API_KEY;
+
+        if (googleVisionKey && imageFile.buffer) {
+          try {
+            const base64Content = imageFile.buffer.toString('base64');
+            const gvResponse = await axios.post(
+              `https://vision.googleapis.com/v1/images:annotate?key=${googleVisionKey}`,
+              {
+                requests: [
+                  {
+                    image: { content: base64Content },
+                    features: [
+                      { type: 'DOCUMENT_TEXT_DETECTION' },
+                      { type: 'TEXT_DETECTION' }
+                    ],
+                  },
+                ],
+              },
+              { timeout: 8000 }
+            );
+            const extractedRaw =
+              gvResponse.data.responses?.[0]?.fullTextAnnotation?.text ||
+              gvResponse.data.responses?.[0]?.textAnnotations?.[0]?.description ||
+              '';
+            if (extractedRaw.trim()) {
+              visionContextText = `[EXTRACTED TEXT FROM USER ATTACHED IMAGE / SCREENSHOT / DOCUMENT]:\n${extractedRaw.trim()}`;
+            }
+          } catch (ocrErr) {
+            console.warn('[ChatbotRoute] Vision OCR warning:', ocrErr.message);
+          }
+        }
 
         const userCaption = extractedQuery;
         const structuredContext = [
-          `[SYSTEM: ATTACHED MEDICAL DOCUMENT]`,
-          `Document Classification: ${docClassification}`,
-          `Extracted Information:\n${visionContextText}`,
-          `User Caption / Question: ${userCaption || 'Please analyze this medical document and explain its key details.'}`
+          `[USER ATTACHED IMAGE]`,
+          `${visionContextText}`,
+          `User Question / Caption: ${userCaption || 'What does this image say or show?'}`
         ].join('\n\n');
 
         extractedQuery = structuredContext;
