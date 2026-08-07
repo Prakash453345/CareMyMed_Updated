@@ -123,20 +123,21 @@ export default function LiquidConfirmButton({
 
                 {/* Button Content Layer */}
                 <View style={s.contentRow}>
-                    {(taken || sweepAnim._value > 0) && (
-                        <Animated.View
-                            style={{
-                                opacity: checkAnim,
-                                transform: [
-                                    { translateX: checkTranslateX },
-                                    { scale: checkScale },
-                                ],
-                                marginRight: 4,
-                            }}
-                        >
-                            <Check size={14} color="#FFFFFF" strokeWidth={2.8} />
-                        </Animated.View>
-                    )}
+                    <Animated.View
+                        style={{
+                            opacity: checkAnim,
+                            transform: [
+                                { translateX: checkTranslateX },
+                                { scale: checkScale },
+                            ],
+                            marginRight: checkAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0, 4],
+                            }),
+                        }}
+                    >
+                        <Check size={14} color="#FFFFFF" strokeWidth={2.8} />
+                    </Animated.View>
 
                     <Animated.Text
                         style={[
