@@ -11,7 +11,7 @@ import { colors, radius, FONT, METRIC_FONT } from '../../theme';
 export default function LiquidConfirmButton({
     taken = false,
     onPress,
-    label = 'Mark Slot as Taken',
+    label = 'Take Now',
     takenLabel = 'Taken',
     disabled = false,
 }) {
@@ -47,39 +47,37 @@ export default function LiquidConfirmButton({
             }).start();
         });
 
-        // 2. Trigger Haptic
+        // 2. Trigger Haptic on initial tap
         try {
             Haptics.selectionAsync().catch(() => {});
         } catch (e) {}
 
-        // 3. Staggered Liquid Sweep Animation
-        // 60ms: Liquid sweep (0% -> 100% width over 320ms)
-        // 220ms: Checkmark slides in
+        // 3. Material Transformation: Liquid Sweep (280ms) + Checkmark Spring
         Animated.parallel([
             Animated.timing(sweepAnim, {
                 toValue: 1,
-                duration: 320,
+                duration: 280,
                 easing: Easing.out(Easing.cubic),
                 useNativeDriver: false,
             }),
             Animated.sequence([
-                Animated.delay(160),
+                Animated.delay(140),
                 Animated.parallel([
                     Animated.timing(textOpacity, {
-                        toValue: 0.3,
-                        duration: 80,
+                        toValue: 0.4,
+                        duration: 60,
                         useNativeDriver: true,
                     }),
                     Animated.spring(checkAnim, {
                         toValue: 1,
                         friction: 7,
-                        tension: 80,
+                        tension: 90,
                         useNativeDriver: true,
                     }),
                 ]),
                 Animated.timing(textOpacity, {
                     toValue: 1,
-                    duration: 100,
+                    duration: 80,
                     useNativeDriver: true,
                 }),
             ]),
@@ -100,7 +98,7 @@ export default function LiquidConfirmButton({
 
     const checkTranslateX = checkAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: [-12, 0],
+        outputRange: [-10, 0],
     });
 
     const checkScale = checkAnim.interpolate({
@@ -125,7 +123,7 @@ export default function LiquidConfirmButton({
 
                 {/* Button Content Layer */}
                 <View style={s.contentRow}>
-                    {taken || sweepAnim._value > 0 ? (
+                    {(taken || sweepAnim._value > 0) && (
                         <Animated.View
                             style={{
                                 opacity: checkAnim,
@@ -133,12 +131,12 @@ export default function LiquidConfirmButton({
                                     { translateX: checkTranslateX },
                                     { scale: checkScale },
                                 ],
-                                marginRight: 6,
+                                marginRight: 4,
                             }}
                         >
-                            <Check size={16} color="#FFFFFF" strokeWidth={2.5} />
+                            <Check size={14} color="#FFFFFF" strokeWidth={2.8} />
                         </Animated.View>
-                    ) : null}
+                    )}
 
                     <Animated.Text
                         style={[
@@ -157,8 +155,9 @@ export default function LiquidConfirmButton({
 
 const s = StyleSheet.create({
     btnContainer: {
-        height: 44,
-        borderRadius: radius.md || 12,
+        height: 38,
+        paddingHorizontal: 16,
+        borderRadius: 12,
         backgroundColor: '#7C3AED',
         justifyContent: 'center',
         alignItems: 'center',
@@ -174,7 +173,7 @@ const s = StyleSheet.create({
         top: 0,
         bottom: 0,
         backgroundColor: '#059669',
-        borderRadius: radius.md || 12,
+        borderRadius: 12,
     },
     contentRow: {
         flexDirection: 'row',
@@ -184,9 +183,9 @@ const s = StyleSheet.create({
     },
     btnText: {
         color: '#FFFFFF',
-        fontSize: 14,
-        ...FONT.bold,
-        letterSpacing: -0.2,
+        fontSize: 13,
+        fontWeight: '700',
+        letterSpacing: -0.1,
     },
     btnTextTaken: {
         color: '#FFFFFF',

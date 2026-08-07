@@ -4024,8 +4024,8 @@ const styles = StyleSheet.create({
     borderColor: colors.borderLight,
   },
   medCardTaken: {
-    backgroundColor: "#F8FFF9",
-    borderColor: colors.successLight,
+    backgroundColor: "#FFFFFF",
+    borderColor: "rgba(226, 232, 240, 0.9)",
   },
   medTopBar: { height: 4, width: "100%" },
   medCardBody: {
