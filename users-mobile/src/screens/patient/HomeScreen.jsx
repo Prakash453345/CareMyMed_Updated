@@ -3838,7 +3838,6 @@ export default function PatientHomeScreen({ navigation }) {
             })()}
           </BottomSheetWrapper>
         </View>
-        <CelebrationOverlay active={showCelebration} onComplete={() => setShowCelebration(false)} />
       </KeyboardAvoidingView>
     </TabScreenTransition>
   );

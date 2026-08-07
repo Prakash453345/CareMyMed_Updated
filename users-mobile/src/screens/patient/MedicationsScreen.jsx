@@ -3794,7 +3794,6 @@ export default function MedicationsScreen({ navigation, route }) {
             );
           })()}
         </BottomSheetWrapper>
-        <CelebrationOverlay active={showCelebration} onComplete={() => setShowCelebration(false)} />
       </View>
     </TabScreenTransition>
   );
