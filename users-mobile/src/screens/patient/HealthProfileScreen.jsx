@@ -710,12 +710,14 @@ export default function HealthProfileScreen({ navigation }) {
         visible: true,
       },
       {
+        id: "health_vault",
+        target: "health_vault",
         title: t("health_profile.guide_score_title", {
-          defaultValue: "Health Score",
+          defaultValue: "Health Vault",
         }),
         desc: t("health_profile.guide_score_desc", {
           defaultValue:
-            "Calculates your daily health grade based on active conditions and vitals. Tap to view coaching and health breakdown.",
+            "Your profile completion score builds a complete medical record for your care team and emergency responders.",
         }),
         icon: HeartPulse,
         iconColor: "#EF4444",
@@ -727,6 +729,8 @@ export default function HealthProfileScreen({ navigation }) {
         visible: true,
       },
       {
+        id: "emergency_alerts",
+        target: "emergency_alerts",
         title: t("health_profile.guide_alerts_title", {
           defaultValue: "Emergency Alerts",
         }),
@@ -743,6 +747,8 @@ export default function HealthProfileScreen({ navigation }) {
         visible: true,
       },
       {
+        id: "current_conditions",
+        target: "current_conditions",
         title: t("health_profile.guide_records_title", {
           defaultValue: "Current Conditions",
         }),

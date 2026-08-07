@@ -1037,6 +1037,8 @@ export default function MedicationsScreen({ navigation, route }) {
     const steps = [];
 
     steps.push({
+      id: "daily_schedule",
+      target: "daily_schedule",
       title: t("home.guide_meds_title", { defaultValue: "Daily Schedule" }),
       desc: t("home.guide_meds_desc", {
         defaultValue:
@@ -1053,6 +1055,8 @@ export default function MedicationsScreen({ navigation, route }) {
     });
 
     steps.push({
+      id: "adherence_trend",
+      target: "adherence_trend",
       title: t("medications.guide_adherence_title", { defaultValue: "Adherence Trend" }),
       desc: t("medications.guide_adherence_desc", {
         defaultValue:
@@ -1068,6 +1072,8 @@ export default function MedicationsScreen({ navigation, route }) {
     });
 
     steps.push({
+      id: "temporary_meds",
+      target: "temporary_meds",
       title: t("medications.guide_temp_title", { defaultValue: "Temporary Meds" }),
       desc: t("medications.guide_temp_desc", {
         defaultValue:

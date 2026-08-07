@@ -436,6 +436,8 @@ export default function PatientHomeScreen({ navigation }) {
   const getVitalsTourSteps = () => {
     return [
       {
+        id: "health_orb",
+        target: "health_orb",
         title: t("home.guide_orb_title", {
           defaultValue: "Glass Health Orb",
         }),
@@ -453,6 +455,8 @@ export default function PatientHomeScreen({ navigation }) {
         visible: true,
       },
       {
+        id: "ai_coach",
+        target: "ai_coach",
         title: t("home.guide_insight_title", {
           defaultValue: "AI Coach Guidance",
         }),
@@ -469,6 +473,8 @@ export default function PatientHomeScreen({ navigation }) {
         visible: true,
       },
       {
+        id: "todays_plan",
+        target: "todays_plan",
         title: t("home.guide_meds_title", {
           defaultValue: "Today's Plan",
         }),
@@ -485,6 +491,8 @@ export default function PatientHomeScreen({ navigation }) {
         visible: true,
       },
       {
+        id: "wearables_vitals",
+        target: "wearables_vitals",
         title: t("home.guide_vitals_title", {
           defaultValue: "Wearables & Vitals",
         }),
