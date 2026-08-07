@@ -31,6 +31,7 @@ import GlobalSyncBanner from '../components/ui/GlobalSyncBanner';
 import AchievementCelebration from '../components/adherence/AchievementCelebration';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import i18n from '../i18n';
+import { useGuide } from '../context/GuideContext';
 
 import PatientSignupScreen from "../screens/onboarding/PatientSignupScreen";
 import LoginScreen from "../screens/onboarding/LoginScreen";
@@ -108,6 +109,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
     const insets = useSafeAreaInsets();
     const dynamicBottom = insets.bottom > 0 ? insets.bottom : layout.TAB_BAR_BOTTOM;
     const [isModalVisible, setIsModalVisible] = useState(false);
+    const { currentStepId } = useGuide();
 
     useEffect(() => {
         const sub = DeviceEventEmitter.addListener('FORM_MODAL_VISIBLE', (visible) => {
@@ -123,6 +125,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
             {state.routes.map((route, index) => {
                 const { options } = descriptors[route.key];
                 const focused = state.index === index;
+                const isHighlighted = (currentStepId === 'care_team_tab' || currentStepId === 'care_team_contacts') && route.name === 'MyCaller';
                 const onPress = () => {
                     const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
                     if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
@@ -133,7 +136,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
                         key={route.key} onPress={onPress} style={styles.tabItem}
                         activeOpacity={0.7} testID={`tab-${route.name}`} accessibilityLabel={route.name}
                     >
-                        <TabSlot focused={focused} IconConfig={IconComponent} />
+                        <TabSlot focused={focused} isHighlighted={isHighlighted} IconConfig={IconComponent} />
                     </TouchableOpacity>
                 );
             })}
@@ -141,14 +144,20 @@ function CustomTabBar({ state, descriptors, navigation }) {
     );
 }
 
-function TabSlot({ focused, IconConfig }) {
+function TabSlot({ focused, isHighlighted = false, IconConfig }) {
     const scaleAnim = useRef(new Animated.Value(focused ? 1 : 0.9)).current;
     useEffect(() => {
-        Animated.spring(scaleAnim, { toValue: focused ? 1 : 0.9, friction: 6, useNativeDriver: true }).start();
-    }, [focused]);
+        Animated.spring(scaleAnim, { toValue: isHighlighted ? 1.1 : focused ? 1 : 0.9, friction: 6, useNativeDriver: true }).start();
+    }, [focused, isHighlighted]);
+
     return (
-        <Animated.View style={[styles.tabSlot, focused && styles.tabSlotActive, { transform: [{ scale: scaleAnim }] }]}>
-            <IconConfig color={focused ? "#FFFFFF" : "#94A3B8"} size={20} strokeWidth={focused ? 2.5 : 2} />
+        <Animated.View style={[
+            styles.tabSlot, 
+            focused && styles.tabSlotActive, 
+            isHighlighted && { borderWidth: 2, borderColor: '#7C3AED', shadowColor: '#7C3AED', shadowOpacity: 0.5, shadowRadius: 8, elevation: 6 },
+            { transform: [{ scale: scaleAnim }] }
+        ]}>
+            <IconConfig color={focused || isHighlighted ? "#FFFFFF" : "#94A3B8"} size={20} strokeWidth={focused || isHighlighted ? 2.5 : 2} />
         </Animated.View>
     );
 }

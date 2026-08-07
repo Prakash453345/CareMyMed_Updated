@@ -42,6 +42,7 @@ import analytics from './src/utils/analytics';
 import * as Linking from 'expo-linking';
 import { navigationRef } from './src/lib/navigationRef';
 import { MotionProvider } from './src/theme/MotionProvider';
+import { GuideProvider } from './src/context/GuideContext';
 
 
 
@@ -125,24 +126,26 @@ export default function App() {
                         <SecurityProvider>
                             <NetworkProvider>
                                 <AuthProvider>
-                                    <NavigationContainer
-                                        linking={linking}
-                                        ref={navigationRef}
-                                        onReady={() => {
-                                            const { flushPendingNotifications } = require('./src/utils/NotificationRouter');
-                                            flushPendingNotifications();
-                                        }}
-                                        theme={{
-                                            ...DefaultTheme,
-                                            colors: {
-                                                ...DefaultTheme.colors,
-                                                background: colors.background,
-                                            },
-                                        }}
-                                    >
-                                        <AppNavigator fontsLoaded={fontsLoaded} />
-                                        <StatusBar style="light" />
-                                    </NavigationContainer>
+                                    <GuideProvider>
+                                        <NavigationContainer
+                                            linking={linking}
+                                            ref={navigationRef}
+                                            onReady={() => {
+                                                const { flushPendingNotifications } = require('./src/utils/NotificationRouter');
+                                                flushPendingNotifications();
+                                            }}
+                                            theme={{
+                                                ...DefaultTheme,
+                                                colors: {
+                                                    ...DefaultTheme.colors,
+                                                    background: colors.background,
+                                                },
+                                            }}
+                                        >
+                                            <AppNavigator fontsLoaded={fontsLoaded} />
+                                            <StatusBar style="light" />
+                                        </NavigationContainer>
+                                    </GuideProvider>
                                 </AuthProvider>
                             </NetworkProvider>
                         </SecurityProvider>
