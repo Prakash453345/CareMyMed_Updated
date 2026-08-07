@@ -535,14 +535,6 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPre
             onPress={() => onPressDetails && onPressDetails(med)}
             style={[styles.medCard, med.taken && styles.medCardTaken]}
           >
-          {/* Top accent bar */}
-          <View
-            style={[
-              styles.medTopBar,
-              { backgroundColor: med.taken ? "#10B981" : cfg.color },
-            ]}
-          />
-
           <View style={styles.medCardBody}>
             {/* Icon box */}
             <View
@@ -3986,7 +3978,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderColor: "rgba(226, 232, 240, 0.9)",
   },
-  medTopBar: { height: 4, width: "100%" },
   medCardBody: {
     flexDirection: "row",
     padding: 16,

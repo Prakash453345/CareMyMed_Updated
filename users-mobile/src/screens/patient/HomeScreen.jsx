@@ -369,12 +369,6 @@ const MedicationCard = ({ med, onPress }) => {
       onPress={() => onPress && onPress()}
       style={[styles.medCard, med.taken && styles.medCardTaken]}
     >
-      <View
-        style={[
-          styles.medAccentBar,
-          { backgroundColor: med.taken ? colors.success : accentColor },
-        ]}
-      />
       <View style={styles.medCardContent}>
         <View
           style={[
@@ -4721,7 +4715,6 @@ const styles = StyleSheet.create({
     borderColor: "#F1F5F9",
   },
   medCardTaken: { backgroundColor: "#F0FDF4", borderColor: "#DCFCE7" },
-  medAccentBar: { width: 5, flexShrink: 0 },
   medCardContent: {
     flex: 1,
     flexDirection: "row",
