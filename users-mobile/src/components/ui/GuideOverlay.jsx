@@ -186,10 +186,10 @@ export default function GuideOverlay({
           )}
         </Svg>
 
-        {/* Compact Tooltip Card (Positioned Above or Below Target with 20px Clearance) */}
+        {/* Ultra-Compact Micro-Tip Pill (Subtle, 60px height, 10% visual weight) */}
         <Animated.View
           style={[
-            styles.tooltipCard,
+            styles.microTipPill,
             {
               top: layout.top,
               left: layout.left,
@@ -198,55 +198,35 @@ export default function GuideOverlay({
             },
           ]}
         >
-          <View style={styles.headerRow}>
-            <View style={styles.titleWrap}>
+          <View style={styles.tipBody}>
+            <View style={styles.tipRow}>
               <View style={[styles.iconBox, { backgroundColor: (currentStep.iconColor || '#7C3AED') + '15' }]}>
-                <IconComp size={16} color={currentStep.iconColor || '#7C3AED'} strokeWidth={2.5} />
+                <IconComp size={15} color={currentStep.iconColor || '#7C3AED'} strokeWidth={2.5} />
               </View>
-              <Text style={styles.titleText}>{currentStep.title}</Text>
-            </View>
-            <Pressable
-              onPress={() => {
-                try {
-                  if (HapticPatterns && HapticPatterns.selection) HapticPatterns.selection();
-                } catch (e) {}
-                if (onSkip) onSkip();
-              }}
-              hitSlop={12}
-            >
-              <Text style={styles.skipText}>Skip</Text>
-            </Pressable>
-          </View>
-
-          <Text style={styles.descText} numberOfLines={3}>
-            {currentStep.desc}
-          </Text>
-
-          <View style={styles.footerRow}>
-            <View style={styles.dotIndicatorRow}>
-              {steps.map((_, idx) => (
-                <View
-                  key={idx}
-                  style={[
-                    styles.stepDot,
-                    idx === stepIndex ? styles.stepDotActive : styles.stepDotInactive,
-                  ]}
-                />
-              ))}
+              <View style={styles.textWrap}>
+                {currentStep.title ? (
+                  <Text style={styles.tipTitle}>{currentStep.title}</Text>
+                ) : null}
+                <Text style={styles.tipDesc} numberOfLines={2}>
+                  {currentStep.desc}
+                </Text>
+              </View>
             </View>
 
-            <Pressable
-              style={({ pressed }) => [styles.nextBtn, pressed && styles.nextBtnPressed]}
-              onPress={() => {
-                try {
-                  if (HapticPatterns && HapticPatterns.selection) HapticPatterns.selection();
-                } catch (e) {}
-                if (onNext) onNext();
-              }}
-            >
-              <Text style={styles.nextBtnText}>{isLast ? 'Got It' : 'Next'}</Text>
-              {!isLast && <ChevronRight size={15} color="#FFFFFF" strokeWidth={2.5} />}
-            </Pressable>
+            <View style={styles.actionRow}>
+              <Pressable
+                style={({ pressed }) => [styles.actionBtn, pressed && styles.actionBtnPressed]}
+                onPress={() => {
+                  try {
+                    if (HapticPatterns && HapticPatterns.selection) HapticPatterns.selection();
+                  } catch (e) {}
+                  if (onNext) onNext();
+                }}
+              >
+                <Text style={styles.actionBtnText}>{isLast ? 'Got it' : 'Next'}</Text>
+                {!isLast && <ChevronRight size={13} color="#FFFFFF" strokeWidth={2.5} />}
+              </Pressable>
+            </View>
           </View>
         </Animated.View>
       </Animated.View>
@@ -262,94 +242,74 @@ const styles = StyleSheet.create({
   backdropPressable: {
     ...StyleSheet.absoluteFillObject,
   },
-  tooltipCard: {
+  microTipPill: {
     position: 'absolute',
-    maxWidth: '88%',
+    maxWidth: '86%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 14,
+    borderRadius: 14,
+    padding: 11,
     borderWidth: 1,
-    borderColor: 'rgba(226, 232, 240, 0.9)',
+    borderColor: 'rgba(226, 232, 240, 0.95)',
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  headerRow: {
+  tipBody: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    gap: 8,
   },
-  titleWrap: {
+  tipRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     flex: 1,
   },
   iconBox: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  titleText: {
-    fontSize: 15,
+  textWrap: {
+    flex: 1,
+  },
+  tipTitle: {
+    fontSize: 13,
     fontWeight: '800',
     color: '#0F172A',
-    letterSpacing: -0.2,
+    letterSpacing: -0.1,
+    marginBottom: 1,
   },
-  skipText: {
+  tipDesc: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#94A3B8',
-  },
-  descText: {
-    fontSize: 13,
-    fontWeight: '400',
+    fontWeight: '500',
     color: '#475569',
-    lineHeight: 18,
-    marginBottom: 14,
+    lineHeight: 16,
   },
-  footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  actionRow: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
-  dotIndicatorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  stepDot: {
-    height: 5,
-    borderRadius: 2.5,
-  },
-  stepDotActive: {
-    width: 16,
-    backgroundColor: '#7C3AED',
-  },
-  stepDotInactive: {
-    width: 5,
-    backgroundColor: '#CBD5E1',
-  },
-  nextBtn: {
+  actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#7C3AED',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
-    gap: 3,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 10,
+    gap: 2,
   },
-  nextBtnPressed: {
+  actionBtnPressed: {
     opacity: 0.85,
     transform: [{ scale: 0.97 }],
   },
-  nextBtnText: {
-    fontSize: 13,
+  actionBtnText: {
+    fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
   },

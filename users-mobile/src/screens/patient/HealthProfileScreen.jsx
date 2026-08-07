@@ -693,75 +693,16 @@ export default function HealthProfileScreen({ navigation }) {
   const getProfileTourSteps = () => {
     return [
       {
-        title: t("health_profile.guide_complete_title", {
-          defaultValue: "Profile Completion",
-        }),
-        desc: t("health_profile.guide_complete_desc", {
-          defaultValue:
-            "Complete your profile to unlock personalized reminders and biological wellness analysis.",
-        }),
-        icon: ShieldCheck,
-        iconColor: "#10B981",
-        ref: profileSetupCardRef,
-        spotlightPadding: 4,
-        borderRadius: 20,
-        scrollOffset: 0,
-        preferredPlacement: "below",
-        visible: true,
-      },
-      {
         id: "health_vault",
         target: "health_vault",
-        title: t("health_profile.guide_score_title", {
-          defaultValue: "Health Vault",
-        }),
-        desc: t("health_profile.guide_score_desc", {
-          defaultValue:
-            "Your profile completion score builds a complete medical record for your care team and emergency responders.",
-        }),
+        title: "Medical Records",
+        desc: "Your digital health profile managed with your care team.",
         icon: HeartPulse,
         iconColor: "#EF4444",
         ref: healthScoreCardRef,
         spotlightPadding: 4,
         borderRadius: 24,
-        scrollOffset: 0,
         preferredPlacement: "below",
-        visible: true,
-      },
-      {
-        id: "emergency_alerts",
-        target: "emergency_alerts",
-        title: t("health_profile.guide_alerts_title", {
-          defaultValue: "Emergency Alerts",
-        }),
-        desc: t("health_profile.guide_alerts_desc", {
-          defaultValue:
-            "Add severe allergies and active conditions so your SOS contact or caller is instantly aware in an emergency.",
-        }),
-        icon: AlertTriangle,
-        iconColor: "#F59E0B",
-        ref: alertsCardRef,
-        spotlightPadding: 8,
-        borderRadius: 20,
-        preferredPlacement: "above",
-        visible: true,
-      },
-      {
-        id: "current_conditions",
-        target: "current_conditions",
-        title: t("health_profile.guide_records_title", {
-          defaultValue: "Current Conditions",
-        }),
-        desc: t("health_profile.guide_records_desc", {
-          defaultValue:
-            "Track and manage active or resolved medical conditions. Tap any condition to view details or update status.",
-        }),
-        icon: HeartPulse,
-        iconColor: "#EF4444",
-        ref: medicalRecordsCardRef,
-        spotlightPadding: 6,
-        borderRadius: 20,
-        preferredPlacement: "above",
         visible: true,
       },
     ];

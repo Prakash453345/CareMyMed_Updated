@@ -1039,61 +1039,21 @@ export default function MedicationsScreen({ navigation, route }) {
   const addTempMedBtnRef = useRef(null);
 
   const getMedsTourSteps = () => {
-    const steps = [];
-
-    steps.push({
-      id: "daily_schedule",
-      target: "daily_schedule",
-      title: t("home.guide_meds_title", { defaultValue: "Daily Schedule" }),
-      desc: t("home.guide_meds_desc", {
-        defaultValue:
-          "Swipe or tap a medicine card to mark it as taken. Your care caller reviews this daily to keep you safe.",
-      }),
-      icon: Pill,
-      iconColor: "#10B981",
-      ref: medsListCardRef,
-      spotlightPadding: 4,
-      borderRadius: 20,
-      scrollOffset: 0,
-      preferredPlacement: "below",
-      visible: true,
-    });
-
-    steps.push({
-      id: "adherence_trend",
-      target: "adherence_trend",
-      title: t("medications.guide_adherence_title", { defaultValue: "Adherence Trend" }),
-      desc: t("medications.guide_adherence_desc", {
-        defaultValue:
-          "Track your 7-day adherence percentage and habit consistency. Higher adherence unlocks milestone badges!",
-      }),
-      icon: TrendingUp,
-      iconColor: "#6366F1",
-      ref: adherenceCardRef,
-      spotlightPadding: 4,
-      borderRadius: 20,
-      preferredPlacement: "above",
-      visible: true,
-    });
-
-    steps.push({
-      id: "temporary_meds",
-      target: "temporary_meds",
-      title: t("medications.guide_temp_title", { defaultValue: "Temporary Meds" }),
-      desc: t("medications.guide_temp_desc", {
-        defaultValue:
-          "Log short-term prescriptions like antibiotics or pain relievers, or request a prescription slip review directly.",
-      }),
-      icon: Zap,
-      iconColor: "#A855F7",
-      ref: tempMedsRef,
-      spotlightPadding: 4,
-      borderRadius: 20,
-      preferredPlacement: "above",
-      visible: true,
-    });
-
-    return steps;
+    return [
+      {
+        id: "daily_schedule",
+        target: "daily_schedule",
+        title: "Daily Schedule",
+        desc: "Tap Take Now on any dose to log it and maintain your streak.",
+        icon: Pill,
+        iconColor: "#10B981",
+        ref: medsListCardRef,
+        spotlightPadding: 4,
+        borderRadius: 20,
+        preferredPlacement: "below",
+        visible: true,
+      },
+    ];
   };
 
   useEffect(() => {

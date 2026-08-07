@@ -438,74 +438,14 @@ export default function PatientHomeScreen({ navigation }) {
       {
         id: "health_orb",
         target: "health_orb",
-        title: t("home.guide_orb_title", {
-          defaultValue: "Glass Health Orb",
-        }),
-        desc: t("home.guide_orb_desc", {
-          defaultValue:
-            "Your daily health grade combines medication adherence, sleep, and vitals into a single wellness score.",
-        }),
+        title: "Health Score",
+        desc: "Live score calculated daily from your medications and vitals.",
         icon: Sparkles,
         iconColor: "#A78BFA",
         ref: orbRef,
         spotlightPadding: 6,
         borderRadius: 24,
         preferredPlacement: "below",
-        hero: true,
-        visible: true,
-      },
-      {
-        id: "ai_coach",
-        target: "ai_coach",
-        title: t("home.guide_insight_title", {
-          defaultValue: "AI Coach Guidance",
-        }),
-        desc: t("home.guide_insight_desc", {
-          defaultValue:
-            "Personalized check-in insights based on your recent health trends and daily habits. Swipe to read recommendations.",
-        }),
-        icon: Sparkles,
-        iconColor: "#A855F7",
-        ref: insightCardRef,
-        spotlightPadding: 4,
-        borderRadius: 20,
-        preferredPlacement: "below",
-        visible: true,
-      },
-      {
-        id: "todays_plan",
-        target: "todays_plan",
-        title: t("home.guide_meds_title", {
-          defaultValue: "Today's Plan",
-        }),
-        desc: t("home.guide_meds_desc", {
-          defaultValue:
-            "Track your scheduled medication dosages. Mark slots as taken here or in the Medications tab to maintain your streak.",
-        }),
-        icon: Pill,
-        iconColor: "#3B82F6",
-        ref: medsCardRef,
-        spotlightPadding: 4,
-        borderRadius: 20,
-        preferredPlacement: "above",
-        visible: true,
-      },
-      {
-        id: "wearables_vitals",
-        target: "wearables_vitals",
-        title: t("home.guide_vitals_title", {
-          defaultValue: "Wearables & Vitals",
-        }),
-        desc: t("home.guide_vitals_desc", {
-          defaultValue:
-            "Monitor blood pressure, heart rate, and glucose. Connect Health Connect or Apple Health for auto-sync.",
-        }),
-        icon: Heart,
-        iconColor: "#EF4444",
-        ref: vitalsCardRef,
-        spotlightPadding: 4,
-        borderRadius: 20,
-        preferredPlacement: "above",
         visible: true,
       },
     ];

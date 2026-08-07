@@ -74,14 +74,14 @@ describe('GuidedTour Component', () => {
     expect(getByText('Emergency Alerts')).toBeTruthy();
   });
 
-  it('calls onClose when Skip button is pressed', async () => {
+  it('calls onClose when Got it button is pressed on final step', async () => {
     const onCloseMock = jest.fn();
     const { getByText } = render(
-      <GuidedTour visible={true} steps={mockSteps} onClose={onCloseMock} />
+      <GuidedTour visible={true} steps={[mockSteps[0]]} onClose={onCloseMock} />
     );
 
     await act(async () => {
-      fireEvent.press(getByText('Skip'));
+      fireEvent.press(getByText('Got it'));
       jest.advanceTimersByTime(500);
     });
 

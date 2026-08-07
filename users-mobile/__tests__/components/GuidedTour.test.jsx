@@ -110,21 +110,7 @@ describe('GuidedTour', () => {
       );
 
       await act(async () => {
-        fireEvent.press(getByText('Got It'));
-      });
-
-      expect(TourService.markTourSeen).toHaveBeenCalledWith('test');
-      expect(onClose).toHaveBeenCalled();
-    });
-
-    it('marks tour seen and calls onClose on Skip press', async () => {
-      const onClose = jest.fn();
-      const { getByText } = render(
-        <GuidedTour visible={true} steps={makeSteps(2)} tourKey="test" onClose={onClose} />
-      );
-
-      await act(async () => {
-        fireEvent.press(getByText('Skip'));
+        fireEvent.press(getByText('Got it'));
       });
 
       expect(TourService.markTourSeen).toHaveBeenCalledWith('test');

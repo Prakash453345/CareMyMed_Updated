@@ -323,68 +323,21 @@ export default function MyCallerScreen({ navigation }) {
   );
 
   const getTourSteps = () => {
-    const steps = [];
-
-    steps.push({
-      id: "caller_card",
-      target: "caller_card",
-      title: "📞 Call Your Coordinator",
-      desc: "Reach your assigned coordinator instantly whenever you need help or have questions about your care.",
-      icon: Phone,
-      iconColor: "#6366F1",
-      ref: callerCardRef,
-      spotlightPadding: 4,
-      borderRadius: 24,
-      preferredPlacement: "below",
-      hero: true,
-      visible: !!caller,
-    });
-
-    steps.push({
-      id: "manager_card",
-      target: "manager_card",
-      title: "👤 Care Manager",
-      desc: "Oversees your overall health plan. Contact them directly to request schedule adjustments or coordinate updates.",
-      icon: UserCheck,
-      iconColor: "#10B981",
-      ref: managerCardRef,
-      spotlightPadding: 4,
-      borderRadius: 20,
-      preferredPlacement: "below",
-      visible: !!manager,
-    });
-
-    steps.push({
-      id: "contacts_card",
-      target: "contacts_card",
-      title: "❤️ Trusted Family & Friends",
-      desc: "Add trusted family members or caregivers to receive automated emergency check-in notifications.",
-      icon: Heart,
-      iconColor: "#EF4444",
-      ref: contactsCardRef,
-      spotlightPadding: 4,
-      borderRadius: 20,
-      preferredPlacement: "above",
-      visible: true,
-    });
-
-    if (calls.length > 0) {
-      steps.push({
-        id: "calls_card",
-        target: "calls_card",
-        title: "📜 Past Call Summaries",
-        desc: "Review dates and AI-generated summaries capturing your previous coordinator check-ins.",
-        icon: Clock,
-        iconColor: "#F59E0B",
-        ref: callsCardRef,
+    return [
+      {
+        id: "caller_card",
+        target: "caller_card",
+        title: "Need help?",
+        desc: "Your care coordinator is always one tap away.",
+        icon: Phone,
+        iconColor: "#6366F1",
+        ref: callerCardRef,
         spotlightPadding: 4,
-        borderRadius: 20,
-        preferredPlacement: "above",
-        visible: true,
-      });
-    }
-
-    return steps.filter((s) => s.visible);
+        borderRadius: 24,
+        preferredPlacement: "below",
+        visible: !!caller,
+      },
+    ].filter((s) => s.visible);
   };
 
   useEffect(() => {
