@@ -31,6 +31,9 @@ import StreakCompanion from "../../components/ui/StreakCompanion";
 import CelebrationOverlay from "../../components/ui/CelebrationOverlay";
 import { LinearGradient } from "expo-linear-gradient";
 
+import SupplyUpdateModal from "../../components/ui/SupplyUpdateModal";
+import { useMedicationCompletionAnimation } from "../../hooks/useMedicationCompletionAnimation";
+
 const triggerHapticSelection = async () => {
   try {
     await Haptics.selectionAsync();
@@ -38,6 +41,7 @@ const triggerHapticSelection = async () => {
 };
 import {
   Pill,
+  Package,
   Sparkles,
   ChevronRight,
   TrendingUp,
@@ -361,48 +365,124 @@ const VitalsCard = ({
 };
 
 // ── Mini medication card ───────────────────────────────────────────────────
-const MedicationCard = ({ med, onPress }) => {
+const MedicationCard = ({ med, onPress, onOpenSupplyModal }) => {
   const { t } = useTranslation();
   const accentColor = ACCENT_MAP[med.type] || "#8B5CF6";
+  const {
+    cardLiftAnim,
+    cardBgColor,
+    cardBorderColor,
+    iconBgColor,
+    titleColor,
+  } = useMedicationCompletionAnimation(med.taken, accentColor + "18", "#F1F5F9");
+
+  const hasRefillInfo =
+    med.refillInfo &&
+    (typeof med.refillInfo.remainingDoses === "number" ||
+      typeof med.refillInfo.totalDoses === "number");
+  const displayDoses =
+    med.refillInfo?.remainingDoses ?? med.refillInfo?.totalDoses ?? 0;
+  const isLowSupply =
+    hasRefillInfo && displayDoses <= (med.refillInfo.alertThreshold || 5);
+  const displayUnit = med.unit || med.dosage_form || 'Supply';
+
   return (
-    <Pressable
-      onPress={() => onPress && onPress()}
-      style={[styles.medCard, med.taken && styles.medCardTaken]}
+    <Animated.View
+      style={{
+        transform: [{ translateY: cardLiftAnim }],
+      }}
     >
-      <View style={styles.medCardContent}>
-        <View
-          style={[
-            styles.medIconBox,
-            { backgroundColor: med.taken ? "#ECFDF5" : accentColor + "18" },
-          ]}
+      <Animated.View
+        style={[
+          styles.medCard,
+          {
+            backgroundColor: cardBgColor,
+            borderColor: cardBorderColor,
+          },
+        ]}
+      >
+        <Pressable
+          onPress={() => onPress && onPress()}
+          style={{ flex: 1 }}
         >
-          {med.taken ? (
-            <CheckCircle2 size={20} color={colors.success} strokeWidth={2.5} />
-          ) : (
-            <Pill size={20} color={accentColor} strokeWidth={2.5} />
-          )}
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text
-            style={[styles.medName, med.taken && { color: colors.success }]}
-          >
-            {med.name}
-          </Text>
-          <Text style={styles.medDose}>
-            {med.dosage}
-            {med.instructions ? ` · ${med.instructions}` : ""}
-          </Text>
-        </View>
-        {med.taken && (
-          <View style={styles.takenBadge}>
-            <CheckCircle2 size={10} color={colors.success} />
-            <Text style={styles.takenBadgeText}>
-              {t("home.done", { defaultValue: "Done" })}
-            </Text>
+          <View style={styles.medCardContent}>
+            <Animated.View
+              style={[
+                styles.medIconBox,
+                { backgroundColor: iconBgColor, borderColor: cardBorderColor },
+              ]}
+            >
+              {med.taken ? (
+                <CheckCircle2 size={20} color={colors.success} strokeWidth={2.5} />
+              ) : (
+                <Pill size={20} color={accentColor} strokeWidth={2.5} />
+              )}
+            </Animated.View>
+            <View style={{ flex: 1 }}>
+              <Animated.Text
+                style={[styles.medName, { color: titleColor }]}
+              >
+                {med.name}
+              </Animated.Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
+                <Text style={styles.medDose}>
+                  {med.dosage}
+                  {med.instructions ? ` · ${med.instructions}` : ""}
+                </Text>
+                {hasRefillInfo && (
+                  <Pressable
+                    onPress={(e) => {
+                      e?.stopPropagation?.();
+                      onOpenSupplyModal?.(med);
+                    }}
+                    hitSlop={6}
+                    style={({ pressed }) => [
+                      {
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                        paddingHorizontal: 8,
+                        paddingVertical: 2.5,
+                        borderRadius: 8,
+                        backgroundColor: isLowSupply ? "#FEF2F2" : "#F1F5F9",
+                        borderWidth: 1,
+                        borderColor: isLowSupply ? "#FECACA" : "#E2E8F0",
+                        opacity: pressed ? 0.75 : 1,
+                      },
+                    ]}
+                  >
+                    {isLowSupply ? (
+                      <AlertCircle size={10} color="#EF4444" strokeWidth={3} />
+                    ) : (
+                      <Package size={10} color="#64748B" strokeWidth={2.5} />
+                    )}
+                    <Text
+                      style={{
+                        fontSize: 9,
+                        fontWeight: "800",
+                        color: isLowSupply ? "#EF4444" : "#64748B",
+                        letterSpacing: 0.3,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {displayDoses} {isLowSupply ? "Left (Update)" : "Left"}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            </View>
+            {med.taken && (
+              <View style={styles.takenBadge}>
+                <CheckCircle2 size={10} color={colors.success} />
+                <Text style={styles.takenBadgeText}>
+                  {t("home.done", { defaultValue: "Done" })}
+                </Text>
+              </View>
+            )}
           </View>
-        )}
-      </View>
-    </Pressable>
+        </Pressable>
+      </Animated.View>
+    </Animated.View>
   );
 };
 
@@ -425,6 +505,8 @@ export default function PatientHomeScreen({ navigation }) {
 
   const [showVitalsTour, setShowVitalsTour] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [supplyModalMed, setSupplyModalMed] = useState(null);
+  const updateMedSupply = usePatientStore((s) => s.updateMedSupply);
   const vitalsTourTriggeredRef = useRef(false);
 
   const getVitalsTourSteps = () => {
@@ -3191,10 +3273,18 @@ export default function PatientHomeScreen({ navigation }) {
                     key={med.id}
                     med={med}
                     onPress={() => navigation.navigate("Medications")}
+                    onOpenSupplyModal={setSupplyModalMed}
                   />
                 ))}
             </Animated.View>
             </View>
+
+            <SupplyUpdateModal
+              visible={!!supplyModalMed}
+              onClose={() => setSupplyModalMed(null)}
+              med={supplyModalMed}
+              onConfirm={(medItem, qty) => updateMedSupply(medItem, qty)}
+            />
 
             {/* ── 7. VITALS (Apple Health Style) ── */}
             <Animated.View

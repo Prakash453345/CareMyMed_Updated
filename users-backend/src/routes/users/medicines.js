@@ -826,13 +826,15 @@ const performRefill = (refillInfo, addQty) => {
 };
 
 /**
+ * POST /api/users/medicines/id/:id/refill
  * POST /api/users/medicines/:name/refill
- * Add purchased doses to remainingDoses. If newTotal is provided, it is added to the supply.
+ * Add purchased doses to remainingDoses using canonical medicineId / _id matching.
  */
-router.post('/:name/refill', authenticateSession, async (req, res) => {
+const handleRefillRequest = async (req, res) => {
   try {
     const patient = await getOrCreatePatient(req);
-    const medName = req.params.name;
+    const targetParam = req.params.id || req.params.name;
+    const medicineId = req.body.medicineId || req.body.id || req.params.id;
 
     // 1. Support purchasedDoses, falling back to newTotal (backward compatibility)
     const rawQty = req.body.purchasedDoses ?? req.body.newTotal;
@@ -848,8 +850,15 @@ router.post('/:name/refill', authenticateSession, async (req, res) => {
 
     let refilled = false;
 
-    // Try embedded medications first
-    const patientMed = patient.medications.find((m) => m.name === medName);
+    // Match embedded medication by canonical ID first, then by name
+    const patientMed = patient.medications.find(
+      (m) =>
+        (medicineId && (m.id === medicineId || m._id?.toString() === medicineId)) ||
+        m._id?.toString() === targetParam ||
+        m.id === targetParam ||
+        m.name === targetParam
+    );
+
     if (patientMed) {
       if (!patientMed.refillInfo) {
         patientMed.refillInfo = {
@@ -865,13 +874,19 @@ router.post('/:name/refill', authenticateSession, async (req, res) => {
       refilled = true;
     }
 
-    // Try external medications
+    // Match external medication by canonical ID first, then by name
     const searchIds = [patient._id];
     if (patient.profile_id) searchIds.push(patient.profile_id);
-    const extMed = await Medication.findOne({
-      patientId: { $in: searchIds },
-      name: medName,
-    });
+
+    const extQuery = { patientId: { $in: searchIds } };
+    if (medicineId || targetParam) {
+      const matchCriteria = [];
+      if (medicineId) matchCriteria.push({ _id: medicineId }, { id: medicineId });
+      if (targetParam) matchCriteria.push({ _id: targetParam }, { id: targetParam }, { name: targetParam });
+      extQuery.$or = matchCriteria;
+    }
+
+    const extMed = await Medication.findOne(extQuery);
     if (extMed) {
       if (!extMed.refillInfo) {
         extMed.refillInfo = {
@@ -899,7 +914,10 @@ router.post('/:name/refill', authenticateSession, async (req, res) => {
     });
     res.status(500).json({ error: 'Failed to refill medication' });
   }
-});
+};
+
+router.post('/id/:id/refill', authenticateSession, handleRefillRequest);
+router.post('/:name/refill', authenticateSession, handleRefillRequest);
 
 /**
  * GET /api/users/medicines/adherence/weekly-summary

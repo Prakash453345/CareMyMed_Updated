@@ -25,6 +25,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from 'expo-haptics';
 import PremiumFormModal from "../../components/ui/PremiumFormModal";
 import LiquidConfirmButton from "../../components/ui/LiquidConfirmButton";
+import SupplyUpdateModal from "../../components/ui/SupplyUpdateModal";
+import { useMedicationCompletionAnimation } from "../../hooks/useMedicationCompletionAnimation";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const triggerHapticSelection = async () => {
@@ -42,6 +44,7 @@ import {
   Bell,
   Plus,
   AlertCircle,
+  Package,
   Calendar,
   Pencil,
   Clock,
@@ -386,32 +389,25 @@ const SlotHeader = ({ slot, callTime }) => {
   );
 };
 
-const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPressDetails, tourRef, isHighlighted }) => {
+const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPressDetails, tourRef, isHighlighted, onOpenSupplyModal }) => {
   const { t } = useTranslation();
   const internalSwRef = useRef(null);
   const swRef = externalSwRef || internalSwRef;
-  const cardLiftAnim = useRef(new Animated.Value(0)).current;
   const takenBadgeScale = useRef(new Animated.Value(med.taken ? 1 : 0.95)).current;
   const checkScale = useRef(new Animated.Value(med.taken ? 1 : 0)).current;
   const cfg = SLOT_CONFIG[med.type] || SLOT_CONFIG.as_needed;
 
+  const {
+    cardLiftAnim,
+    cardBgColor,
+    cardBorderColor,
+    iconBgColor,
+    titleColor,
+  } = useMedicationCompletionAnimation(med.taken, cfg.light, cfg.border);
+
   useEffect(() => {
     if (med.taken) {
-      // Integrated Card Response: Lift -2px, scale taken badge, spring checkmark
       Animated.parallel([
-        Animated.sequence([
-          Animated.timing(cardLiftAnim, {
-            toValue: -2,
-            duration: 120,
-            useNativeDriver: true,
-          }),
-          Animated.spring(cardLiftAnim, {
-            toValue: 0,
-            friction: 6,
-            tension: 70,
-            useNativeDriver: true,
-          }),
-        ]),
         Animated.spring(checkScale, {
           toValue: 1,
           friction: 5,
@@ -510,6 +506,7 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPre
     med.refillInfo?.remainingDoses ?? med.refillInfo?.totalDoses ?? 0;
   const isLowSupply =
     hasRefillInfo && displayDoses <= (med.refillInfo.alertThreshold || 5);
+  const displayUnit = med.unit || med.dosage_form || 'Supply';
 
   return (
     <View>
@@ -531,128 +528,148 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPre
         rightThreshold={40}
       >
         <Animated.View style={{ transform: [{ translateY: cardLiftAnim }] }}>
+          <Animated.View
+            style={[
+              styles.medCard,
+              {
+                backgroundColor: cardBgColor,
+                borderColor: cardBorderColor,
+              },
+            ]}
+          >
           <Pressable
             onPress={() => onPressDetails && onPressDetails(med)}
-            style={[styles.medCard, med.taken && styles.medCardTaken]}
+            style={{ flex: 1 }}
           >
-          <View style={styles.medCardBody}>
-            {/* Icon box */}
-            <View
-              style={[
-                styles.medIconBox,
-                {
-                  backgroundColor: med.taken ? "#DCFCE7" : cfg.light,
-                  borderColor: med.taken ? "#A7F3D0" : cfg.border,
-                },
-              ]}
-            >
-              {med.taken ? (
-                <Animated.View style={{ transform: [{ scale: checkScale }] }}>
-                  <CheckCircle2 size={22} color="#10B981" strokeWidth={2.5} />
-                </Animated.View>
-              ) : (
-                <Pill size={22} color={cfg.color} strokeWidth={2.5} />
-              )}
-            </View>
-
-            {/* Text content */}
-            <View style={{ flex: 1, gap: 4 }}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                  flexWrap: "wrap",
-                }}
+            <View style={styles.medCardBody}>
+              {/* Icon box */}
+              <Animated.View
+                style={[
+                  styles.medIconBox,
+                  {
+                    backgroundColor: iconBgColor,
+                    borderColor: cardBorderColor,
+                  },
+                ]}
               >
-                <Text
-                  style={[styles.medName, med.taken && { color: "#10B981" }]}
+                {med.taken ? (
+                  <Animated.View style={{ transform: [{ scale: checkScale }] }}>
+                    <CheckCircle2 size={22} color="#10B981" strokeWidth={2.5} />
+                  </Animated.View>
+                ) : (
+                  <Pill size={22} color={cfg.color} strokeWidth={2.5} />
+                )}
+              </Animated.View>
+
+              {/* Text content */}
+              <View style={{ flex: 1, gap: 4 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    flexWrap: "wrap",
+                  }}
                 >
-                  {med.name}
-                </Text>
-                {med.taken && (
-                  <Animated.View style={{ transform: [{ scale: takenBadgeScale }] }}>
-                    <View style={styles.takenBadge}>
-                      <CheckCircle2 size={10} color="#10B981" />
-                      <Text style={styles.takenBadgeTxt}>
-                        {med.marked_by === "caller"
-                          ? t("medications.by_caller", {
-                              defaultValue: "By Caller",
-                            })
-                          : t("medications.taken", { defaultValue: "Taken" })}
+                  <Animated.Text
+                    style={[styles.medName, { color: titleColor }]}
+                  >
+                    {med.name}
+                  </Animated.Text>
+                  {med.taken && (
+                    <Animated.View style={{ transform: [{ scale: takenBadgeScale }] }}>
+                      <View style={styles.takenBadge}>
+                        <CheckCircle2 size={10} color="#10B981" />
+                        <Text style={styles.takenBadgeTxt}>
+                          {med.marked_by === "caller"
+                            ? t("medications.by_caller", {
+                                defaultValue: "By Caller",
+                              })
+                            : t("medications.taken", { defaultValue: "Taken" })}
+                        </Text>
+                      </View>
+                    </Animated.View>
+                  )}
+                  {med.verifiedByCaller && (
+                    <View style={styles.verifiedBadge}>
+                      <Shield size={9} color="#059669" />
+                      <Text style={styles.verifiedTxt}>
+                        {t("medications.verified", { defaultValue: "Verified" })}
                       </Text>
                     </View>
-                  </Animated.View>
-                )}
-                {med.verifiedByCaller && (
-                  <View style={styles.verifiedBadge}>
-                    <Shield size={9} color="#059669" />
-                    <Text style={styles.verifiedTxt}>
-                      {t("medications.verified", { defaultValue: "Verified" })}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 8,
-                  flexWrap: "wrap",
-                  marginTop: 2,
-                }}
-              >
-                <Text style={styles.medDose}>
-                  {med.preferred_time ? `${med.preferred_time} · ` : ""}
-                  {med.dosage}
-                </Text>
-                {hasRefillInfo && (
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 4,
-                      paddingHorizontal: 8,
-                      paddingVertical: 2.5,
-                      borderRadius: 8,
-                      backgroundColor: isLowSupply ? "#FEF2F2" : "#F1F5F9",
-                      borderWidth: 1,
-                      borderColor: isLowSupply ? "#FECACA" : "#E2E8F0",
-                    }}
-                  >
-                    {isLowSupply && (
-                      <AlertCircle size={10} color="#EF4444" strokeWidth={3} />
-                    )}
-                    <Text
-                      style={{
-                        fontSize: 9,
-                        fontWeight: "800",
-                        color: isLowSupply ? "#EF4444" : "#64748B",
-                        letterSpacing: 0.3,
-                        textTransform: "uppercase",
+                  )}
+                </View>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                    flexWrap: "wrap",
+                    marginTop: 2,
+                  }}
+                >
+                  <Text style={styles.medDose}>
+                    {med.preferred_time ? `${med.preferred_time} · ` : ""}
+                    {med.dosage}
+                  </Text>
+                  {hasRefillInfo && (
+                    <Pressable
+                      onPress={(e) => {
+                        e?.stopPropagation?.();
+                        onOpenSupplyModal?.(med);
                       }}
+                      hitSlop={6}
+                      style={({ pressed }) => [
+                        {
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 4,
+                          paddingHorizontal: 8,
+                          paddingVertical: 2.5,
+                          borderRadius: 8,
+                          backgroundColor: isLowSupply ? "#FEF2F2" : "#F1F5F9",
+                          borderWidth: 1,
+                          borderColor: isLowSupply ? "#FECACA" : "#E2E8F0",
+                          opacity: pressed ? 0.75 : 1,
+                        },
+                      ]}
                     >
-                      {displayDoses}{" "}
-                      {isLowSupply ? "Left (Refill)" : "Supply Left"}
-                    </Text>
-                  </View>
-                )}
+                      {isLowSupply ? (
+                        <AlertCircle size={10} color="#EF4444" strokeWidth={3} />
+                      ) : (
+                        <Package size={10} color="#64748B" strokeWidth={2.5} />
+                      )}
+                      <Text
+                        style={{
+                          fontSize: 9,
+                          fontWeight: "800",
+                          color: isLowSupply ? "#EF4444" : "#64748B",
+                          letterSpacing: 0.3,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {displayDoses}{" "}
+                        {isLowSupply ? "Left (Update)" : "Supply Left"}
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
+              </View>
+
+              {/* Liquid Confirm Button */}
+              <View style={{ marginLeft: 8 }}>
+                <LiquidConfirmButton
+                  taken={med.taken}
+                  onPress={() => onToggle?.(med)}
+                  label={t("medications.take", { defaultValue: "Take Now" })}
+                  takenLabel={t("medications.taken", { defaultValue: "Taken" })}
+                />
               </View>
             </View>
-
-            {/* Liquid Confirm Button (Swiggy / PhonePe-grade liquid sweep button morph) */}
-            <View style={{ marginLeft: 8 }}>
-              <LiquidConfirmButton
-                taken={med.taken}
-                onPress={() => onToggle?.(med)}
-                label={t("medications.take", { defaultValue: "Take Now" })}
-                takenLabel={t("medications.taken", { defaultValue: "Taken" })}
-              />
-            </View>
-          </View>
-        </Pressable>
-      </Animated.View>
-    </Swipeable>
+          </Pressable>
+          </Animated.View>
+        </Animated.View>
+      </Swipeable>
     </View>
   );
 };
@@ -1082,7 +1099,10 @@ export default function MedicationsScreen({ navigation, route }) {
       initMedsTour();
     }
   }, [loading, patient, schedule, adherence]);
+
   const [showAddTempMedModal, setShowAddTempMedModal] = useState(false);
+  const [supplyModalMed, setSupplyModalMed] = useState(null);
+  const updateMedSupply = usePatientStore((s) => s.updateMedSupply);
   const [tempMedForm, setTempMedForm] = useState({
     name: "",
     dosage: "",
@@ -2984,6 +3004,13 @@ export default function MedicationsScreen({ navigation, route }) {
               setTempPrefs((p) => ({ ...p, [activePicker]: val }));
             setActivePicker(null);
           }}
+        />
+
+        <SupplyUpdateModal
+          visible={!!supplyModalMed}
+          onClose={() => setSupplyModalMed(null)}
+          med={supplyModalMed}
+          onConfirm={(medItem, qty) => updateMedSupply(medItem, qty)}
         />
 
         {/* ── REFILL MODAL ── */}

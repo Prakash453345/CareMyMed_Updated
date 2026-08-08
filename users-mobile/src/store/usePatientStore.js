@@ -826,6 +826,48 @@ const usePatientStore = create((set, get) => ({
         }
     },
 
+    updateMedSupply: async (med, addQty) => {
+        const prevDashboardMeds = get().dashboardMeds;
+        const prevSchedule = get().medicationSchedule;
+
+        const medId = med?.id || med?._id;
+        const medName = med?.name;
+
+        set(s => {
+            const mapMed = (m) => {
+                const isMatch = (medId && (m.id === medId || m._id === medId)) || (medName && m.name === medName);
+                if (isMatch) {
+                    const currentInfo = m.refillInfo || { totalDoses: 30, remainingDoses: 0, alertThreshold: 5 };
+                    const newRefillInfo = {
+                        ...currentInfo,
+                        remainingDoses: (currentInfo.remainingDoses || 0) + addQty,
+                        totalDoses: (currentInfo.totalDoses || 0) + addQty,
+                        lastRefillDate: new Date().toISOString(),
+                    };
+                    return { ...m, refillInfo: newRefillInfo };
+                }
+                return m;
+            };
+
+            const schedule = { ...s.medicationSchedule };
+            Object.keys(schedule).forEach(k => {
+                schedule[k] = schedule[k].map(mapMed);
+            });
+            const dashboardMeds = s.dashboardMeds.map(mapMed);
+            return { dashboardMeds, medicationSchedule: schedule };
+        });
+
+        try {
+            await apiService.medicines.refill(medName, addQty, medId);
+            get().fetchDashboard(true);
+            return { success: true };
+        } catch (err) {
+            console.warn('[Store] updateMedSupply failed, rolling back:', err?.message);
+            set({ dashboardMeds: prevDashboardMeds, medicationSchedule: prevSchedule });
+            throw err;
+        }
+    },
+
     saveCallPreferences: async (prefs) => {
         set({ callPreferences: prefs });
         const res = await apiService.patients.updateCallPreferences(prefs);

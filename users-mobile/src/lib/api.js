@@ -382,7 +382,10 @@ export const apiService = {
         getMonthlyAdherence: () => api.get('/users/medicines/adherence/monthly'),
         getAdherenceDetails: () => api.get('/users/medicines/adherence/details'),
         getAdherenceRecap: (period) => api.get('/users/medicines/adherence/recap', { params: { period } }),
-        refill: (name, purchasedDoses) => api.post(`/users/medicines/${encodeURIComponent(name)}/refill`, { purchasedDoses }),
+        refill: (identifier, purchasedDoses, medicineId) => {
+            const idToUse = medicineId || identifier;
+            return api.post(`/users/medicines/id/${encodeURIComponent(idToUse)}/refill`, { purchasedDoses, medicineId: idToUse });
+        },
         getWeeklySummary: () => api.get('/users/medicines/adherence/weekly-summary'),
         getTempMeds: () => api.get('/users/medicines/temp-meds'),
         addTempMed: (data) => api.post('/users/medicines/temp-meds', data),
