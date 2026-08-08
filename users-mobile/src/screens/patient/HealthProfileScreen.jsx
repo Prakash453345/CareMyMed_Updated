@@ -346,7 +346,9 @@ const TactileWheelPicker = ({
         const item = data[dataIndex];
         if (item && item.value !== undefined && item.value !== selectedValue) {
           onValueChange(item.value);
-          Haptics.selectionAsync().catch(() => {});
+          try {
+            Haptics.selectionAsync().catch(() => {});
+          } catch (e) {}
         }
       }
     } catch (e) {
@@ -358,14 +360,21 @@ const TactileWheelPicker = ({
     const index = data.findIndex((item) => item.value === selectedValue);
     if (index !== -1) {
       const timer = setTimeout(() => {
-        flatListRef.current?.scrollToOffset({
-          offset: index * itemHeight,
-          animated: false,
-        });
+        try {
+          const list = flatListRef.current?.getNode
+            ? flatListRef.current.getNode()
+            : (flatListRef.current?._component || flatListRef.current);
+          list?.scrollToOffset?.({
+            offset: index * itemHeight,
+            animated: false,
+          });
+        } catch (e) {
+          console.warn('[TactileWheelPicker] scrollToOffset error:', e);
+        }
       }, 60);
       return () => clearTimeout(timer);
     }
-  }, [selectedValue, data]);
+  }, [selectedValue, data, itemHeight]);
 
   const renderItem = ({ item, index }) => {
     if (item.isPlaceholder) {
@@ -551,7 +560,7 @@ const GoogleFitHeightWeightPicker = ({
             <Pressable
               style={[s.unitTogglePill, heightUnit === "cm" && s.unitTogglePillActive]}
               onPress={() => {
-                HapticPatterns?.selection?.();
+                try { Haptics.selectionAsync().catch(() => {}); } catch (e) {}
                 setHeightUnit("cm");
               }}
             >
@@ -562,7 +571,7 @@ const GoogleFitHeightWeightPicker = ({
             <Pressable
               style={[s.unitTogglePill, heightUnit === "ft_in" && s.unitTogglePillActive]}
               onPress={() => {
-                HapticPatterns?.selection?.();
+                try { Haptics.selectionAsync().catch(() => {}); } catch (e) {}
                 setHeightUnit("ft_in");
               }}
             >
