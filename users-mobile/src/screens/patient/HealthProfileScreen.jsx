@@ -89,8 +89,6 @@ import * as Haptics from "expo-haptics";
 import { HapticPatterns } from "../../utils/haptics";
 import { apiService } from "../../lib/api";
 import usePatientStore from "../../store/usePatientStore";
-import GuidedTour from "../../components/ui/GuidedTour";
-import { TourService } from "../../lib/TourService";
 import SectionContainer from "../../components/ui/SectionContainer";
 import SectionErrorCard from "../../components/ui/SectionErrorCard";
 import { useSectionQuery } from "../../hooks/useSectionQuery";
@@ -686,111 +684,7 @@ export default function HealthProfileScreen({ navigation }) {
   const [historyLoading, setHistoryLoading] = useState(false);
   const isFreePlan = (p) => p?.freePlan || p?.subscription?.plan === "free";
 
-  const [showProfileTour, setShowProfileTour] = useState(false);
-  const profileTourTriggeredRef = useRef(false);
   const scrollViewRef = useRef(null);
-  const profileSetupCardRef = useRef(null);
-  const profileCompletenessHeaderRef = useRef(null);
-  const headerRef = useRef(null);
-  const healthScoreCardRef = useRef(null);
-  const healthScoreRingRef = useRef(null);
-  const alertsCardRef = useRef(null);
-  const alertsHeaderRef = useRef(null);
-  const medicalRecordsCardRef = useRef(null);
-  const medicalRecordsHeaderRef = useRef(null);
-
-  const getProfileTourSteps = () => {
-    return [
-      {
-        id: "health_vault",
-        target: "health_vault",
-        title: "Medical Records",
-        desc: "Your digital health profile managed with your care team.",
-        icon: HeartPulse,
-        iconColor: "#EF4444",
-        ref: healthScoreCardRef,
-        spotlightPadding: 4,
-        borderRadius: 24,
-        preferredPlacement: "below",
-        visible: true,
-      },
-    ];
-  };
-
-  useEffect(() => {
-    // Guard: only trigger once per mount to prevent re-showing after dismiss
-    if (!loading && profile && !profileTourTriggeredRef.current) {
-      profileTourTriggeredRef.current = true;
-      const initProfileTour = async () => {
-        const profileHeuristic = async () => {
-          const conds = Array.isArray(profile.conditions)
-            ? profile.conditions
-            : [];
-          const allgs = Array.isArray(profile.allergies)
-            ? profile.allergies
-            : [];
-          const contacts = Array.isArray(profile.trusted_contacts)
-            ? profile.trusted_contacts
-            : [];
-          const hist = Array.isArray(profile.medical_history)
-            ? profile.medical_history
-            : [];
-          const meds = Array.isArray(profile.medications)
-            ? profile.medications
-            : [];
-          const vaxs = Array.isArray(profile.vaccinations)
-            ? profile.vaccinations
-            : [];
-          const lifestyle = profile.lifestyle || {};
-          const gp = profile.gp || {};
-
-          let score = 0,
-            total = 10;
-          if (profile.blood_type && profile.blood_type !== "unknown") score++;
-          if (conds.length > 0) score++;
-          if (allgs.length > 0) score++;
-          if (hist.length > 0) score++;
-          if (meds.length > 0) score++;
-          if (vaxs.length > 0) score++;
-          if (lifestyle.height_cm && lifestyle.weight_kg) score++;
-          if (contacts.length > 0) score++;
-          if (gp.name) score++;
-          if (
-            lifestyle.smoking_status &&
-            lifestyle.smoking_status !== "unknown"
-          )
-            score++;
-
-          const pct = Math.round((score / total) * 100);
-
-          const hasMissingCore =
-            pct < 70 ||
-            conds.length === 0 ||
-            allgs.length === 0 ||
-            contacts.length === 0;
-
-          const isExistingAccount =
-            profile.created_at &&
-            new Date(profile.created_at) < new Date("2026-06-27T00:00:00Z");
-
-          return !!(!hasMissingCore || isExistingAccount);
-        };
-
-        await TourService.evaluateMigration("health_profile", profileHeuristic);
-        const seen = await TourService.isTourSeen("health_profile");
-        if (!seen) {
-          if (process.env.NODE_ENV === 'test') {
-            setShowProfileTour(true);
-          } else {
-            setTimeout(() => {
-              setShowProfileTour(true);
-            }, 800);
-          }
-        }
-      };
-      initProfileTour();
-    }
-  }, [loading, profile]);
 
   // Haptic helpers
   const triggerHapticSelection = async () => {
@@ -2302,7 +2196,7 @@ export default function HealthProfileScreen({ navigation }) {
         </View>
 
         {/* ── Simple Header (like care team) ── */}
-        <View ref={headerRef} collapsable={false} style={s.header}>
+        <View collapsable={false} style={s.header}>
           <View style={s.headerRow}>
             <View style={{ flex: 1 }}>
               <Text style={s.headerEyebrow}>
@@ -2314,17 +2208,6 @@ export default function HealthProfileScreen({ navigation }) {
                 <Text style={s.headerTitle}>
                   {t("health_profile.my_records", { defaultValue: "My Records" })}
                 </Text>
-                <Pressable
-                  style={s.helpBtn}
-                  onPress={() => {
-                    triggerHapticSelection();
-                    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-                    setShowProfileTour(true);
-                  }}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <HelpCircle size={18} color="#7C3AED" strokeWidth={2.5} />
-                </Pressable>
               </View>
               <Text
                 style={{
@@ -2366,7 +2249,7 @@ export default function HealthProfileScreen({ navigation }) {
           {/* ── PROFILE COMPLETENESS BANNER (above health score) ── */}
           <Animated.View style={anim(0)}>
             <View style={{ width: "100%" }}>
-              <View ref={profileSetupCardRef} collapsable={false} style={s.completeBanner}>
+              <View collapsable={false} style={s.completeBanner}>
                 <Pressable
                   onPress={() => {
                     LayoutAnimation.configureNext(
@@ -2384,7 +2267,7 @@ export default function HealthProfileScreen({ navigation }) {
                       alignItems: "center",
                     }}
                   >
-                    <Text ref={profileCompletenessHeaderRef} collapsable={false} style={s.completeBannerTitle}>
+                    <Text collapsable={false} style={s.completeBannerTitle}>
                       {t("health_profile.profile_completeness", {
                         defaultValue: "Profile Completeness",
                       })}
@@ -2597,7 +2480,6 @@ export default function HealthProfileScreen({ navigation }) {
               }}
             >
               <View
-                ref={healthScoreCardRef}
                 collapsable={false}
                 style={s.dashboardCard}
               >
@@ -2749,7 +2631,7 @@ export default function HealthProfileScreen({ navigation }) {
                     </Pressable>
                   </View>
                   <View style={s.dashCenter}>
-                    <View ref={healthScoreRingRef} collapsable={false} style={s.ringWrap}>
+                    <View collapsable={false} style={s.ringWrap}>
                       <Svg width={88} height={88} viewBox="0 0 88 88">
                         <SvgCircle
                           cx="44"
@@ -2846,7 +2728,7 @@ export default function HealthProfileScreen({ navigation }) {
 
           {/* ── ALERTS CARD ── */}
           <Animated.View style={anim(1)}>
-            <View ref={alertsCardRef} collapsable={false} style={s.alertsCard}>
+            <View collapsable={false} style={s.alertsCard}>
               <Pressable
                 style={({ pressed }) => [
                   s.alertHeader,
@@ -2886,7 +2768,7 @@ export default function HealthProfileScreen({ navigation }) {
                   <AlertTriangle size={18} color="#EF4444" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text ref={alertsHeaderRef} collapsable={false} style={s.alertTitle}>
+                  <Text collapsable={false} style={s.alertTitle}>
                     {t("health_profile.health_alerts", {
                       defaultValue: "Health Alerts",
                     })}
@@ -3008,14 +2890,14 @@ export default function HealthProfileScreen({ navigation }) {
           <View style={{ gap: 16 }}>
             {/* Current Conditions */}
             <Animated.View style={anim(2)}>
-              <View ref={medicalRecordsCardRef} collapsable={false} style={s.gridCard}>
+              <View collapsable={false} style={s.gridCard}>
                 <View style={s.gridHeader}>
                   <View
                     style={[s.gridIconWrap, { backgroundColor: "#FEE2E2" }]}
                   >
                     <HeartPulse size={16} color="#EF4444" />
                   </View>
-                  <Text ref={medicalRecordsHeaderRef} collapsable={false} style={s.gridTitle}>
+                  <Text collapsable={false} style={s.gridTitle}>
                     {t("health_profile.current_conditions", {
                       defaultValue: "Current Conditions",
                     })}
@@ -7159,14 +7041,6 @@ export default function HealthProfileScreen({ navigation }) {
           </View>
         </Modal>
 
-        {/* ── GUIDED TOUR OVERLAY ── */}
-        <GuidedTour
-          visible={showProfileTour}
-          steps={getProfileTourSteps()}
-          scrollRef={scrollViewRef}
-          tourKey="health_profile"
-          onClose={() => setShowProfileTour(false)}
-        />
       </View>
     </TabScreenTransition>
   );

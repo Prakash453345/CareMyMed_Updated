@@ -28,8 +28,6 @@ import Svg, {
 } from "react-native-svg";
 import SmartInput from "../../components/ui/SmartInput";
 import PremiumFormModal from "../../components/ui/PremiumFormModal";
-import GuidedTour from "../../components/ui/GuidedTour";
-import { TourService } from "../../lib/TourService";
 import {
   Phone,
   PhoneIncoming,
@@ -321,54 +319,6 @@ export default function MyCallerScreen({ navigation }) {
         .catch(() => {});
     }, [loadData]),
   );
-
-  const getTourSteps = () => {
-    return [
-      {
-        id: "caller_card",
-        target: "caller_card",
-        title: "Need help?",
-        desc: "Your care coordinator is always one tap away.",
-        icon: Phone,
-        iconColor: "#6366F1",
-        ref: callerCardRef,
-        spotlightPadding: 4,
-        borderRadius: 24,
-        preferredPlacement: "below",
-        visible: !!caller,
-      },
-    ].filter((s) => s.visible);
-  };
-
-  useEffect(() => {
-    // Only run after data loading is fully completed to ensure heuristic inputs are trustworthy
-    // Guard: only trigger once per mount to prevent re-showing after dismiss
-    if (!loading && patient?.subscription?.plan !== "free" && !tourTriggeredRef.current) {
-      tourTriggeredRef.current = true;
-      const initTour = async () => {
-        // Screen-specific domain logic check for existing user migration
-        const callerHeuristic = async () => {
-          const hasCallHistory = calls.length > 0;
-          const hasContacts = contacts.length > 0;
-          const isExistingAccount =
-            patient?.created_at &&
-            new Date(patient.created_at) < new Date("2026-06-27T00:00:00Z");
-          return !!(hasCallHistory || hasContacts || isExistingAccount);
-        };
-
-        // Strictly await migration first before querying seen state to avoid race conditions
-        await TourService.evaluateMigration("care_team", callerHeuristic);
-
-        const seen = await TourService.isTourSeen("care_team");
-        if (!seen) {
-          setTimeout(() => {
-            setShowTour(true);
-          }, 600);
-        }
-      };
-      initTour();
-    }
-  }, [loading, patient, calls, contacts]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -2103,13 +2053,6 @@ export default function MyCallerScreen({ navigation }) {
         phoneFallbackNumber={caller?.phone}
       />
 
-      <GuidedTour
-        visible={showTour}
-        steps={getTourSteps()}
-        scrollRef={scrollRef}
-        tourKey="care_team"
-        onClose={() => setShowTour(false)}
-      />
     </View>
     </TabScreenTransition>
   );

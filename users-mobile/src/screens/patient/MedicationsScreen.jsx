@@ -76,8 +76,6 @@ import * as ImageManipulator from "expo-image-manipulator";
 import usePatientStore from "../../store/usePatientStore";
 import * as Notifications from "expo-notifications";
 import AlertManager from "../../utils/AlertManager";
-import GuidedTour from "../../components/ui/GuidedTour";
-import { TourService } from "../../lib/TourService";
 import BottomSheetWrapper from "../../components/ui/BottomSheetWrapper";
 
 const { width: SW } = Dimensions.get("window");
@@ -1035,70 +1033,7 @@ export default function MedicationsScreen({ navigation, route }) {
 
   const [tempMeds, setTempMeds] = useState([]);
 
-  const [showMedsTour, setShowMedsTour] = useState(false);
-  const medsTourTriggeredRef = useRef(false);
   const scrollViewRef = useRef(null);
-  const medsListCardRef = useRef(null);
-  const scheduleHeaderRef = useRef(null);
-  const headerRef = useRef(null);
-  const adherenceCardRef = useRef(null);
-  const adherenceBadgeRef = useRef(null);
-  const slotsRef = useRef(null);
-  const tempMedsRef = useRef(null);
-  const addTempMedBtnRef = useRef(null);
-
-  const getMedsTourSteps = () => {
-    return [
-      {
-        id: "daily_schedule",
-        target: "daily_schedule",
-        title: "Daily Schedule",
-        desc: "Tap Take Now on any dose to log it and maintain your streak.",
-        icon: Pill,
-        iconColor: "#10B981",
-        ref: medsListCardRef,
-        spotlightPadding: 4,
-        borderRadius: 20,
-        preferredPlacement: "below",
-        visible: true,
-      },
-    ];
-  };
-
-  useEffect(() => {
-    const allMeds = Object.values(schedule || {}).flat();
-    const hasMeds = allMeds.length > 0;
-    // Guard: only trigger once per mount to prevent re-showing after dismiss
-    if (
-      !loading &&
-      hasMeds &&
-      patient &&
-      patient.subscription?.plan !== "free" &&
-      !medsTourTriggeredRef.current
-    ) {
-      medsTourTriggeredRef.current = true;
-      const initMedsTour = async () => {
-        const medsHeuristic = async () => {
-          const hasMarkedMeds =
-            allMeds.some((m) => m.taken) ||
-            (adherence && adherence.some((d) => d.p > 0));
-          const isExistingAccount =
-            patient?.created_at &&
-            new Date(patient.created_at) < new Date("2026-06-27T00:00:00Z");
-          return !!(hasMarkedMeds || isExistingAccount);
-        };
-
-        await TourService.evaluateMigration("medications_log", medsHeuristic);
-        const seen = await TourService.isTourSeen("medications_log");
-        if (!seen) {
-          setTimeout(() => {
-            setShowMedsTour(true);
-          }, 800);
-        }
-      };
-      initMedsTour();
-    }
-  }, [loading, patient, schedule, adherence]);
 
   const [showAddTempMedModal, setShowAddTempMedModal] = useState(false);
   const [supplyModalMed, setSupplyModalMed] = useState(null);
@@ -3635,14 +3570,6 @@ export default function MedicationsScreen({ navigation, route }) {
             </View>
           </KeyboardAvoidingView>
         </Modal>
-
-        <GuidedTour
-          visible={showMedsTour}
-          steps={getMedsTourSteps()}
-          scrollRef={scrollViewRef}
-          tourKey="medications_log"
-          onClose={() => setShowMedsTour(false)}
-        />
 
         {/* Medication Detail Bottom Sheet */}
         <BottomSheetWrapper

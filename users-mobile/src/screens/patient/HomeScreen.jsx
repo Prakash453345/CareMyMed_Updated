@@ -101,8 +101,6 @@ import AlertManager from "../../utils/AlertManager";
 import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { HapticPatterns } from "../../utils/haptics";
-import GuidedTour from "../../components/ui/GuidedTour";
-import { TourService } from "../../lib/TourService";
 import SectionContainer from "../../components/ui/SectionContainer";
 import SectionErrorCard from "../../components/ui/SectionErrorCard";
 import { useSectionQuery } from "../../hooks/useSectionQuery";
@@ -503,29 +501,9 @@ export default function PatientHomeScreen({ navigation }) {
   const medsCardRef = useRef(null);
   const todaysPlanHeaderRef = useRef(null);
 
-  const [showVitalsTour, setShowVitalsTour] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [supplyModalMed, setSupplyModalMed] = useState(null);
   const updateMedSupply = usePatientStore((s) => s.updateMedSupply);
-  const vitalsTourTriggeredRef = useRef(false);
-
-  const getVitalsTourSteps = () => {
-    return [
-      {
-        id: "health_orb",
-        target: "health_orb",
-        title: "Health Score",
-        desc: "Live score calculated daily from your medications and vitals.",
-        icon: Sparkles,
-        iconColor: "#A78BFA",
-        ref: orbRef,
-        spotlightPadding: 6,
-        borderRadius: 24,
-        preferredPlacement: "below",
-        visible: true,
-      },
-    ];
-  };
 
   const patient = usePatientStore((s) => s.patient);
   const vitals = usePatientStore((s) => s.vitals);
@@ -549,38 +527,6 @@ export default function PatientHomeScreen({ navigation }) {
       completionPct: profile?.completion_pct || 100,
     });
   }, [patient, meds, vitals, profile]);
-
-  useEffect(() => {
-    // Only run if the patient dashboard loading is done
-    // Guard: only trigger once per mount to prevent re-showing after dismiss
-    if (!storeLoading && patient && !vitalsTourTriggeredRef.current) {
-      vitalsTourTriggeredRef.current = true;
-      const initVitalsTour = async () => {
-        const vitalsHeuristic = async () => {
-          const hasVitalsHistory =
-            (vitalsHistory && vitalsHistory.length > 0) ||
-            vitals?.heart_rate ||
-            vitals?.blood_pressure?.systolic ||
-            (vitals?.oxygen_saturation != null &&
-              vitals?.oxygen_saturation !== undefined) ||
-            (vitals?.hydration != null && vitals?.hydration !== undefined);
-          const isExistingAccount =
-            patient?.created_at &&
-            new Date(patient.created_at) < new Date("2026-06-27T00:00:00Z");
-          return !!(hasVitalsHistory || isExistingAccount);
-        };
-
-        await TourService.evaluateMigration("vitals_log", vitalsHeuristic);
-        const seen = await TourService.isTourSeen("vitals_log");
-        if (!seen) {
-          setTimeout(() => {
-            setShowVitalsTour(true);
-          }, 800);
-        }
-      };
-      initVitalsTour();
-    }
-  }, [storeLoading, patient, vitalsHistory, vitals]);
 
   const activeInsights = useMemo(() => {
     const list = [];
