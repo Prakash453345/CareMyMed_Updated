@@ -65,6 +65,7 @@ import {
   Trophy,
   ChevronDown,
   HelpCircle,
+  AlertCircle,
 } from "lucide-react-native";
 import { handleAxiosError } from "../../lib/axiosInstance";
 import {
@@ -2220,7 +2221,6 @@ export default function PatientHomeScreen({ navigation }) {
                     onPress={() => {
                       triggerHapticSelection();
                       scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-                      setShowVitalsTour(true);
                     }}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
@@ -3726,14 +3726,6 @@ export default function PatientHomeScreen({ navigation }) {
               </Pressable>
             </Animated.View>
           </Animated.ScrollView>
-
-          <GuidedTour
-            visible={showVitalsTour}
-            steps={getVitalsTourSteps()}
-            scrollRef={scrollViewRef}
-            tourKey="vitals_log"
-            onClose={() => setShowVitalsTour(false)}
-          />
 
           {/* Daily Health Tip Bottom Sheet */}
           <BottomSheetWrapper

@@ -1784,7 +1784,6 @@ export default function MedicationsScreen({ navigation, route }) {
                 onPress={() => {
                   triggerHapticSelection();
                   scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-                  setShowMedsTour(true);
                 }}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >

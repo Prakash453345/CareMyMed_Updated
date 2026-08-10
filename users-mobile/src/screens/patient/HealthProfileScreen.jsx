@@ -189,34 +189,37 @@ const CONDITION_STATUS = {
   resolved: { bg: "#FAF5FF", text: "#5B21B6" },
 };
 
-const ChipSelector = ({ options, selected, onSelect, vertical = false }) => (
-  <ScrollView
-    horizontal={!vertical}
-    showsHorizontalScrollIndicator={false}
-    contentContainerStyle={vertical ? s.chipVerticalWrap : s.chipSelectorWrap}
-  >
-    {options.map((opt) => {
-      const isSelected = selected === opt.value;
-      return (
-        <Pressable
-          key={opt.value}
-          style={[
-            s.selectChip,
-            { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-            isSelected && s.selectChipActive,
-            vertical && { width: "100%", marginBottom: 10 },
-          ]}
-          onPress={() => onSelect(opt.value)}
-        >
-          {opt.icon && opt.icon(isSelected)}
-          <Text style={[s.selectChipTxt, isSelected && s.selectChipTxtActive]}>
-            {opt.label}
-          </Text>
-        </Pressable>
-      );
-    })}
-  </ScrollView>
-);
+const ChipSelector = ({ options, selected, onSelect, vertical = false }) => {
+  const safeOptions = Array.isArray(options) ? options : [];
+  return (
+    <ScrollView
+      horizontal={!vertical}
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={vertical ? s.chipVerticalWrap : s.chipSelectorWrap}
+    >
+      {safeOptions.map((opt) => {
+        const isSelected = selected === opt.value;
+        return (
+          <Pressable
+            key={opt.value}
+            style={[
+              s.selectChip,
+              { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+              isSelected && s.selectChipActive,
+              vertical && { width: "100%", marginBottom: 10 },
+            ]}
+            onPress={() => onSelect(opt.value)}
+          >
+            {opt.icon && opt.icon(isSelected)}
+            <Text style={[s.selectChipTxt, isSelected && s.selectChipTxtActive]}>
+              {opt.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+};
 
 const formatDate = (dateInput, formatStr) => {
   if (!dateInput) return "";
