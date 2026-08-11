@@ -329,22 +329,24 @@ const TactileWheelPicker = ({
   const flatListRef = useRef(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
+  const safeData = Array.isArray(data) ? data : [];
+
   const paddedData = useMemo(() => {
     return [
       { isPlaceholder: true, key: "p1" },
       { isPlaceholder: true, key: "p2" },
-      ...data.map((item, idx) => ({ ...item, key: String(idx) })),
+      ...safeData.map((item, idx) => ({ ...item, key: String(idx) })),
       { isPlaceholder: true, key: "p3" },
       { isPlaceholder: true, key: "p4" },
     ];
-  }, [data]);
+  }, [safeData]);
 
   const handleScrollEnd = (event) => {
     try {
       const y = event.nativeEvent?.contentOffset?.y || 0;
       const dataIndex = Math.round(y / itemHeight);
-      if (dataIndex >= 0 && dataIndex < data.length) {
-        const item = data[dataIndex];
+      if (dataIndex >= 0 && dataIndex < safeData.length) {
+        const item = safeData[dataIndex];
         if (item && item.value !== undefined && item.value !== selectedValue) {
           onValueChange(item.value);
           try {
@@ -358,7 +360,7 @@ const TactileWheelPicker = ({
   };
 
   useEffect(() => {
-    const index = data.findIndex((item) => item.value === selectedValue);
+    const index = safeData.findIndex((item) => item.value === selectedValue);
     if (index !== -1) {
       const timer = setTimeout(() => {
         try {
@@ -375,7 +377,7 @@ const TactileWheelPicker = ({
       }, 60);
       return () => clearTimeout(timer);
     }
-  }, [selectedValue, data, itemHeight]);
+  }, [selectedValue, safeData, itemHeight]);
 
   const renderItem = ({ item, index }) => {
     if (item.isPlaceholder) {

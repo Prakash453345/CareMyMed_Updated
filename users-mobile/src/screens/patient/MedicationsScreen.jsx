@@ -968,36 +968,6 @@ export default function MedicationsScreen({ navigation, route }) {
   const storeOptimisticToggle = usePatientStore((s) => s.optimisticToggleMed);
   const storeFetchDashboard = usePatientStore((s) => s.fetchDashboard);
 
-  // Handle notification deep linking/routing parameters
-  useEffect(() => {
-    if (route?.params && schedule) {
-      const { slot, focusMedicationId } = route.params;
-      console.log('[MedicationsScreen] Notification route params detected:', { slot, focusMedicationId });
-
-      if (focusMedicationId) {
-        // Search through all slots in the medication schedule
-        let foundMed = null;
-        for (const slotKey of Object.keys(schedule)) {
-          const med = (schedule[slotKey] || []).find(
-            (m) => m._id?.toString() === focusMedicationId?.toString()
-          );
-          if (med) {
-            foundMed = med;
-            break;
-          }
-        }
-
-        if (foundMed) {
-          console.log('[MedicationsScreen] Auto-focusing medication:', foundMed.name);
-          if (!foundMed.taken) {
-            setConfirmingMed(foundMed);
-            setIsConfirmVisible(true);
-          }
-        }
-      }
-    }
-  }, [route?.params, schedule]);
-
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showPrefModal, setShowPrefModal] = useState(false);
@@ -1047,6 +1017,36 @@ export default function MedicationsScreen({ navigation, route }) {
   });
   const [addingTempMed, setAddingTempMed] = useState(false);
   const deletedTempMedsRef = useRef({});
+
+  // Handle notification deep linking/routing parameters
+  useEffect(() => {
+    if (route?.params && schedule) {
+      const { slot, focusMedicationId } = route.params;
+      console.log('[MedicationsScreen] Notification route params detected:', { slot, focusMedicationId });
+
+      if (focusMedicationId) {
+        // Search through all slots in the medication schedule
+        let foundMed = null;
+        for (const slotKey of Object.keys(schedule)) {
+          const med = (schedule[slotKey] || []).find(
+            (m) => m._id?.toString() === focusMedicationId?.toString()
+          );
+          if (med) {
+            foundMed = med;
+            break;
+          }
+        }
+
+        if (foundMed) {
+          console.log('[MedicationsScreen] Auto-focusing medication:', foundMed.name);
+          if (!foundMed.taken) {
+            setConfirmingMed(foundMed);
+            setIsConfirmVisible(true);
+          }
+        }
+      }
+    }
+  }, [route?.params, schedule]);
 
   const staggerAnims = useRef(
     [...Array(10)].map(() => new Animated.Value(0)),
