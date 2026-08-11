@@ -119,18 +119,19 @@ export default function CareCircleScreen() {
 
             {/* List */}
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                {relationships.map((rel) => {
-                    const patient = rel.patient_id;
+                {(Array.isArray(relationships) ? relationships : []).map((rel) => {
+                    const patient = rel?.patient_id;
                     if (!patient) return null;
-                    const initials = patient.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                    const safeName = (patient?.name || 'Patient').trim();
+                    const initials = safeName.split(' ').map(n => n[0]).filter(Boolean).join('').toUpperCase().substring(0, 2);
                     
                     return (
-                        <View key={rel._id} style={styles.patientCard}>
+                        <View key={rel._id || rel.id || Math.random().toString()} style={styles.patientCard}>
                             <View style={styles.avatar}>
                                 <Text style={styles.avatarText}>{initials}</Text>
                             </View>
                             <View style={styles.info}>
-                                <Text style={styles.patientName}>{patient.name}</Text>
+                                <Text style={styles.patientName}>{safeName}</Text>
                                 <Text style={styles.relationshipText}>
                                     {rel.relationship_type || 'Family Member'}
                                 </Text>

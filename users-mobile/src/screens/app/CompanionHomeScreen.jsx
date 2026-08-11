@@ -117,8 +117,11 @@ export default function CompanionHomeScreen() {
     };
 
     const handleSelectPatient = (patient) => {
-        setCompanionSelectedPatientId(patient.id);
-        navigation.navigate('CompanionTabs');
+        const targetId = patient?.id || patient?._id || patient?.patient_id;
+        if (targetId) {
+            setCompanionSelectedPatientId(targetId);
+            navigation.navigate('CompanionTabs');
+        }
     };
 
     if (loading) {
@@ -253,8 +256,10 @@ export default function CompanionHomeScreen() {
                     </View>
                 ) : (
                     <View style={styles.patientsList}>
-                        {[...data.linked_patients].sort((a, b) => a.name.localeCompare(b.name)).map((p) => {
-                            const initials = p.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                        {[...data.linked_patients].sort((a, b) => (a?.name || '').localeCompare(b?.name || '')).map((p) => {
+                            const safeName = (p?.name || 'Patient').trim();
+                            const initials = safeName.split(' ').map(n => n[0]).filter(Boolean).join('').toUpperCase().substring(0, 2);
+                            const patientKey = p?.id || p?._id || p?.patient_id || Math.random().toString();
                             const isLowConfidence = p.visibility_label === 'Low';
                             
                             // Dynamic colors matching Whole-Health Grid Board color tokens
@@ -263,7 +268,7 @@ export default function CompanionHomeScreen() {
 
                             return (
                                 <Pressable
-                                    key={p.id}
+                                    key={patientKey}
                                     style={({ pressed }) => [styles.patientCard, pressed && { opacity: 0.9 }]}
                                     onPress={() => handleSelectPatient(p)}
                                 >

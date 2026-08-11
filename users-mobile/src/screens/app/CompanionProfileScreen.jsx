@@ -275,11 +275,13 @@ export default function CompanionProfileScreen() {
                 {/* 2. Care Circle Section */}
                 <Text style={styles.sectionTitle}>Your Active Care Circle ({linkedPatients.length})</Text>
                 <View style={styles.card}>
-                    {linkedPatients.length > 0 ? (
+                    {Array.isArray(linkedPatients) && linkedPatients.length > 0 ? (
                         linkedPatients.map((p, idx) => {
-                            const pInitials = p.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                            const safePName = (p?.name || 'Patient').trim();
+                            const pInitials = safePName.split(' ').map(n => n[0]).filter(Boolean).join('').toUpperCase().substring(0, 2);
+                            const pKey = p?.id || p?._id || p?.patient_id || idx.toString();
                             return (
-                                <View key={p.id} style={[styles.patientItem, idx === linkedPatients.length - 1 && { borderBottomWidth: 0 }]}>
+                                <View key={pKey} style={[styles.patientItem, idx === linkedPatients.length - 1 && { borderBottomWidth: 0 }]}>
                                     <View style={styles.patientAvatar}>
                                         {p.avatar_url ? (
                                             <Image source={{ uri: p.avatar_url }} style={styles.patientAvatarImg} />
@@ -288,7 +290,7 @@ export default function CompanionProfileScreen() {
                                         )}
                                     </View>
                                     <View style={{ flex: 1 }}>
-                                        <Text style={styles.patientName}>{p.name}</Text>
+                                        <Text style={styles.patientName}>{safePName}</Text>
                                         <Text style={styles.patientRelation}>Monitored Member</Text>
                                     </View>
                                     {p.health_score !== undefined && (

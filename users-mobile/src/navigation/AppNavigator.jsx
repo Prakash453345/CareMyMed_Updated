@@ -88,6 +88,15 @@ const ResilientProfileScreen = withRecoverableBoundary(PatientProfileScreen, { f
 const ResilientSettingsScreen = withRecoverableBoundary(SettingsScreen, { featureName: 'Settings', screenName: 'SettingsScreen' });
 const ResilientChatbotScreen = withRecoverableBoundary(ChatbotScreen, { featureName: 'Chatbot', screenName: 'ChatbotScreen' });
 
+// Resilient Companion Wrapped Screens
+const ResilientCompanionHomeScreen = withRecoverableBoundary(CompanionHomeScreen, { featureName: 'CompanionHome', screenName: 'CompanionHomeScreen' });
+const ResilientCompanionDashboardScreen = withRecoverableBoundary(CompanionDashboardScreen, { featureName: 'CompanionDashboard', screenName: 'CompanionDashboardScreen' });
+const ResilientCompanionAlertsScreen = withRecoverableBoundary(CompanionAlertsScreen, { featureName: 'CompanionAlerts', screenName: 'CompanionAlertsScreen' });
+const ResilientCompanionProfileScreen = withRecoverableBoundary(CompanionProfileScreen, { featureName: 'CompanionProfile', screenName: 'CompanionProfileScreen' });
+const ResilientCompanionAnalyticsScreen = withRecoverableBoundary(CompanionAnalyticsScreen, { featureName: 'CompanionAnalytics', screenName: 'CompanionAnalyticsScreen' });
+const ResilientCareCircleScreen = withRecoverableBoundary(CareCircleScreen, { featureName: 'CareCircle', screenName: 'CareCircleScreen' });
+const ResilientInterventionCenterScreen = withRecoverableBoundary(InterventionCenterScreen, { featureName: 'InterventionCenter', screenName: 'InterventionCenterScreen' });
+
 export const TAB_BAR_HEIGHT = layout.TAB_BAR_HEIGHT;
 export const TAB_BAR_BOTTOM = layout.TAB_BAR_BOTTOM;
 export const TAB_BAR_CLEARANCE = layout.TAB_BAR_CLEARANCE;
@@ -183,23 +192,23 @@ function PatientTabNavigator() {
 function CompanionTabNavigator() {
     return (
         <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, sceneContainerStyle: { backgroundColor: colors.background } }}>
-            <Tab.Screen name="CompanionDashboard" component={CompanionDashboardScreen} options={{ tabBarIconComponent: LayoutDashboard }} />
-            <Tab.Screen name="CompanionAlerts" component={CompanionAlertsScreen} options={{ tabBarIconComponent: Bell }} />
+            <Tab.Screen name="CompanionDashboard" component={ResilientCompanionDashboardScreen} options={{ tabBarIconComponent: LayoutDashboard }} />
+            <Tab.Screen name="CompanionAlerts" component={ResilientCompanionAlertsScreen} options={{ tabBarIconComponent: Bell }} />
             <Tab.Screen name="CompanionChatList" component={CompanionChatListScreen} options={{ tabBarIconComponent: MessageSquare }} />
-            <Tab.Screen name="Profile" component={CompanionProfileScreen} options={{ tabBarIconComponent: UserCircle }} />
+            <Tab.Screen name="Profile" component={ResilientCompanionProfileScreen} options={{ tabBarIconComponent: UserCircle }} />
         </Tab.Navigator>
     );
 }
 
 const CompanionMainStack = () => (
     <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background }, animation: "fade" }}>
-        <Stack.Screen name="CompanionHome" component={CompanionHomeScreen} />
+        <Stack.Screen name="CompanionHome" component={ResilientCompanionHomeScreen} />
         <Stack.Screen name="CompanionTabs" component={CompanionTabNavigator} />
-        <Stack.Screen name="CompanionAnalytics" component={CompanionAnalyticsScreen} />
-        <Stack.Screen name="CareCircle" component={CareCircleScreen} />
+        <Stack.Screen name="CompanionAnalytics" component={ResilientCompanionAnalyticsScreen} />
+        <Stack.Screen name="CareCircle" component={ResilientCareCircleScreen} />
         <Stack.Screen name="ChatHistory" component={ChatHistoryScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
         <Stack.Screen name="Chatbot" component={ChatbotScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
-        <Stack.Screen name="InterventionCenter" component={InterventionCenterScreen} />
+        <Stack.Screen name="InterventionCenter" component={ResilientInterventionCenterScreen} />
     </Stack.Navigator>
 );
 

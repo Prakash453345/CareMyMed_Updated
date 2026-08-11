@@ -532,8 +532,8 @@ export default function CompanionDashboardScreen() {
                                 </View>
 
                                 <View style={styles.alertsList}>
-                                    {data.recent_alerts.map(a => (
-                                        <View key={a._id} style={styles.alertItem}>
+                                    {(Array.isArray(data?.recent_alerts) ? data.recent_alerts : []).map((a, idx) => (
+                                        <View key={a._id || a.id || idx.toString()} style={styles.alertItem}>
                                             <View style={styles.alertDot} />
                                             <Text style={styles.alertDescription}>{a.description}</Text>
                                         </View>
@@ -560,8 +560,8 @@ export default function CompanionDashboardScreen() {
                                 <Text style={styles.refillBannerTitle}>Low Medication Stock Alert</Text>
                             </View>
                             <ScrollView style={styles.refillList} nestedScrollEnabled={true}>
-                                {data.refill_alerts.map((alert) => (
-                                    <View key={alert.medication_id} style={styles.refillItem}>
+                                {(Array.isArray(data?.refill_alerts) ? data.refill_alerts : []).map((alert, idx) => (
+                                    <View key={alert.medication_id || alert._id || idx.toString()} style={styles.refillItem}>
                                         <Text style={styles.refillMedName}>{alert.name}</Text>
                                         <Text style={styles.refillMedStock}>
                                             Only <Text style={{ color: colors.danger, ...FONT.bold }}>{alert.remaining_doses}</Text> doses left!
