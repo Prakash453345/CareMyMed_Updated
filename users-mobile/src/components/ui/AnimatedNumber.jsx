@@ -13,21 +13,23 @@ export default function AnimatedNumber({
     ...props
 }) {
     const { reduceMotion } = useMotion();
-    const [displayValue, setDisplayValue] = useState(reduceMotion ? value : 0);
-    const animValue = useRef(new Animated.Value(reduceMotion ? value : 0)).current;
+    const safeValue = Number.isFinite(value) ? value : 0;
+    const [displayValue, setDisplayValue] = useState(reduceMotion ? safeValue : 0);
+    const animValue = useRef(new Animated.Value(reduceMotion ? safeValue : 0)).current;
 
     useEffect(() => {
         if (reduceMotion) {
-            setDisplayValue(value);
+            setDisplayValue(safeValue);
             return;
         }
 
         const id = animValue.addListener(({ value: val }) => {
-            setDisplayValue(val);
+            const numVal = Number.isFinite(val) ? val : 0;
+            setDisplayValue(numVal);
         });
 
         Animated.spring(animValue, {
-            toValue: value,
+            toValue: safeValue,
             speed: 12,
             bounciness: 4,
             useNativeDriver: false,
@@ -36,9 +38,10 @@ export default function AnimatedNumber({
         return () => {
             animValue.removeListener(id);
         };
-    }, [value, reduceMotion, animValue]);
+    }, [safeValue, reduceMotion, animValue]);
 
-    const rounded = displayValue.toFixed(decimals);
+    const numToFormat = Number.isFinite(displayValue) ? displayValue : 0;
+    const rounded = numToFormat.toFixed(decimals);
     let formatted = rounded;
     if (useGrouping) {
         const parts = rounded.split('.');

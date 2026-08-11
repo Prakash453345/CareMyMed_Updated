@@ -429,7 +429,15 @@ export default function CompanionDashboardScreen() {
         );
     }
 
-    const adherence = data.patient.adherence_rate !== null ? data.patient.adherence_rate : 0;
+    const patient = data?.patient ?? {};
+    const patientName = typeof patient.name === 'string' && patient.name.trim()
+        ? patient.name.trim()
+        : 'Patient';
+    const patientFirstName = patientName.split(/\s+/)[0];
+
+    const adherenceRate = Number.isFinite(patient.adherence_rate) ? patient.adherence_rate : null;
+    const currentStreak = Number.isFinite(patient.current_streak) ? patient.current_streak : 0;
+    const adherence = adherenceRate !== null ? adherenceRate : 0;
     
     // BP validation: handle empty BP readings gracefully
     const hasVitals = data.latest_vital && 
@@ -490,7 +498,7 @@ export default function CompanionDashboardScreen() {
             <CompanionHeader
                 style={{ backgroundColor: 'transparent', borderBottomWidth: 0, shadowColor: 'transparent', elevation: 0 }}
                 subtitle="Family Care Portal"
-                title={`${data.patient.name}'s Health`}
+                title={`${patientName}'s Health`}
                 onBack={() => navigation.goBack()}
                 right={(
                     <ScalePressable style={styles.bellButton} onPress={() => navigation.navigate('CompanionAlerts')}>
@@ -511,7 +519,7 @@ export default function CompanionDashboardScreen() {
                             <Text style={styles.lowVisibilityBannerTitle}>Low Care Visibility</Text>
                         </View>
                         <Text style={styles.lowVisibilityBannerText}>
-                            {data.patient.name} has not logged any medications or vitals recently. Health indicators may be inaccurate until tracking resumes.
+                            {patientName} has not logged any medications or vitals recently. Health indicators may be inaccurate until tracking resumes.
                         </Text>
                     </View>
                 )}
@@ -601,9 +609,9 @@ export default function CompanionDashboardScreen() {
 
                             <View style={styles.meterRow}>
                                 <View style={{ flex: 1 }}>
-                                    {data.patient.adherence_rate !== null ? (
+                                    {adherenceRate !== null ? (
                                         <AnimatedNumber 
-                                            value={data.patient.adherence_rate} 
+                                            value={adherenceRate} 
                                             suffix="%" 
                                             style={styles.largeValue} 
                                         />
@@ -614,7 +622,7 @@ export default function CompanionDashboardScreen() {
                                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                             <Text style={styles.streakText}>🔥 </Text>
                                             <AnimatedNumber 
-                                                value={data.patient.current_streak} 
+                                                value={currentStreak} 
                                                 suffix=" Day Streak"
                                                 style={styles.streakText} 
                                             />
@@ -729,7 +737,7 @@ export default function CompanionDashboardScreen() {
                                         </View>
                                         
                                         <Text style={styles.vitalsEmptyDesc}>
-                                            No BP logs recorded today. Vitals sync when {data.patient.name.split(' ')[0]} connects a BP monitor.
+                                            No BP logs recorded today. Vitals sync when {patientFirstName} connects a BP monitor.
                                         </Text>
 
                                         <ScalePressable style={styles.vitalsSyncBtnContainer} onPress={() => loadData()}>
@@ -878,9 +886,9 @@ export default function CompanionDashboardScreen() {
                     
                     <View style={styles.summaryColCenter}>
                         <Text style={styles.summaryColLabel}>Adherence</Text>
-                        {data.patient.adherence_rate !== null ? (
+                        {adherenceRate !== null ? (
                             <AnimatedNumber 
-                                value={data.patient.adherence_rate} 
+                                value={adherenceRate} 
                                 suffix="%" 
                                 style={[
                                     styles.summaryColValue, 
