@@ -176,7 +176,10 @@ const usePatientStore = create((set, get) => ({
             }
         }).catch(() => {});
     },
+    companionSelectedPatientId: null,
+    companionSelectedPatientName: null,
     setCompanionSelectedPatientId: (id) => set({ companionSelectedPatientId: id }),
+    setCompanionSelectedPatientName: (name) => set({ companionSelectedPatientName: name }),
     setSyncState: (state) => set({ syncState: state }),
     setPendingSyncCount: (count) => set({ pendingSyncCount: count }),
     setPendingInterventionsCount: (count) => set({ pendingInterventionsCount: typeof count === 'function' ? count(get().pendingInterventionsCount) : count }),
@@ -187,6 +190,7 @@ const usePatientStore = create((set, get) => ({
     resetStore: () => set({
         patient: null,
         companionSelectedPatientId: null,
+        companionSelectedPatientName: null,
         vitals: null,
         vitalsHistory: [],
         aiPrediction: null,

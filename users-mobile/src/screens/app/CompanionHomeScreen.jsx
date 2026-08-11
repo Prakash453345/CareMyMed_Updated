@@ -68,6 +68,7 @@ export default function CompanionHomeScreen() {
     const [linking, setLinking] = useState(false);
     
     const setCompanionSelectedPatientId = usePatientStore(s => s.setCompanionSelectedPatientId);
+    const setCompanionSelectedPatientName = usePatientStore(s => s.setCompanionSelectedPatientName);
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
     const { signOut } = useAuth();
@@ -118,8 +119,12 @@ export default function CompanionHomeScreen() {
 
     const handleSelectPatient = (patient) => {
         const targetId = patient?.id || patient?._id || patient?.patient_id;
+        const normalizedName = typeof patient?.name === 'string' ? patient.name.trim() : '';
         if (targetId) {
             setCompanionSelectedPatientId(targetId);
+            if (normalizedName) {
+                setCompanionSelectedPatientName(normalizedName);
+            }
             navigation.navigate('CompanionTabs');
         }
     };

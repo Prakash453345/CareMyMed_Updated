@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import CompanionHeader from '../../components/ui/CompanionHeader';
 import PremiumFormModal from '../../components/ui/PremiumFormModal';
 import TabScreenTransition from '../../components/ui/TabScreenTransition';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const C = {
     bg: colors.background,
@@ -72,6 +73,25 @@ const getAlertTitle = (type) => {
                 .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                 .join(' ');
     }
+};
+
+const TELEMETRY_MESSAGES = {
+    setup_opened: 'Wearable health setup was opened by the patient.',
+    manual_sync_clicked: 'Patient initiated a manual health data sync.',
+    manual_sync_completed: 'Manual health telemetry sync completed successfully.',
+    setup_permission_denied: 'Wearable setup permissions were declined by the patient.',
+    device_disconnected: 'Wearable device disconnected.',
+    sync_failed: 'Health data synchronization failed.',
+    sync_timeout: 'Health data synchronization timed out.',
+};
+
+const formatAlertDescription = (desc) => {
+    if (!desc) return '';
+    if (typeof desc === 'string' && desc.includes('Setup Telemetry:')) {
+        const eventKey = desc.replace(/^.*Setup Telemetry:\s*/, '').trim();
+        return TELEMETRY_MESSAGES[eventKey] || 'Wearable health activity was recorded.';
+    }
+    return desc;
 };
 
 const getAlertPriority = (type) => {
@@ -151,7 +171,9 @@ export default function CompanionAlertsScreen() {
     const [showLogsModal, setShowLogsModal] = useState(false);
 
     const selectedPatientId = usePatientStore(s => s.companionSelectedPatientId);
+    const companionSelectedPatientName = usePatientStore(s => s.companionSelectedPatientName);
     const navigation = useNavigation();
+    const insets = useSafeAreaInsets();
 
     const loadData = async () => {
         try {
@@ -290,7 +312,7 @@ export default function CompanionAlertsScreen() {
                 />
 
                 {/* Custom Header matching the first picture */}
-                <View style={styles.customHeader}>
+                <View style={[styles.customHeader, { paddingTop: insets.top + 16 }]}>
                     <View style={styles.headerTopRow}>
                         <Pressable 
                             onPress={() => navigation.goBack()}
@@ -301,7 +323,7 @@ export default function CompanionAlertsScreen() {
                         
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.headerSubtitleText}>ALERT CENTER</Text>
-                            <Text style={styles.headerTitleText}>Patient's Alerts</Text>
+                            <Text style={styles.headerTitleText}>{companionSelectedPatientName || 'Patient'}'s Alerts</Text>
                         </View>
 
                         <View style={styles.bellButtonCircle}>
@@ -392,7 +414,7 @@ export default function CompanionAlertsScreen() {
             />
 
             {/* Custom Header matching the first picture */}
-            <View style={styles.customHeader}>
+            <View style={[styles.customHeader, { paddingTop: insets.top + 16 }]}>
                 <View style={styles.headerTopRow}>
                     <Pressable 
                         onPress={() => navigation.goBack()}
@@ -403,7 +425,7 @@ export default function CompanionAlertsScreen() {
                     
                     <View style={styles.headerTitleContainer}>
                         <Text style={styles.headerSubtitleText}>ALERT CENTER</Text>
-                        <Text style={styles.headerTitleText}>{data.patient.name}'s Alerts</Text>
+                        <Text style={styles.headerTitleText}>{companionSelectedPatientName || data?.patient?.name || 'Patient'}'s Alerts</Text>
                     </View>
 
                     <Pressable
@@ -501,7 +523,7 @@ export default function CompanionAlertsScreen() {
                                                 <Text style={[styles.severityPillText, { color: styleCfg.accent }]}>{styleCfg.label}</Text>
                                             </View>
                                             <Text style={styles.alertTitleText} numberOfLines={2}>{getAlertTitle(a.type)}</Text>
-                                            <Text style={styles.alertDescText}>{a.description}</Text>
+                                            <Text style={styles.alertDescText}>{formatAlertDescription(a.description)}</Text>
                                             <View style={styles.alertTimeRow}>
                                                 <Clock size={12} color={styleCfg.accent} />
                                                 <Text style={styles.alertTimeText}>Today, 9:15 AM</Text>
@@ -747,7 +769,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginTop: 16,
+        marginTop: 0,
     },
     backButtonCircle: {
         width: 48,
