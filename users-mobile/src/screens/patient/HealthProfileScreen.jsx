@@ -364,10 +364,7 @@ const TactileWheelPicker = ({
     if (index !== -1) {
       const timer = setTimeout(() => {
         try {
-          const list = flatListRef.current?.getNode
-            ? flatListRef.current.getNode()
-            : (flatListRef.current?._component || flatListRef.current);
-          list?.scrollToOffset?.({
+          flatListRef.current?.scrollToOffset?.({
             offset: index * itemHeight,
             animated: false,
           });
@@ -996,18 +993,20 @@ export default function HealthProfileScreen({ navigation }) {
           smoking_status: profile?.lifestyle?.smoking_status || "",
           alcohol_use: profile?.lifestyle?.alcohol_use || "",
         });
-      else if (type === "activity")
+      else if (type === "activity") {
+        const aids = profile?.lifestyle?.mobility_aids;
         setFormState({
           exercise_frequency: profile?.lifestyle?.exercise_frequency || "",
           mobility_level: profile?.lifestyle?.mobility_level || "full",
-          mobility_aids: profile?.lifestyle?.mobility_aids?.join(", ") || "",
+          mobility_aids: Array.isArray(aids) ? aids.join(", ") : (typeof aids === "string" ? aids : ""),
         });
-      else if (type === "identity")
+      } else if (type === "identity") {
+        const di = profile?.lifestyle?.dietary_restrictions;
         setFormState({
           blood_type: profile?.blood_type || "unknown",
-          dietary_restrictions:
-            profile?.lifestyle?.dietary_restrictions?.join(", ") || "",
+          dietary_restrictions: Array.isArray(di) ? di.join(", ") : (typeof di === "string" ? di : ""),
         });
+      }
       else if (type === "contact")
         setFormState({
           name: "",

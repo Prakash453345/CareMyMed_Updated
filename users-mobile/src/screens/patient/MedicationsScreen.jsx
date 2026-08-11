@@ -740,7 +740,7 @@ const WheelCol = ({ data, selectedValue, onValueChange, colWidth = 72 }) => {
         }}
         nestedScrollEnabled
       >
-        {data.map((item, idx) => {
+        {(Array.isArray(data) ? data : []).map((item, idx) => {
           const sel = item === selectedValue;
           return (
             <Pressable
@@ -2073,7 +2073,7 @@ export default function MedicationsScreen({ navigation, route }) {
                     </View>
                   </View>
                   <View style={{ flexDirection: "row", gap: 2 }}>
-                    {adherence.map((d, i) => (
+                    {(Array.isArray(adherence) ? adherence : []).map((d, i) => (
                       <ChartBar
                         key={i}
                         percentage={d.p}
@@ -2156,8 +2156,8 @@ export default function MedicationsScreen({ navigation, route }) {
                     return (
                       <View key={slot} style={styles.slotSection}>
                         <SlotHeader slot={slot} callTime={preferences[slot]} />
-                        {meds.map((med) => (
-                          <View key={med.id} style={{ marginBottom: 10 }}>
+                        {(Array.isArray(meds) ? meds : []).map((med, idx) => (
+                          <View key={med.id || med._id || idx.toString()} style={{ marginBottom: 10 }}>
                             <SwipeableMedCard
                               med={med}
                               onToggle={handleMedIconPress}
@@ -2317,7 +2317,7 @@ export default function MedicationsScreen({ navigation, route }) {
                       </Text>
                     </View>
                   ) : (
-                    tempMeds.map((tm, idx) => {
+                    (Array.isArray(tempMeds) ? tempMeds : []).map((tm, idx) => {
                       const riskColors = {
                         safe: "#10B981",
                         caution: "#F59E0B",
@@ -2715,7 +2715,7 @@ export default function MedicationsScreen({ navigation, route }) {
                           })}
                         </Text>
                       </View>
-                      {supplyMeds.map((sm) => {
+                      {(Array.isArray(supplyMeds) ? supplyMeds : []).map((sm, idx) => {
                         const pct =
                           sm.total > 0
                             ? Math.min((sm.remaining / sm.total) * 100, 100)
