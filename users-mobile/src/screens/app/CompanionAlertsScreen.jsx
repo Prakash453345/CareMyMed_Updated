@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Linking, Image, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Linking, Image, Animated, StatusBar, Platform } from 'react-native';
 import { apiService } from '../../lib/api';
 import { colors, radius, spacing, shadows, layout } from '../../theme';
 import { Bell, CheckCircle2, ShieldCheck, ShieldAlert, Phone, Clock, ChevronRight, Activity, Check, Shield, MessageSquare, ArrowLeft, AlertCircle, FileText } from 'lucide-react-native';
@@ -174,6 +174,7 @@ export default function CompanionAlertsScreen() {
     const companionSelectedPatientName = usePatientStore(s => s.companionSelectedPatientName);
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
+    const topHeaderPadding = Math.max(56, (StatusBar.currentHeight || 0) + 16, insets.top + 16);
 
     const loadData = async () => {
         try {
@@ -312,7 +313,7 @@ export default function CompanionAlertsScreen() {
                 />
 
                 {/* Custom Header matching the first picture */}
-                <View style={[styles.customHeader, { paddingTop: insets.top + 16 }]}>
+                <View style={[styles.customHeader, { paddingTop: topHeaderPadding }]}>
                     <View style={styles.headerTopRow}>
                         <Pressable 
                             onPress={() => navigation.goBack()}
@@ -414,7 +415,7 @@ export default function CompanionAlertsScreen() {
             />
 
             {/* Custom Header matching the first picture */}
-            <View style={[styles.customHeader, { paddingTop: insets.top + 16 }]}>
+            <View style={[styles.customHeader, { paddingTop: topHeaderPadding }]}>
                 <View style={styles.headerTopRow}>
                     <Pressable 
                         onPress={() => navigation.goBack()}
