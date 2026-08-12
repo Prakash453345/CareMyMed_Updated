@@ -1568,14 +1568,16 @@ export default function MedicationsScreen({ navigation, route }) {
   };
 
   // ── Derived values ─────────────────────────────────────────────────────
-  const allMeds = SLOT_ORDER.flatMap((slot) => schedule[slot] || []);
+  const safeSchedule = schedule || {};
+  const safeAdherence = Array.isArray(adherence) ? adherence : [];
+  const allMeds = SLOT_ORDER.flatMap((slot) => safeSchedule[slot] || []);
   const takenCount = allMeds.filter((m) => m.taken).length;
   const totalCount = allMeds.length;
   const progressPerc = totalCount > 0 ? (takenCount / totalCount) * 100 : 0;
   const adherencePct =
-    adherence.length > 0
+    safeAdherence.length > 0
       ? Math.round(
-          adherence.reduce((s, d) => s + (d.p || 0), 0) / adherence.length,
+          safeAdherence.reduce((s, d) => s + (d.p || 0), 0) / safeAdherence.length,
         )
       : 0;
 
@@ -1586,7 +1588,7 @@ export default function MedicationsScreen({ navigation, route }) {
     const start = SLOT_START_HOURS[slot];
     const end = SLOT_END_HOURS[slot];
     if (start === undefined) return false;
-    const hasUntaken = (schedule[slot] || []).some((m) => !m.taken);
+    const hasUntaken = (safeSchedule[slot] || []).some((m) => !m.taken);
     if (!hasUntaken) return false;
     // Slot is relevant if we're currently IN it (start <= hour < end) or it's upcoming (hour < start)
     return hour < end;
