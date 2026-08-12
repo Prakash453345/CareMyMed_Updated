@@ -1486,10 +1486,10 @@ export default function HealthProfileScreen({ navigation }) {
 
     if (!formState._id) {
       const checkDuplicate = (list, key) =>
-        list.some(
+        (Array.isArray(list) ? list : []).some(
           (item) =>
-            item[key]?.toLowerCase().trim() ===
-            formState[key]?.toLowerCase().trim(),
+            item?.[key]?.toLowerCase().trim() ===
+            formState?.[key]?.toLowerCase().trim(),
         );
       if (editingType === "condition" && checkDuplicate(conditions, "name")) {
         return Platform.OS === "web"
@@ -1556,10 +1556,10 @@ export default function HealthProfileScreen({ navigation }) {
       }
       if (
         editingType === "history" &&
-        medical_history.some(
+        (Array.isArray(medical_history) ? medical_history : []).some(
           (item) =>
-            item.event?.toLowerCase().trim() ===
-            formState.event?.toLowerCase().trim(),
+            item?.event?.toLowerCase().trim() ===
+            formState?.event?.toLowerCase().trim(),
         )
       ) {
         return Platform.OS === "web"
