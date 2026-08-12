@@ -77,44 +77,6 @@ import usePatientStore from "../../store/usePatientStore";
 import * as Notifications from "expo-notifications";
 import AlertManager from "../../utils/AlertManager";
 import BottomSheetWrapper from "../../components/ui/BottomSheetWrapper";
-import GuidedTour from "../../components/ui/GuidedTour";
-import { TourService } from "../../lib/TourService";
-
-export const getMedsTourSteps = ({
-  headerRef,
-  medsListCardRef,
-  adherenceCardRef,
-  adherenceBadgeRef,
-  slotsRef,
-  tempMedsRef,
-  addTempMedBtnRef,
-}) => [
-  {
-    targetRef: headerRef,
-    title: "Medication Care Plan",
-    description: "View your daily medication schedule and manage call preferences here.",
-  },
-  {
-    targetRef: medsListCardRef,
-    title: "Daily Progress",
-    description: "Track how many doses you've taken today with real-time adherence progress.",
-  },
-  {
-    targetRef: adherenceCardRef,
-    title: "Weekly Adherence",
-    description: "See your 7-day adherence trend to stay on track with your prescriptions.",
-  },
-  {
-    targetRef: slotsRef,
-    title: "Time Slot Schedule",
-    description: "Your medications are grouped by morning, afternoon, evening, and night slots.",
-  },
-  {
-    targetRef: tempMedsRef,
-    title: "Temporary Medications",
-    description: "Add short-term or OTC medicines with safety risk insights.",
-  },
-];
 
 const { width: SW } = Dimensions.get("window");
 const AnimatedSvgCircle = Animated.createAnimatedComponent(SvgCircle);
@@ -1050,25 +1012,6 @@ export default function MedicationsScreen({ navigation, route }) {
   const tempMedsRef = useRef(null);
   const addTempMedBtnRef = useRef(null);
   const emptyStateRef = useRef(null);
-  const [showTour, setShowTour] = useState(false);
-
-  useEffect(() => {
-    TourService.isTourSeen('medications_tour').then((seen) => {
-      if (!seen) setShowTour(true);
-    }).catch(() => {});
-  }, []);
-
-  const medsTourSteps = useMemo(() => {
-    return getMedsTourSteps({
-      headerRef,
-      medsListCardRef,
-      adherenceCardRef,
-      adherenceBadgeRef,
-      slotsRef,
-      tempMedsRef,
-      addTempMedBtnRef,
-    });
-  }, []);
 
   const [showAddTempMedModal, setShowAddTempMedModal] = useState(false);
   const [supplyModalMed, setSupplyModalMed] = useState(null);
@@ -3767,13 +3710,6 @@ export default function MedicationsScreen({ navigation, route }) {
             );
           })()}
         </BottomSheetWrapper>
-
-        <GuidedTour
-          visible={showTour}
-          steps={medsTourSteps}
-          tourKey="medications_tour"
-          onClose={() => setShowTour(false)}
-        />
       </View>
     </TabScreenTransition>
   );
