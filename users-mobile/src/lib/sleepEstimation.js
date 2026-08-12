@@ -34,12 +34,13 @@ export const requestUsageStatsPermission = async () => {
   }
 };
 
-export const estimateSleep = async () => {
+export const estimateSleep = async (userId = null) => {
   try {
     const todayStr = new Date().toDateString();
+    const promptKey = userId ? `last_sleep_prompt_date_${userId}` : "last_sleep_prompt_date";
 
     // Check if user already prompted/logged today
-    const lastPrompted = await AsyncStorage.getItem("last_sleep_prompt_date");
+    const lastPrompted = await AsyncStorage.getItem(promptKey);
     if (lastPrompted === todayStr) {
       return {
         estimate: null,

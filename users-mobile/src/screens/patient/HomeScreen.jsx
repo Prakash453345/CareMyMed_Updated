@@ -877,9 +877,15 @@ export default function PatientHomeScreen({ navigation }) {
     });
   };
 
+  const getSleepPromptKey = () => {
+    const pUid = patient?.id || patient?._id || user?.id;
+    return pUid ? `last_sleep_prompt_date_${pUid}` : "last_sleep_prompt_date";
+  };
+
   const checkEstimatedSleep = async () => {
     try {
-      const result = await sleepEstimation.estimateSleep();
+      const pUid = patient?.id || patient?._id || user?.id;
+      const result = await sleepEstimation.estimateSleep(pUid);
       if (result && result.estimate) {
         setEstimatedSleep({
           ...result.estimate,
@@ -921,7 +927,7 @@ export default function PatientHomeScreen({ navigation }) {
         source: apiSource,
       });
       await AsyncStorage.setItem(
-        "last_sleep_prompt_date",
+        getSleepPromptKey(),
         estimatedSleep.dateStr,
       );
       setEstimatedSleep(null);
@@ -939,7 +945,7 @@ export default function PatientHomeScreen({ navigation }) {
     if (!estimatedSleep) return;
     try {
       const dateStr = estimatedSleep.dateStr || new Date().toDateString();
-      await AsyncStorage.setItem("last_sleep_prompt_date", dateStr);
+      await AsyncStorage.setItem(getSleepPromptKey(), dateStr);
       setEstimatedSleep(null);
     } catch (e) {
       console.warn("Failed to dismiss sleep prompt:", e.message);
@@ -986,7 +992,7 @@ export default function PatientHomeScreen({ navigation }) {
         quality: "good",
         source: apiSource,
       });
-      await AsyncStorage.setItem("last_sleep_prompt_date", dateStr);
+      await AsyncStorage.setItem(getSleepPromptKey(), dateStr);
       setEstimatedSleep(null);
       AlertManager.alert(
         "Success",
