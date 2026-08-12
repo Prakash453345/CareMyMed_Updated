@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import ReanimatedAnimated, {
     useSharedValue as useReanimatedShared,
+    useAnimatedStyle as useReanimatedStyle,
     withSpring as reanimatedWithSpring,
     withDelay as reanimatedWithDelay,
     withTiming as reanimatedWithTiming,
