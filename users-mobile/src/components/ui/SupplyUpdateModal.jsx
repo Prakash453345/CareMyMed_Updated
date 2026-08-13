@@ -12,38 +12,72 @@ import {
 import { Package, X, Check, AlertCircle, Plus, Minus } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
-const calcDailyDoseRequirement = (med) => {
-  if (!med) return 1;
+const calcMonthlyDoseRequirement = (med, months = 1) => {
+  if (!med) return Math.round(30 * months);
+
+  const freqStr = (typeof med.frequency === 'string' ? med.frequency : '') || 
+                  (typeof med.frequency_type === 'string' ? med.frequency_type : '');
+  const lowerFreq = freqStr.toLowerCase();
+
+  // 1. Weekly (e.g. "once a week", "weekly", "1/week", "every week")
+  if (/once\s*a\s*week|weekly|1\/week|every\s*week|once\s*weekly/i.test(lowerFreq)) {
+    return Math.max(1, Math.round(4 * months));
+  }
+
+  // 2. Twice a week (e.g. "twice a week", "2x/week", "2 times a week")
+  if (/twice\s*a\s*week|2x\/week|2\s*times\s*a\s*week/i.test(lowerFreq)) {
+    return Math.max(1, Math.round(8 * months));
+  }
+
+  // 3. Twice a month / Every 2 weeks (e.g. "twice a month", "every 2 weeks", "biweekly")
+  if (/twice\s*a\s*month|2x\/month|every\s*2\s*weeks|biweekly|2\s*times\s*a\s*month/i.test(lowerFreq)) {
+    return Math.max(1, Math.round(2 * months));
+  }
+
+  // 4. Once a month (e.g. "once a month", "monthly")
+  if (/once\s*a\s*month|monthly|1\/month/i.test(lowerFreq)) {
+    return Math.max(1, Math.round(1 * months));
+  }
+
+  // 5. Every X days (e.g. "every 2 days", "alternate days")
+  if (/alternate\s*day/i.test(lowerFreq)) {
+    return Math.max(1, Math.round(15 * months));
+  }
+  const everyXDaysMatch = lowerFreq.match(/every\s*(\d+)\s*days?/i);
+  if (everyXDaysMatch && parseInt(everyXDaysMatch[1], 10) > 0) {
+    const daysInterval = parseInt(everyXDaysMatch[1], 10);
+    return Math.max(1, Math.round((30 / daysInterval) * months));
+  }
+
+  // 6. Daily dosage calculation (from active slots, daily_doses_count, or times_per_day)
+  let dailyDoses = 1;
   if (typeof med.daily_doses_count === 'number' && med.daily_doses_count > 0) {
-    return med.daily_doses_count;
-  }
-  if (med.schedule && typeof med.schedule === 'object') {
-    const slots = ['morning', 'afternoon', 'evening', 'night'];
-    const activeSlots = slots.filter(s => !!med.schedule[s]).length;
-    if (activeSlots > 0) return activeSlots;
-  }
-  if (typeof med.times_per_day === 'number' && med.times_per_day > 0) {
-    return med.times_per_day;
-  }
-  if (typeof med.frequency === 'number' && med.frequency > 0) {
-    return med.frequency;
-  }
-  if (typeof med.frequency === 'string') {
-    const match = med.frequency.match(/(\d+)/);
-    if (match && parseInt(match[1], 10) > 0) {
-      return parseInt(match[1], 10);
+    dailyDoses = med.daily_doses_count;
+  } else if (med.schedule && typeof med.schedule === 'object') {
+    const activeSlots = ['morning', 'afternoon', 'evening', 'night'].filter(s => !!med.schedule[s]).length;
+    if (activeSlots > 0) dailyDoses = activeSlots;
+  } else if (typeof med.times_per_day === 'number' && med.times_per_day > 0) {
+    dailyDoses = med.times_per_day;
+  } else if (typeof med.frequency === 'number' && med.frequency > 0) {
+    dailyDoses = med.frequency;
+  } else if (/twice|2x|2\/day|2\s*times\s*a\s*day/i.test(lowerFreq)) {
+    dailyDoses = 2;
+  } else if (/thrice|3x|3\/day|3\s*times\s*a\s*day/i.test(lowerFreq)) {
+    dailyDoses = 3;
+  } else {
+    const numMatch = lowerFreq.match(/(\d+)/);
+    if (numMatch && parseInt(numMatch[1], 10) > 0) {
+      dailyDoses = parseInt(numMatch[1], 10);
     }
-    if (/twice|2x/i.test(med.frequency)) return 2;
-    if (/thrice|3x/i.test(med.frequency)) return 3;
   }
-  return 1;
+
+  return Math.max(1, Math.round(30 * dailyDoses * months));
 };
 
 export default function SupplyUpdateModal({ visible, onClose, med, onConfirm }) {
-  const dailyDoses = calcDailyDoseRequirement(med);
-  const oneMonthCount = Math.round(30 * dailyDoses);
-  const twoMonthsCount = Math.round(60 * dailyDoses);
-  const threeMonthsCount = Math.round(90 * dailyDoses);
+  const oneMonthCount = calcMonthlyDoseRequirement(med, 1);
+  const twoMonthsCount = calcMonthlyDoseRequirement(med, 2);
+  const threeMonthsCount = calcMonthlyDoseRequirement(med, 3);
 
   const [selectedQty, setSelectedQty] = useState(oneMonthCount);
   const [customQty, setCustomQty] = useState(String(oneMonthCount));
@@ -57,7 +91,7 @@ export default function SupplyUpdateModal({ visible, onClose, med, onConfirm }) 
 
   useEffect(() => {
     if (visible && med) {
-      const defaultQty = Math.round(30 * calcDailyDoseRequirement(med));
+      const defaultQty = calcMonthlyDoseRequirement(med, 1);
       setSelectedQty(defaultQty);
       setCustomQty(String(defaultQty));
       setIsCustom(false);
@@ -112,7 +146,8 @@ export default function SupplyUpdateModal({ visible, onClose, med, onConfirm }) 
     }
   };
 
-  const estDaysLeft = Math.max(0, Math.round(remainingDoses / (med?.daily_doses_count || 1)));
+  const monthlyRate = oneMonthCount / 30;
+  const estDaysLeft = Math.max(0, Math.round(remainingDoses / (monthlyRate || 1)));
 
   return (
     <Modal
