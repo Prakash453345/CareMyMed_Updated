@@ -93,6 +93,8 @@ const PremiumFormModal = ({
     children,
     headerRight,
     centered = false,
+    floating = false,
+    scrollEnabled = true,
     icon,
     iconColor = '#7C3AED',
     iconBg = '#F5F3FF',
@@ -310,6 +312,7 @@ const PremiumFormModal = ({
                 <View style={[
                     styles.sheetContainer,
                     centered && styles.sheetContainerCentered,
+                    floating && styles.sheetContainerFloating,
                     keyboardHeight > 0 && { maxHeight: Math.max(280, SCREEN_HEIGHT - keyboardHeight - (Platform.OS === 'android' ? 30 : 50)) }
                 ]}>
                     <ModalContentErrorBoundary>
@@ -361,6 +364,7 @@ const PremiumFormModal = ({
                             {/* Scrollable Form Body */}
                             <ScrollView
                                 style={{ flex: 1 }}
+                                scrollEnabled={scrollEnabled}
                                 contentContainerStyle={[
                                     styles.scrollContent,
                                     { paddingBottom: dynamicScrollPadding },
@@ -477,6 +481,13 @@ const styles = StyleSheet.create({
         elevation: 16,
         overflow: 'hidden',
         marginBottom: 0,
+    },
+    sheetContainerFloating: {
+        marginHorizontal: 16,
+        marginBottom: Platform.OS === 'ios' ? 24 : 16,
+        borderRadius: 28,
+        borderBottomLeftRadius: 28,
+        borderBottomRightRadius: 28,
     },
     handleHitArea: {
         width: '100%',

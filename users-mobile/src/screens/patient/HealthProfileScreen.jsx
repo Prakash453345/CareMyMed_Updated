@@ -453,6 +453,8 @@ const TactileWheelPicker = ({
         overflow: "hidden",
         justifyContent: "center",
       }}
+      onStartShouldSetResponder={() => true}
+      onMoveShouldSetResponder={() => true}
     >
       <View
         style={{
@@ -478,6 +480,9 @@ const TactileWheelPicker = ({
         snapToInterval={itemHeight}
         decelerationRate="fast"
         scrollEventThrottle={16}
+        nestedScrollEnabled={true}
+        scrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true },
@@ -3666,6 +3671,8 @@ export default function HealthProfileScreen({ navigation }) {
             defaultValue: "Save Changes",
           })}
           saving={isSaving}
+          centered={editingType === "vitals"}
+          scrollEnabled={editingType !== "vitals"}
           headerRight={
             formState._id &&
             [
