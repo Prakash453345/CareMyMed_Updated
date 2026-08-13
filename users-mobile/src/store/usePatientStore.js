@@ -839,7 +839,8 @@ const usePatientStore = create((set, get) => ({
 
         set(s => {
             const mapMed = (m) => {
-                const isMatch = (medId && (m.id === medId || m._id === medId)) || (medName && m.name === medName);
+                const isMatch = (medId && (m.id === medId || m._id === medId || String(m._id) === String(medId))) || 
+                                (medName && m.name === medName);
                 if (isMatch) {
                     const currentInfo = m.refillInfo || { totalDoses: 30, remainingDoses: 0, alertThreshold: 5 };
                     const newRefillInfo = {
@@ -855,14 +856,16 @@ const usePatientStore = create((set, get) => ({
 
             const schedule = { ...s.medicationSchedule };
             Object.keys(schedule).forEach(k => {
-                schedule[k] = schedule[k].map(mapMed);
+                if (Array.isArray(schedule[k])) {
+                    schedule[k] = schedule[k].map(mapMed);
+                }
             });
-            const dashboardMeds = s.dashboardMeds.map(mapMed);
+            const dashboardMeds = Array.isArray(s.dashboardMeds) ? s.dashboardMeds.map(mapMed) : [];
             return { dashboardMeds, medicationSchedule: schedule };
         });
 
         try {
-            await apiService.medicines.refill(medName, addQty, medId);
+            await apiService.medicines.refill(medName || medId, addQty, medId);
             get().fetchDashboard(true);
             return { success: true };
         } catch (err) {

@@ -383,8 +383,12 @@ export const apiService = {
         getAdherenceDetails: () => api.get('/users/medicines/adherence/details'),
         getAdherenceRecap: (period) => api.get('/users/medicines/adherence/recap', { params: { period } }),
         refill: (identifier, purchasedDoses, medicineId) => {
-            const idToUse = medicineId || identifier;
-            return api.post(`/users/medicines/id/${encodeURIComponent(idToUse)}/refill`, { purchasedDoses, medicineId: idToUse });
+            const param = identifier || medicineId;
+            return api.post(`/users/medicines/${encodeURIComponent(String(param).trim())}/refill`, { 
+                purchasedDoses, 
+                medicineId, 
+                name: identifier 
+            });
         },
         getWeeklySummary: () => api.get('/users/medicines/adherence/weekly-summary'),
         getTempMeds: () => api.get('/users/medicines/temp-meds'),

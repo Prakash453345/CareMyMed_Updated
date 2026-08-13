@@ -12,9 +12,41 @@ import {
 import { Package, X, Check, AlertCircle, Plus, Minus } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
+const calcDailyDoseRequirement = (med) => {
+  if (!med) return 1;
+  if (typeof med.daily_doses_count === 'number' && med.daily_doses_count > 0) {
+    return med.daily_doses_count;
+  }
+  if (med.schedule && typeof med.schedule === 'object') {
+    const slots = ['morning', 'afternoon', 'evening', 'night'];
+    const activeSlots = slots.filter(s => !!med.schedule[s]).length;
+    if (activeSlots > 0) return activeSlots;
+  }
+  if (typeof med.times_per_day === 'number' && med.times_per_day > 0) {
+    return med.times_per_day;
+  }
+  if (typeof med.frequency === 'number' && med.frequency > 0) {
+    return med.frequency;
+  }
+  if (typeof med.frequency === 'string') {
+    const match = med.frequency.match(/(\d+)/);
+    if (match && parseInt(match[1], 10) > 0) {
+      return parseInt(match[1], 10);
+    }
+    if (/twice|2x/i.test(med.frequency)) return 2;
+    if (/thrice|3x/i.test(med.frequency)) return 3;
+  }
+  return 1;
+};
+
 export default function SupplyUpdateModal({ visible, onClose, med, onConfirm }) {
-  const [selectedQty, setSelectedQty] = useState(30);
-  const [customQty, setCustomQty] = useState('30');
+  const dailyDoses = calcDailyDoseRequirement(med);
+  const oneMonthCount = Math.round(30 * dailyDoses);
+  const twoMonthsCount = Math.round(60 * dailyDoses);
+  const threeMonthsCount = Math.round(90 * dailyDoses);
+
+  const [selectedQty, setSelectedQty] = useState(oneMonthCount);
+  const [customQty, setCustomQty] = useState(String(oneMonthCount));
   const [isCustom, setIsCustom] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
@@ -24,21 +56,22 @@ export default function SupplyUpdateModal({ visible, onClose, med, onConfirm }) 
   const isLowSupply = remainingDoses <= (med?.refillInfo?.alertThreshold || 5);
 
   useEffect(() => {
-    if (visible) {
-      setSelectedQty(30);
-      setCustomQty('30');
+    if (visible && med) {
+      const defaultQty = Math.round(30 * calcDailyDoseRequirement(med));
+      setSelectedQty(defaultQty);
+      setCustomQty(String(defaultQty));
       setIsCustom(false);
       setIsSubmitting(false);
       setErrorMsg(null);
     }
-  }, [visible]);
+  }, [visible, med]);
 
   if (!med) return null;
 
   const presets = [
-    { label: '1 Month', count: 30, desc: `≈ 30 ${displayUnit}` },
-    { label: '2 Months', count: 60, desc: `≈ 60 ${displayUnit}` },
-    { label: '3 Months', count: 90, desc: `≈ 90 ${displayUnit}` },
+    { label: '1 Month', count: oneMonthCount, desc: `≈ ${oneMonthCount} ${displayUnit}` },
+    { label: '2 Months', count: twoMonthsCount, desc: `≈ ${twoMonthsCount} ${displayUnit}` },
+    { label: '3 Months', count: threeMonthsCount, desc: `≈ ${threeMonthsCount} ${displayUnit}` },
   ];
 
   const handleSelectPreset = (count) => {
