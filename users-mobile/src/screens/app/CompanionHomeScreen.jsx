@@ -118,14 +118,18 @@ export default function CompanionHomeScreen() {
     };
 
     const handleSelectPatient = (patient) => {
-        const targetId = patient?.id || patient?._id || patient?.patient_id;
-        const normalizedName = typeof patient?.name === 'string' ? patient.name.trim() : '';
-        if (targetId) {
-            setCompanionSelectedPatientId(targetId);
-            if (normalizedName) {
-                setCompanionSelectedPatientName(normalizedName);
+        try {
+            const targetId = patient?.id || patient?._id || patient?.patient_id;
+            const normalizedName = typeof patient?.name === 'string' ? patient.name.trim() : '';
+            if (targetId) {
+                setCompanionSelectedPatientId(targetId);
+                if (normalizedName) {
+                    setCompanionSelectedPatientName(normalizedName);
+                }
+                navigation.navigate('CompanionTabs', { patientId: targetId, patientName: normalizedName });
             }
-            navigation.navigate('CompanionTabs');
+        } catch (err) {
+            console.warn('Failed to select companion patient:', err);
         }
     };
 
@@ -282,23 +286,6 @@ export default function CompanionHomeScreen() {
                                         <View style={styles.avatarInner}>
                                             <Text style={styles.avatarText}>{initials}</Text>
                                         </View>
-                                        
-                                        {p.health_score !== undefined && (
-                                            <View style={[
-                                                styles.scoreBadge,
-                                                isLowConfidence ? styles.scoreBadgeLowVisibility : styles.scoreBadgeNormal,
-                                                { backgroundColor: badgeBgColor }
-                                            ]}>
-                                                {isLowConfidence ? (
-                                                    <>
-                                                        <Text style={styles.scoreTextLow}>{p.health_score}</Text>
-                                                        <Text style={styles.scoreBadgeEstimatedLabel}>Estimated</Text>
-                                                    </>
-                                                ) : (
-                                                    <Text style={styles.scoreText}>{p.health_score}</Text>
-                                                )}
-                                            </View>
-                                        )}
                                     </ProgressCircle>
 
                                     {/* Patient Info Block */}
@@ -618,18 +605,18 @@ const styles = StyleSheet.create({
     },
     patientInfo: {
         flex: 1,
-        gap: 4,
+        gap: 3,
     },
     patientName: {
         fontSize: 16,
         ...FONT.bold,
         color: '#0F172A',
+        marginBottom: 2,
     },
     healthScoreRow: {
         flexDirection: 'row',
-        alignItems: 'baseline',
-        gap: 6,
-        marginTop: 2,
+        alignItems: 'center',
+        gap: 8,
     },
     scoreHeaderRow: {
         flexDirection: 'row',
@@ -642,13 +629,13 @@ const styles = StyleSheet.create({
         color: '#64748B',
     },
     scoreValue: {
-        fontSize: 20,
-        ...FONT.heavy,
-        lineHeight: 22,
+        fontSize: 18,
+        ...FONT.bold,
     },
     statusBadgeRow: {
         flexDirection: 'row',
-        marginTop: 4,
+        alignItems: 'center',
+        marginTop: 5,
     },
     badgeLowConfidence: {
         backgroundColor: '#FFFBEB',
