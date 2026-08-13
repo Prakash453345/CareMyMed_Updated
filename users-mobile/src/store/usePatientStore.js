@@ -24,6 +24,7 @@ import WidgetBridge from '../lib/WidgetBridge';
 import i18n from '../i18n';
 import { HapticPatterns } from '../utils/haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isMedicationScheduledForToday, getFormattedScheduleLabel } from '../utils/medicationScheduler';
 
 const TIME_LABELS = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening', night: 'Night', as_needed: 'As Needed' };
 const ACCENT_MAP = { morning: '#22C55E', afternoon: '#F59E0B', evening: '#7C3AED', night: '#8B5CF6', as_needed: '#6366F1' };
@@ -317,27 +318,32 @@ const usePatientStore = create((set, get) => ({
                 }
 
                 const optRef = { ...get()._optimisticMeds };
-                const freshMeds = (dashData.meds?.log?.medicines || []).map(m => {
-                    const id = `${m.medicine_name}_${m.scheduled_time}`;
-                    const optTs = optRef[id];
-                    let isTaken = m.taken;
-                    if (optTs) {
-                        if (isTaken) delete optRef[id];
-                        else if (Date.now() - optTs < 60000) isTaken = true;
-                        else delete optRef[id];
-                    }
-                    return {
-                        id,
-                        name: m.medicine_name,
-                        dosage: m.dosage || 'As prescribed',
-                        instructions: m.instructions || '',
-                        time: i18n.t(`time_slots.${m.scheduled_time}`, { defaultValue: TIME_LABELS[m.scheduled_time] || m.scheduled_time }),
-                        type: m.scheduled_time,
-                        taken: isTaken,
-                        accent: ACCENT_MAP[m.scheduled_time] || '#6366F1',
-                        refillInfo: m.refillInfo || null,
-                    };
-                });
+                const freshMeds = (dashData.meds?.log?.medicines || [])
+                    .map(m => {
+                        const id = `${m.medicine_name}_${m.scheduled_time}`;
+                        const optTs = optRef[id];
+                        let isTaken = m.taken;
+                        if (optTs) {
+                            if (isTaken) delete optRef[id];
+                            else if (Date.now() - optTs < 60000) isTaken = true;
+                            else delete optRef[id];
+                        }
+                        return {
+                            id,
+                            name: m.medicine_name,
+                            dosage: m.dosage || 'As prescribed',
+                            instructions: m.instructions || '',
+                            time: i18n.t(`time_slots.${m.scheduled_time}`, { defaultValue: TIME_LABELS[m.scheduled_time] || m.scheduled_time }),
+                            type: m.scheduled_time,
+                            taken: isTaken,
+                            accent: ACCENT_MAP[m.scheduled_time] || '#6366F1',
+                            refillInfo: m.refillInfo || null,
+                            daysOfWeek: m.daysOfWeek || m.days_of_week || null,
+                            frequency: m.frequency || m.frequency_type || null,
+                            scheduleBadge: getFormattedScheduleLabel(m),
+                        };
+                    })
+                    .filter(m => isMedicationScheduledForToday(m));
 
                 const SLOT_ORDER = { morning: 1, afternoon: 2, evening: 3, night: 4, as_needed: 5 };
                 freshMeds.sort((a, b) => {
