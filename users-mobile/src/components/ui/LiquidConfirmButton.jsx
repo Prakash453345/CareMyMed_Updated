@@ -20,13 +20,67 @@ export default function LiquidConfirmButton({
     const checkAnim = useRef(new Animated.Value(taken ? 1 : 0)).current;
     const textOpacity = useRef(new Animated.Value(1)).current;
 
+    const prevTakenRef = useRef(taken);
+
     useEffect(() => {
+        const wasTaken = prevTakenRef.current;
+        prevTakenRef.current = taken;
+
         if (taken) {
-            sweepAnim.setValue(1);
-            checkAnim.setValue(1);
+            Animated.parallel([
+                Animated.timing(sweepAnim, {
+                    toValue: 1,
+                    duration: 280,
+                    easing: Easing.out(Easing.cubic),
+                    useNativeDriver: false,
+                }),
+                Animated.sequence([
+                    Animated.delay(120),
+                    Animated.parallel([
+                        Animated.timing(textOpacity, {
+                            toValue: 0.4,
+                            duration: 60,
+                            useNativeDriver: true,
+                        }),
+                        Animated.spring(checkAnim, {
+                            toValue: 1,
+                            friction: 7,
+                            tension: 90,
+                            useNativeDriver: true,
+                        }),
+                    ]),
+                    Animated.timing(textOpacity, {
+                        toValue: 1,
+                        duration: 80,
+                        useNativeDriver: true,
+                    }),
+                ]),
+            ]).start(() => {
+                if (!wasTaken) {
+                    try {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+                    } catch (e) {}
+                }
+            });
         } else {
-            sweepAnim.setValue(0);
-            checkAnim.setValue(0);
+            Animated.parallel([
+                Animated.timing(sweepAnim, {
+                    toValue: 0,
+                    duration: 220,
+                    easing: Easing.inOut(Easing.quad),
+                    useNativeDriver: false,
+                }),
+                Animated.timing(checkAnim, {
+                    toValue: 0,
+                    duration: 180,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(textOpacity, {
+                    toValue: 1,
+                    duration: 150,
+                    useNativeDriver: true,
+                }),
+            ]).start();
         }
     }, [taken]);
 
@@ -35,8 +89,8 @@ export default function LiquidConfirmButton({
 
         // 1. Immediate tactile depress
         Animated.timing(scaleAnim, {
-            toValue: 0.96,
-            duration: 50,
+            toValue: 0.94,
+            duration: 60,
             useNativeDriver: true,
         }).start(() => {
             Animated.spring(scaleAnim, {
@@ -52,42 +106,7 @@ export default function LiquidConfirmButton({
             Haptics.selectionAsync().catch(() => {});
         } catch (e) {}
 
-        // 3. Material Transformation: Liquid Sweep (280ms) + Checkmark Spring
-        Animated.parallel([
-            Animated.timing(sweepAnim, {
-                toValue: 1,
-                duration: 280,
-                easing: Easing.out(Easing.cubic),
-                useNativeDriver: false,
-            }),
-            Animated.sequence([
-                Animated.delay(140),
-                Animated.parallel([
-                    Animated.timing(textOpacity, {
-                        toValue: 0.4,
-                        duration: 60,
-                        useNativeDriver: true,
-                    }),
-                    Animated.spring(checkAnim, {
-                        toValue: 1,
-                        friction: 7,
-                        tension: 90,
-                        useNativeDriver: true,
-                    }),
-                ]),
-                Animated.timing(textOpacity, {
-                    toValue: 1,
-                    duration: 80,
-                    useNativeDriver: true,
-                }),
-            ]),
-        ]).start(() => {
-            try {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-            } catch (e) {}
-        });
-
-        // 4. Trigger Parent Handler
+        // 3. Trigger Parent Handler
         onPress?.();
     };
 
