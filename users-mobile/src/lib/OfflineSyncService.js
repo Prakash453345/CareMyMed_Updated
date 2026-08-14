@@ -306,12 +306,14 @@ class OfflineSyncService {
                         }, 100);
                     } else {
                         item.retryCount = (item.retryCount || 0) + 1;
-                        const backoffMs = Math.min(1000 * Math.pow(2, item.retryCount), 3600000); // Max 1 hour
+                        // Exponential Backoff with Full Jitter: Sleep = random(0, min(cap, base * 2^retryCount))
+                        const tempCap = Math.min(3600000, 1000 * Math.pow(2, item.retryCount));
+                        const backoffMs = Math.floor(Math.random() * tempCap);
                         item.nextRetryTime = Date.now() + backoffMs;
-                        console.warn(`[OfflineSync] Sync failed, backing off for ${backoffMs/1000}s. Error:`, error.message);
+                        console.warn(`[OfflineSync] Sync failed, backing off with jitter for ${Math.round(backoffMs/1000)}s. Error:`, error.message);
                         success = false; // Keep it
                         hadFailures = true; // Halt further queue items
-                        this.logReplayEvent(item.type, 'failure', `Backoff ${backoffMs/1000}s: ${error.message}`);
+                        this.logReplayEvent(item.type, 'failure', `Backoff Jitter ${Math.round(backoffMs/1000)}s: ${error.message}`);
                     }
                 }
 
