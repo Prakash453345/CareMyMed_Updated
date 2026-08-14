@@ -27,24 +27,24 @@ export function useMedicationCompletionAnimation(isTaken, defaultIconBg = '#F1F5
         ]),
         Animated.timing(animProgress, {
           toValue: 1,
-          duration: 350,
-          easing: Easing.out(Easing.quad),
+          duration: 220,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: false,
         }),
       ]).start();
     } else {
       Animated.timing(animProgress, {
         toValue: 0,
-        duration: 250,
-        easing: Easing.out(Easing.quad),
+        duration: 200,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       }).start();
     }
   }, [isTaken]);
 
   const cardBgColor = animProgress.interpolate({
-    inputRange: [0, 0.35, 1],
-    outputRange: ['#FFFFFF', '#DCFCE7', '#F0FDF4'],
+    inputRange: [0, 1],
+    outputRange: ['#FFFFFF', '#F0FDF4'],
   });
 
   const cardBorderColor = animProgress.interpolate({

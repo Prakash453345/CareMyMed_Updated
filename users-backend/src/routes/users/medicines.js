@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const moment = require('moment-timezone'); // BUG 9 FIX: top-level require, not inside hot path
 const Patient = require('../../models/Patient');
 const MedicineLog = require('../../models/MedicineLog');
@@ -881,9 +882,21 @@ const handleRefillRequest = async (req, res) => {
     const extQuery = { patientId: { $in: searchIds } };
     if (medicineId || targetParam) {
       const matchCriteria = [];
-      if (medicineId) matchCriteria.push({ _id: medicineId }, { id: medicineId });
-      if (targetParam) matchCriteria.push({ _id: targetParam }, { id: targetParam }, { name: targetParam });
-      extQuery.$or = matchCriteria;
+      if (medicineId) {
+        if (mongoose.Types.ObjectId.isValid(medicineId)) {
+          matchCriteria.push({ _id: medicineId });
+        }
+        matchCriteria.push({ id: medicineId });
+      }
+      if (targetParam) {
+        if (mongoose.Types.ObjectId.isValid(targetParam)) {
+          matchCriteria.push({ _id: targetParam });
+        }
+        matchCriteria.push({ id: targetParam }, { name: targetParam });
+      }
+      if (matchCriteria.length > 0) {
+        extQuery.$or = matchCriteria;
+      }
     }
 
     const extMed = await Medication.findOne(extQuery);

@@ -50,7 +50,6 @@ import {
   Activity,
   MessageCircle,
   UserCheck,
-  HelpCircle,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors, layout, spacing, radius, shadows } from "../../theme";
@@ -724,19 +723,6 @@ export default function MyCallerScreen({ navigation }) {
             <Text style={s.headerTitle}>
               {t("caller.care_team", { defaultValue: "Care Team" })}
             </Text>
-            {!!caller && (
-              <Pressable
-                style={s.helpBtn}
-                onPress={() => {
-                  HapticPatterns.selection();
-                  scrollRef.current?.scrollTo({ y: 0, animated: true });
-                  setShowTour(true);
-                }}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <HelpCircle size={18} color={colors.primary} strokeWidth={2.5} />
-              </Pressable>
-            )}
           </View>
         </View>
         <Pressable

@@ -49,21 +49,31 @@ const calcMonthlyDoseRequirement = (med, months = 1) => {
     return Math.max(1, Math.round((30 / daysInterval) * months));
   }
 
-  // 6. Daily dosage calculation (from active slots, daily_doses_count, or times_per_day)
+  // 6. Daily dosage calculation (from active slots, times array, scheduledTimes array, daily_doses_count, or times_per_day)
   let dailyDoses = 1;
-  if (typeof med.daily_doses_count === 'number' && med.daily_doses_count > 0) {
+  if (Array.isArray(med.times) && med.times.length > 0) {
+    dailyDoses = med.times.length;
+  } else if (Array.isArray(med.scheduledTimes) && med.scheduledTimes.length > 0) {
+    dailyDoses = med.scheduledTimes.length;
+  } else if (Array.isArray(med.scheduled_times) && med.scheduled_times.length > 0) {
+    dailyDoses = med.scheduled_times.length;
+  } else if (typeof med.daily_doses_count === 'number' && med.daily_doses_count > 0) {
     dailyDoses = med.daily_doses_count;
+  } else if (typeof med.times_per_day === 'number' && med.times_per_day > 0) {
+    dailyDoses = med.times_per_day;
+  } else if (typeof med.times_count === 'number' && med.times_count > 0) {
+    dailyDoses = med.times_count;
   } else if (med.schedule && typeof med.schedule === 'object') {
     const activeSlots = ['morning', 'afternoon', 'evening', 'night'].filter(s => !!med.schedule[s]).length;
     if (activeSlots > 0) dailyDoses = activeSlots;
-  } else if (typeof med.times_per_day === 'number' && med.times_per_day > 0) {
-    dailyDoses = med.times_per_day;
   } else if (typeof med.frequency === 'number' && med.frequency > 0) {
     dailyDoses = med.frequency;
-  } else if (/twice|2x|2\/day|2\s*times\s*a\s*day/i.test(lowerFreq)) {
+  } else if (/twice|2x|2\/day|2\s*times|bid|b\.i\.d/i.test(lowerFreq)) {
     dailyDoses = 2;
-  } else if (/thrice|3x|3\/day|3\s*times\s*a\s*day/i.test(lowerFreq)) {
+  } else if (/thrice|3x|3\/day|3\s*times|tid|t\.i\.d/i.test(lowerFreq)) {
     dailyDoses = 3;
+  } else if (/4x|4\/day|4\s*times|qid|q\.i\.d/i.test(lowerFreq)) {
+    dailyDoses = 4;
   } else {
     const numMatch = lowerFreq.match(/(\d+)/);
     if (numMatch && parseInt(numMatch[1], 10) > 0) {

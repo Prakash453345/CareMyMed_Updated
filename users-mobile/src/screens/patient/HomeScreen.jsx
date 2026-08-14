@@ -64,7 +64,6 @@ import {
   MessageSquare,
   Trophy,
   ChevronDown,
-  HelpCircle,
   AlertCircle,
 } from "lucide-react-native";
 import { handleAxiosError } from "../../lib/axiosInstance";
@@ -2222,16 +2221,6 @@ export default function PatientHomeScreen({ navigation }) {
                   <Text style={styles.brandText}>CareMyMed</Text>
                 </View>
                 <View style={styles.headerActions}>
-                  <Pressable
-                    style={styles.headerIconBtn}
-                    onPress={() => {
-                      triggerHapticSelection();
-                      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-                    }}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <HelpCircle size={20} color="#7C3AED" strokeWidth={2.5} />
-                  </Pressable>
                   <Pressable
                     style={styles.headerIconBtn}
                     onPress={() => navigation.navigate("Notifications")}

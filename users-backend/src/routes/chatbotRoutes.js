@@ -337,8 +337,12 @@ router.post(
         );
 
         let visionContextText = `[ATTACHED IMAGE]: ${imageFile.originalname}`;
+        let visionProcessed = false;
+        let visionError = null;
+
         const googleVisionKey = process.env.GOOGLE_VISION_API_KEY;
         const groqApiKey = process.env.GROQ_API_KEY;
+        const groqVisionModel = process.env.GROQ_VISION_MODEL || 'llama-3.2-11b-vision-instruct';
 
         if (imageFile.buffer) {
           const base64Content = imageFile.buffer.toString('base64');
@@ -368,19 +372,21 @@ router.post(
                 '';
               if (extractedRaw.trim()) {
                 visionContextText = `[EXTRACTED TEXT FROM IMAGE]:\n${extractedRaw.trim()}`;
+                visionProcessed = true;
               }
             } catch (ocrErr) {
+              visionError = ocrErr;
               console.warn('[ChatbotRoute] Google Vision OCR warning:', ocrErr.message);
             }
           }
 
-          // Try 2: Groq Vision API (llama-3.2-11b-vision-preview using existing GROQ_API_KEY)
-          if (visionContextText.startsWith('[ATTACHED IMAGE]:') && groqApiKey) {
+          // Try 2: Groq Vision API (using configurable GROQ_VISION_MODEL)
+          if (!visionProcessed && groqApiKey) {
             try {
               const groqVisionRes = await axios.post(
                 'https://api.groq.com/openai/v1/chat/completions',
                 {
-                  model: 'llama-3.2-11b-vision-preview',
+                  model: groqVisionModel,
                   messages: [
                     {
                       role: 'user',
@@ -413,11 +419,19 @@ router.post(
               const visionAnalysis = groqVisionRes.data.choices?.[0]?.message?.content;
               if (visionAnalysis && visionAnalysis.trim()) {
                 visionContextText = `[GROQ VISION IMAGE ANALYSIS & TRANSCRIBED CONTENT]:\n${visionAnalysis.trim()}`;
+                visionProcessed = true;
               }
             } catch (groqVisionErr) {
+              visionError = groqVisionErr;
               console.warn('[ChatbotRoute] Groq Vision AI warning:', groqVisionErr?.response?.data || groqVisionErr.message);
             }
           }
+        }
+
+        // If vision analysis failed due to provider error, notify context explicitly
+        if (!visionProcessed && visionError) {
+          const errDetail = visionError?.response?.data?.error?.message || visionError.message || 'Vision service error';
+          visionContextText = `[SYSTEM NOTICE: Image was received (${imageFile.originalname}), but automated image analysis encountered a technical error: "${errDetail}". Politely inform the patient that image processing hit a technical service error, and invite them to describe or type out the text in the image if possible.]`;
         }
 
         const userCaption = extractedQuery;

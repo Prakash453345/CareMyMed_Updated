@@ -3671,8 +3671,8 @@ export default function HealthProfileScreen({ navigation }) {
             defaultValue: "Save Changes",
           })}
           saving={isSaving}
-          centered={editingType === "vitals"}
-          scrollEnabled={editingType !== "vitals"}
+          centered={false}
+          scrollEnabled={true}
           headerRight={
             formState._id &&
             [

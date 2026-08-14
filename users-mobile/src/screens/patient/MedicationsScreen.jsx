@@ -59,7 +59,6 @@ import {
   Zap,
   Trash2,
   User,
-  HelpCircle,
 } from "lucide-react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import Svg, {
@@ -391,8 +390,8 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPre
   const { t } = useTranslation();
   const internalSwRef = useRef(null);
   const swRef = externalSwRef || internalSwRef;
-  const takenBadgeScale = useRef(new Animated.Value(med.taken ? 1 : 0.95)).current;
-  const checkScale = useRef(new Animated.Value(med.taken ? 1 : 0)).current;
+  const takenBadgeScale = useRef(new Animated.Value(med.taken ? 1 : 0.8)).current;
+  const checkScale = useRef(new Animated.Value(med.taken ? 1 : 0.6)).current;
   const cfg = SLOT_CONFIG[med.type] || SLOT_CONFIG.as_needed;
 
   const {
@@ -1789,16 +1788,6 @@ export default function MedicationsScreen({ navigation, route }) {
               </Text>
             </View>
             <View style={{ flexDirection: "row", gap: 10 }}>
-              <Pressable
-                style={styles.headerBtn}
-                onPress={() => {
-                  triggerHapticSelection();
-                  scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-                }}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <HelpCircle size={20} color="#7C3AED" strokeWidth={2.5} />
-              </Pressable>
               <Pressable
                 style={styles.headerBtn}
                 onPress={() => {
