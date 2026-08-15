@@ -569,6 +569,8 @@ const usePatientStore = create((set, get) => ({
                         accent: ACCENT_MAP[m.scheduled_time] || '#6366F1',
                         preferred_time: m.preferred_time || prefs[m.scheduled_time] || '',
                         refillInfo: m.refillInfo || null,
+                        frequency: m.frequency || m.frequency_type || null,
+                        times: m.times || m.scheduled_times || null,
                     };
                 });
 

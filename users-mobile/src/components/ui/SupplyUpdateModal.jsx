@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Package, X, Check, AlertCircle, Plus, Minus } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { usePatientStore } from '../../store/usePatientStore';
 
 const calcMonthlyDoseRequirement = (med, months = 1) => {
   if (!med) return Math.round(30 * months);
@@ -49,35 +50,57 @@ const calcMonthlyDoseRequirement = (med, months = 1) => {
     return Math.max(1, Math.round((30 / daysInterval) * months));
   }
 
-  // 6. Daily dosage calculation (from active slots, times array, scheduledTimes array, daily_doses_count, or times_per_day)
+  // 6. Daily dosage calculation (from active slots, schedule store, times array, scheduledTimes array, daily_doses_count, or times_per_day)
   let dailyDoses = 1;
+
+  // Inspect Zustand schedule to see how many times this medicine name appears today
+  try {
+    const storeState = usePatientStore.getState ? usePatientStore.getState() : null;
+    const schedule = storeState?.medicationSchedule;
+    if (schedule && med.name) {
+      let slotCount = 0;
+      Object.values(schedule).forEach((slotMeds) => {
+        if (Array.isArray(slotMeds)) {
+          slotMeds.forEach((item) => {
+            if (item.name && item.name.trim().toLowerCase() === med.name.trim().toLowerCase()) {
+              slotCount++;
+            }
+          });
+        }
+      });
+      if (slotCount > 0) {
+        dailyDoses = Math.max(dailyDoses, slotCount);
+      }
+    }
+  } catch (e) {}
+
   if (Array.isArray(med.times) && med.times.length > 0) {
-    dailyDoses = med.times.length;
+    dailyDoses = Math.max(dailyDoses, med.times.length);
   } else if (Array.isArray(med.scheduledTimes) && med.scheduledTimes.length > 0) {
-    dailyDoses = med.scheduledTimes.length;
+    dailyDoses = Math.max(dailyDoses, med.scheduledTimes.length);
   } else if (Array.isArray(med.scheduled_times) && med.scheduled_times.length > 0) {
-    dailyDoses = med.scheduled_times.length;
+    dailyDoses = Math.max(dailyDoses, med.scheduled_times.length);
   } else if (typeof med.daily_doses_count === 'number' && med.daily_doses_count > 0) {
-    dailyDoses = med.daily_doses_count;
+    dailyDoses = Math.max(dailyDoses, med.daily_doses_count);
   } else if (typeof med.times_per_day === 'number' && med.times_per_day > 0) {
-    dailyDoses = med.times_per_day;
+    dailyDoses = Math.max(dailyDoses, med.times_per_day);
   } else if (typeof med.times_count === 'number' && med.times_count > 0) {
-    dailyDoses = med.times_count;
+    dailyDoses = Math.max(dailyDoses, med.times_count);
   } else if (med.schedule && typeof med.schedule === 'object') {
     const activeSlots = ['morning', 'afternoon', 'evening', 'night'].filter(s => !!med.schedule[s]).length;
-    if (activeSlots > 0) dailyDoses = activeSlots;
+    if (activeSlots > 0) dailyDoses = Math.max(dailyDoses, activeSlots);
   } else if (typeof med.frequency === 'number' && med.frequency > 0) {
-    dailyDoses = med.frequency;
+    dailyDoses = Math.max(dailyDoses, med.frequency);
   } else if (/twice|2x|2\/day|2\s*times|bid|b\.i\.d/i.test(lowerFreq)) {
-    dailyDoses = 2;
+    dailyDoses = Math.max(dailyDoses, 2);
   } else if (/thrice|3x|3\/day|3\s*times|tid|t\.i\.d/i.test(lowerFreq)) {
-    dailyDoses = 3;
+    dailyDoses = Math.max(dailyDoses, 3);
   } else if (/4x|4\/day|4\s*times|qid|q\.i\.d/i.test(lowerFreq)) {
-    dailyDoses = 4;
+    dailyDoses = Math.max(dailyDoses, 4);
   } else {
     const numMatch = lowerFreq.match(/(\d+)/);
     if (numMatch && parseInt(numMatch[1], 10) > 0) {
-      dailyDoses = parseInt(numMatch[1], 10);
+      dailyDoses = Math.max(dailyDoses, parseInt(numMatch[1], 10));
     }
   }
 
