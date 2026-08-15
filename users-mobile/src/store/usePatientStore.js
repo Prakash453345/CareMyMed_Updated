@@ -709,9 +709,7 @@ const usePatientStore = create((set, get) => ({
                 taken: targetState,
             });
 
-            // Re-fetch medications + weekly adherence so chart/avg update immediately
-            get().fetchMedications();
-            get().fetchDashboard(true);
+            // State is already updated optimistically in local store; network sync completed successfully.
         } catch (err) {
             if ((err.request && !err.response) || err.code === 'ECONNABORTED' || err.message === 'Network Error') {
                 console.warn('[Store] Network error, enqueueing mutation offline:', err.message);
@@ -817,7 +815,7 @@ const usePatientStore = create((set, get) => ({
 
         try {
             await apiService.medicines.markSlotTaken({ scheduled_time: slot, marked_by: 'patient' });
-            get().fetchDashboard(true);
+            // State is already updated optimistically in local store; network sync completed successfully.
         } catch (err) {
             if ((err.request && !err.response) || err.code === 'ECONNABORTED' || err.message === 'Network Error') {
                 console.warn('[Store] Network error, enqueueing mark-slot mutation offline:', err.message);

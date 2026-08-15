@@ -128,7 +128,7 @@ export default function LiquidConfirmButton({
     return (
         <Animated.View style={[{ transform: [{ scale: scaleAnim }] }]}>
             <Pressable
-                style={[s.btnContainer, taken && s.btnContainerTaken]}
+                style={s.btnContainer}
                 onPress={handlePress}
                 disabled={disabled || taken}
             >
