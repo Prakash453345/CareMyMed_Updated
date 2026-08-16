@@ -347,7 +347,7 @@ const TactileWheelPicker = ({
       const dataIndex = Math.round(y / itemHeight);
       if (dataIndex >= 0 && dataIndex < safeData.length) {
         const item = safeData[dataIndex];
-        if (item && item.value !== undefined && item.value !== selectedValue) {
+        if (item && item.value !== undefined && String(item.value) !== String(selectedValue)) {
           onValueChange(item.value);
           try {
             Haptics.selectionAsync().catch(() => {});
@@ -360,7 +360,7 @@ const TactileWheelPicker = ({
   };
 
   useEffect(() => {
-    const index = safeData.findIndex((item) => item.value === selectedValue);
+    const index = safeData.findIndex((item) => String(item.value) === String(selectedValue));
     if (index !== -1) {
       const timer = setTimeout(() => {
         try {
@@ -419,7 +419,7 @@ const TactileWheelPicker = ({
       extrapolate: "clamp",
     });
 
-    const isSelected = item.value === selectedValue;
+    const isSelected = String(item.value) === String(selectedValue);
 
     return (
       <Animated.View
@@ -453,8 +453,6 @@ const TactileWheelPicker = ({
         overflow: "hidden",
         justifyContent: "center",
       }}
-      onStartShouldSetResponder={() => true}
-      onMoveShouldSetResponder={() => true}
     >
       <View
         style={{
