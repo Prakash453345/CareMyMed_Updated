@@ -2,7 +2,24 @@ import React from 'react';
 import { render, act } from '@testing-library/react-native';
 import HealthProfileScreen from '../../src/screens/patient/HealthProfileScreen';
 
-jest.setTimeout(40000);
+// Mock heavy UI transition components for fast deterministic test execution
+jest.mock('../../src/components/ui/TabScreenTransition', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return function MockTransition({ children }) {
+    return React.createElement(View, { testID: 'tab-screen-transition' }, children);
+  };
+});
+
+jest.mock('expo-linear-gradient', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    LinearGradient: function MockGradient({ children, style }) {
+      return React.createElement(View, { style }, children);
+    },
+  };
+});
 
 // Mock translation hook
 jest.mock('react-i18next', () => ({

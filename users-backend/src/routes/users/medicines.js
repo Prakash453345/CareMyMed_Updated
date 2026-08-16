@@ -409,105 +409,113 @@ router.put('/mark', authenticateSession, async (req, res) => {
     if (!med)
       return res.status(404).json({ error: 'Medicine not found in schedule' });
 
-    const wasAlreadyInState = med.taken === taken;
-    if (wasAlreadyInState) {
-      return res.json({ message: 'Medicine state already up to date', log });
-    }
+    const alreadyInTargetState = med.taken === taken;
 
-    med.taken = taken;
-    med.taken_at = taken ? new Date() : null;
-    med.marked_by = marked_by;
-    await log.save();
+    if (!alreadyInTargetState) {
+      med.taken = taken;
+      med.taken_at = taken ? new Date() : null;
+      med.marked_by = marked_by;
+      await log.save();
 
-    const patientMed = patient.medications.find(
-      (m) => m.name === medicine_name
-    );
-    if (patientMed) {
-      if (!patientMed.takenLogs) patientMed.takenLogs = [];
-      patientMed.takenLogs.push({
-        timestamp: new Date(),
-        status: taken ? 'taken' : 'missed',
-        markedBy: marked_by,
-      });
+      const patientMed = patient.medications.find(
+        (m) => m.name === medicine_name
+      );
 
-      if (taken) {
-        if (!patientMed.takenDates) patientMed.takenDates = [];
-        const alreadyTakenToday = patientMed.takenDates.some((d) => {
-          try {
-            return new Date(d).toISOString().split('T')[0] === logDateStr;
-          } catch {
-            return false;
-          }
+      if (patientMed) {
+        if (!patientMed.takenLogs) patientMed.takenLogs = [];
+        patientMed.takenLogs.push({
+          timestamp: new Date(),
+          status: taken ? 'taken' : 'missed',
+          markedBy: marked_by,
         });
-        if (!alreadyTakenToday) patientMed.takenDates.push(new Date());
-
-        // Supply tracking deduction
-        if (
-          !patientMed.refillInfo ||
-          typeof patientMed.refillInfo.totalDoses !== 'number'
-        ) {
-          patientMed.refillInfo = {
-            totalDoses: 30,
-            remainingDoses: 30,
-            alertThreshold: 5,
-            lastRefillDate: new Date(),
-          };
-        }
-
-        if (
-          typeof patientMed.refillInfo.remainingDoses === 'number' &&
-          patientMed.refillInfo.remainingDoses > 0
-        ) {
-          patientMed.refillInfo.remainingDoses -= 1;
-
-          // Low supply alert
-          if (
-            patientMed.refillInfo.remainingDoses ===
-            (patientMed.refillInfo.alertThreshold || 5)
-          ) {
-            try {
-              await Notification.create({
-                patient_id: patient._id,
-                title: '⚠️ Low Medication Supply',
-                message: `You are running low on ${medicine_name}. Only ${patientMed.refillInfo.remainingDoses} doses left!`,
-                type: 'system',
-                target_screen: 'Medications',
-              });
-              if (patient.expo_push_token) {
-                await PushNotificationService.sendPushNotification(
-                  patient.expo_push_token,
-                  {
-                    title: '⚠️ Low Medication Supply',
-                    body: `You are running low on ${medicine_name}. Only ${patientMed.refillInfo.remainingDoses} doses left!`,
-                    data: {
-                      screen: 'Medications',
-                      type: 'low_medication_supply',
-                      medicationName: medicine_name,
-                    },
-                  }
-                );
-              }
-            } catch (err) {
-              logger.error('Failed to send supply alert', {
-                error: err.message,
-              });
-            }
-          }
-        }
-      }
-      await patient.save();
-    } else {
-      const searchIds = [patient._id];
-      if (patient.profile_id) searchIds.push(patient.profile_id);
-      const extMed = await Medication.findOne({
-        patientId: { $in: searchIds },
-        name: medicine_name,
-      });
-      if (extMed) {
-        if (!extMed.takenLogs) extMed.takenLogs = [];
-        extMed.takenLogs.push({ date: logDateStr, timestamp: new Date() });
 
         if (taken) {
+          if (!patientMed.takenDates) patientMed.takenDates = [];
+          const alreadyTakenToday = patientMed.takenDates.some((d) => {
+            try {
+              return new Date(d).toISOString().split('T')[0] === logDateStr;
+            } catch {
+              return false;
+            }
+          });
+
+          if (!alreadyTakenToday) {
+            patientMed.takenDates.push(new Date());
+
+            // Supply tracking deduction - ONLY executed if NOT already taken today!
+            if (
+              !patientMed.refillInfo ||
+              typeof patientMed.refillInfo.totalDoses !== 'number'
+            ) {
+              patientMed.refillInfo = {
+                totalDoses: 30,
+                remainingDoses: 30,
+                alertThreshold: 5,
+                lastRefillDate: new Date(),
+              };
+            }
+
+            if (
+              typeof patientMed.refillInfo.remainingDoses === 'number' &&
+              patientMed.refillInfo.remainingDoses > 0
+            ) {
+              patientMed.refillInfo.remainingDoses -= 1;
+
+              // Low supply alert
+              if (
+                patientMed.refillInfo.remainingDoses ===
+                (patientMed.refillInfo.alertThreshold || 5)
+              ) {
+                try {
+                  await Notification.create({
+                    patient_id: patient._id,
+                    title: '⚠️ Low Medication Supply',
+                    message: `You are running low on ${medicine_name}. Only ${patientMed.refillInfo.remainingDoses} doses left!`,
+                    type: 'system',
+                    target_screen: 'Medications',
+                  });
+                  if (patient.expo_push_token) {
+                    await PushNotificationService.sendPushNotification(
+                      patient.expo_push_token,
+                      {
+                        title: '⚠️ Low Medication Supply',
+                        body: `You are running low on ${medicine_name}. Only ${patientMed.refillInfo.remainingDoses} doses left!`,
+                        data: {
+                          screen: 'Medications',
+                          type: 'low_medication_supply',
+                          medicationName: medicine_name,
+                        },
+                      }
+                    );
+                  }
+                } catch (notifErr) {
+                  logger.warn('Failed to send push notification:', notifErr);
+                }
+              }
+            }
+          }
+        } else {
+          // UNDO RESTORATION: If untaking a medication dose, restore 1 dose to supply!
+          if (
+            patientMed.refillInfo &&
+            typeof patientMed.refillInfo.remainingDoses === 'number'
+          ) {
+            const total = patientMed.refillInfo.totalDoses || 30;
+            patientMed.refillInfo.remainingDoses = Math.min(
+              total,
+              patientMed.refillInfo.remainingDoses + 1
+            );
+          }
+        }
+        await patient.save();
+      } else {
+        const searchIds = [patient._id];
+        if (patient.profile_id) searchIds.push(patient.profile_id);
+        const extMed = await Medication.findOne({
+          patientId: { $in: searchIds },
+          name: medicine_name,
+        });
+        if (extMed) {
           if (
             !extMed.refillInfo ||
             typeof extMed.refillInfo.totalDoses !== 'number'
@@ -559,8 +567,8 @@ router.put('/mark', authenticateSession, async (req, res) => {
               }
             }
           }
+          await extMed.save();
         }
-        await extMed.save();
       }
     }
 
@@ -578,7 +586,7 @@ router.put('/mark', authenticateSession, async (req, res) => {
     await recomputeAndCacheHealthState(patient._id).catch((e) =>
       logger.warn('Medication trigger recompute failed', { error: e.message })
     );
-    res.json({ log });
+    return res.json({ log, taken_at: med.taken_at });
   } catch (error) {
     logger.error('Mark medicine error', {
       error: error.message,
