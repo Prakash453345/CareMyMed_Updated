@@ -125,15 +125,12 @@ export default function LiquidConfirmButton({
         outputRange: ['0%', '100%'],
     });
 
-    const checkTranslateX = checkAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [-10, 0],
-    });
-
     const checkScale = checkAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: [0.8, 1],
+        outputRange: [0.6, 1],
     });
+
+    const showCheck = taken || isCompleting;
 
     return (
         <Animated.View style={[{ transform: [{ scale: scaleAnim }] }]}>
@@ -154,21 +151,19 @@ export default function LiquidConfirmButton({
 
                         {/* Button Content Layer */}
                         <View style={s.contentRow}>
-                            <Animated.View
-                                style={{
-                                    opacity: checkAnim,
-                                    transform: [
-                                        { translateX: checkTranslateX },
-                                        { scale: checkScale },
-                                    ],
-                                    marginRight: checkAnim.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: [0, 4],
-                                    }),
-                                }}
-                            >
-                                <Check size={14} color={taken ? "#10B981" : "#FFFFFF"} strokeWidth={2.8} />
-                            </Animated.View>
+                            {showCheck && (
+                                <Animated.View
+                                    style={{
+                                        opacity: checkAnim,
+                                        transform: [
+                                            { scale: checkScale },
+                                        ],
+                                        marginRight: 4,
+                                    }}
+                                >
+                                    <Check size={15} color="#10B981" strokeWidth={3} />
+                                </Animated.View>
+                            )}
 
                             <Animated.Text
                                 style={[
