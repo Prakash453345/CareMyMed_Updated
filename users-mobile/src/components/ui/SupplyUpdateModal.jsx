@@ -16,53 +16,31 @@ import { usePatientStore } from '../../store/usePatientStore';
 const calcMonthlyDoseRequirement = (med, months = 1) => {
   if (!med) return Math.round(30 * months);
 
-  const freqStr = (typeof med.frequency === 'string' ? med.frequency : '') || 
-                  (typeof med.frequency_type === 'string' ? med.frequency_type : '');
-  const lowerFreq = freqStr.toLowerCase();
-
-  // 1. Weekly (e.g. "once a week", "weekly", "1/week", "every week")
-  if (/once\s*a\s*week|weekly|1\/week|every\s*week|once\s*weekly/i.test(lowerFreq)) {
-    return Math.max(1, Math.round(4 * months));
-  }
-
-  // 2. Twice a week (e.g. "twice a week", "2x/week", "2 times a week")
-  if (/twice\s*a\s*week|2x\/week|2\s*times\s*a\s*week/i.test(lowerFreq)) {
-    return Math.max(1, Math.round(8 * months));
-  }
-
-  // 3. Twice a month / Every 2 weeks (e.g. "twice a month", "every 2 weeks", "biweekly")
-  if (/twice\s*a\s*month|2x\/month|every\s*2\s*weeks|biweekly|2\s*times\s*a\s*month/i.test(lowerFreq)) {
-    return Math.max(1, Math.round(2 * months));
-  }
-
-  // 4. Once a month (e.g. "once a month", "monthly")
-  if (/once\s*a\s*month|monthly|1\/month/i.test(lowerFreq)) {
-    return Math.max(1, Math.round(1 * months));
-  }
-
-  // 5. Every X days (e.g. "every 2 days", "alternate days")
-  if (/alternate\s*day/i.test(lowerFreq)) {
-    return Math.max(1, Math.round(15 * months));
-  }
-  const everyXDaysMatch = lowerFreq.match(/every\s*(\d+)\s*days?/i);
-  if (everyXDaysMatch && parseInt(everyXDaysMatch[1], 10) > 0) {
-    const daysInterval = parseInt(everyXDaysMatch[1], 10);
-    return Math.max(1, Math.round((30 / daysInterval) * months));
-  }
-
-  // 6. Daily dosage calculation (from active slots, schedule store, times array, scheduledTimes array, daily_doses_count, or times_per_day)
+  const medNameLower = (med.name || '').trim().toLowerCase();
   let dailyDoses = 1;
+  let fullMedObj = null;
 
-  // Inspect Zustand schedule to see how many times this medicine name appears today
+  // 1. Fetch patient medications from global Zustand store to get true daily schedule
   try {
     const storeState = usePatientStore.getState ? usePatientStore.getState() : null;
+    const allPatientMeds = storeState?.patient?.medications || 
+                           storeState?.patientData?.medications || 
+                           storeState?.medications || [];
+
+    if (Array.isArray(allPatientMeds) && medNameLower) {
+      fullMedObj = allPatientMeds.find(
+        m => m.name && m.name.trim().toLowerCase() === medNameLower
+      );
+    }
+
+    // Inspect schedule slots in Zustand store (morning, afternoon, evening, night)
     const schedule = storeState?.medicationSchedule;
-    if (schedule && med.name) {
+    if (schedule && medNameLower) {
       let slotCount = 0;
       Object.values(schedule).forEach((slotMeds) => {
         if (Array.isArray(slotMeds)) {
           slotMeds.forEach((item) => {
-            if (item.name && item.name.trim().toLowerCase() === med.name.trim().toLowerCase()) {
+            if (item.name && item.name.trim().toLowerCase() === medNameLower) {
               slotCount++;
             }
           });
@@ -72,33 +50,91 @@ const calcMonthlyDoseRequirement = (med, months = 1) => {
         dailyDoses = Math.max(dailyDoses, slotCount);
       }
     }
+
+    // Inspect todayMeds or dashboardMeds list in store
+    const todayList = storeState?.todayMeds || storeState?.dashboardMeds || [];
+    if (Array.isArray(todayList) && medNameLower) {
+      const matchingTodayCount = todayList.filter(
+        item => item.name && item.name.trim().toLowerCase() === medNameLower
+      ).length;
+      if (matchingTodayCount > 0) {
+        dailyDoses = Math.max(dailyDoses, matchingTodayCount);
+      }
+    }
   } catch (e) {}
 
-  if (Array.isArray(med.times) && med.times.length > 0) {
-    dailyDoses = Math.max(dailyDoses, med.times.length);
-  } else if (Array.isArray(med.scheduledTimes) && med.scheduledTimes.length > 0) {
-    dailyDoses = Math.max(dailyDoses, med.scheduledTimes.length);
-  } else if (Array.isArray(med.scheduled_times) && med.scheduled_times.length > 0) {
-    dailyDoses = Math.max(dailyDoses, med.scheduled_times.length);
-  } else if (typeof med.daily_doses_count === 'number' && med.daily_doses_count > 0) {
-    dailyDoses = Math.max(dailyDoses, med.daily_doses_count);
-  } else if (typeof med.times_per_day === 'number' && med.times_per_day > 0) {
-    dailyDoses = Math.max(dailyDoses, med.times_per_day);
-  } else if (typeof med.times_count === 'number' && med.times_count > 0) {
-    dailyDoses = Math.max(dailyDoses, med.times_count);
-  } else if (med.schedule && typeof med.schedule === 'object') {
-    const activeSlots = ['morning', 'afternoon', 'evening', 'night'].filter(s => !!med.schedule[s]).length;
+  // Combine properties from med and fullMedObj
+  const targetMed = fullMedObj ? { ...fullMedObj, ...med } : med;
+
+  const freqStr = (typeof targetMed.frequency === 'string' ? targetMed.frequency : '') || 
+                  (typeof targetMed.frequency_type === 'string' ? targetMed.frequency_type : '') ||
+                  (typeof targetMed.instructions === 'string' ? targetMed.instructions : '') ||
+                  (typeof med.frequency === 'string' ? med.frequency : '') ||
+                  (typeof med.instructions === 'string' ? med.instructions : '');
+  const lowerFreq = freqStr.toLowerCase();
+
+  // Check weekly / alternate day / monthly overrides
+  if (/once\s*a\s*week|weekly|1\/week|every\s*week|once\s*weekly/i.test(lowerFreq)) {
+    return Math.max(1, Math.round(4 * months));
+  }
+  if (/twice\s*a\s*week|2x\/week|2\s*times\s*a\s*week/i.test(lowerFreq)) {
+    return Math.max(1, Math.round(8 * months));
+  }
+  if (/twice\s*a\s*month|2x\/month|every\s*2\s*weeks|biweekly|2\s*times\s*a\s*month/i.test(lowerFreq)) {
+    return Math.max(1, Math.round(2 * months));
+  }
+  if (/once\s*a\s*month|monthly|1\/month/i.test(lowerFreq)) {
+    return Math.max(1, Math.round(1 * months));
+  }
+  if (/alternate\s*day/i.test(lowerFreq)) {
+    return Math.max(1, Math.round(15 * months));
+  }
+  const everyXDaysMatch = lowerFreq.match(/every\s*(\d+)\s*days?/i);
+  if (everyXDaysMatch && parseInt(everyXDaysMatch[1], 10) > 0) {
+    const daysInterval = parseInt(everyXDaysMatch[1], 10);
+    return Math.max(1, Math.round((30 / daysInterval) * months));
+  }
+
+  // Evaluate explicit array lengths & counts across targetMed & fullMedObj
+  const timesArr = (Array.isArray(targetMed.times) && targetMed.times.length > 0) ? targetMed.times :
+                   (Array.isArray(fullMedObj?.times) && fullMedObj.times.length > 0) ? fullMedObj.times : [];
+  if (timesArr.length > 0) {
+    dailyDoses = Math.max(dailyDoses, timesArr.length);
+  }
+
+  const scheduledTimesArr = (Array.isArray(targetMed.scheduledTimes) && targetMed.scheduledTimes.length > 0) ? targetMed.scheduledTimes :
+                            (Array.isArray(targetMed.scheduled_times) && targetMed.scheduled_times.length > 0) ? targetMed.scheduled_times :
+                            (Array.isArray(fullMedObj?.scheduledTimes) && fullMedObj.scheduledTimes.length > 0) ? fullMedObj.scheduledTimes : [];
+  if (scheduledTimesArr.length > 0) {
+    dailyDoses = Math.max(dailyDoses, scheduledTimesArr.length);
+  }
+
+  if (typeof targetMed.daily_doses_count === 'number' && targetMed.daily_doses_count > 0) {
+    dailyDoses = Math.max(dailyDoses, targetMed.daily_doses_count);
+  }
+  if (typeof targetMed.times_per_day === 'number' && targetMed.times_per_day > 0) {
+    dailyDoses = Math.max(dailyDoses, targetMed.times_per_day);
+  }
+  if (typeof targetMed.times_count === 'number' && targetMed.times_count > 0) {
+    dailyDoses = Math.max(dailyDoses, targetMed.times_count);
+  }
+  if (targetMed.schedule && typeof targetMed.schedule === 'object') {
+    const activeSlots = ['morning', 'afternoon', 'evening', 'night'].filter(s => !!targetMed.schedule[s]).length;
     if (activeSlots > 0) dailyDoses = Math.max(dailyDoses, activeSlots);
-  } else if (typeof med.frequency === 'number' && med.frequency > 0) {
-    dailyDoses = Math.max(dailyDoses, med.frequency);
-  } else if (/twice|2x|2\/day|2\s*times|bid|b\.i\.d/i.test(lowerFreq)) {
+  }
+  if (typeof targetMed.frequency === 'number' && targetMed.frequency > 0) {
+    dailyDoses = Math.max(dailyDoses, targetMed.frequency);
+  }
+
+  // Regex matches on lowerFreq
+  if (/twice|2x|2\/day|2\s*times|bid|b\.i\.d|two\s*times|2\s*doses|two\s*tablets|twice\s*daily/i.test(lowerFreq)) {
     dailyDoses = Math.max(dailyDoses, 2);
-  } else if (/thrice|3x|3\/day|3\s*times|tid|t\.i\.d/i.test(lowerFreq)) {
+  } else if (/thrice|3x|3\/day|3\s*times|tid|t\.i\.d|three\s*times|3\s*doses|three\s*tablets|three\s*daily/i.test(lowerFreq)) {
     dailyDoses = Math.max(dailyDoses, 3);
-  } else if (/4x|4\/day|4\s*times|qid|q\.i\.d/i.test(lowerFreq)) {
+  } else if (/4x|4\/day|4\s*times|qid|q\.i\.d|four\s*times|4\s*doses/i.test(lowerFreq)) {
     dailyDoses = Math.max(dailyDoses, 4);
   } else {
-    const numMatch = lowerFreq.match(/(\d+)/);
+    const numMatch = lowerFreq.match(/(\d+)\s*(?:times|doses|tablets|pills|\/day|per\s*day)/i);
     if (numMatch && parseInt(numMatch[1], 10) > 0) {
       dailyDoses = Math.max(dailyDoses, parseInt(numMatch[1], 10));
     }
