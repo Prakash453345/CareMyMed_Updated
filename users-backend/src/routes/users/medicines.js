@@ -820,7 +820,7 @@ router.put('/mark-slot', authenticateSession, async (req, res) => {
 
 const performRefill = (refillInfo, addQty) => {
   refillInfo.remainingDoses = (refillInfo.remainingDoses || 0) + addQty;
-  refillInfo.totalDoses = (refillInfo.totalDoses || 0) + addQty;
+  refillInfo.totalDoses = refillInfo.remainingDoses;
   refillInfo.lastRefillDate = new Date();
   if (!refillInfo.history) refillInfo.history = [];
   refillInfo.history.push({ refilledAt: new Date(), quantity: addQty });

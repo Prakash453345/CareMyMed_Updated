@@ -2656,10 +2656,14 @@ export default function MedicationsScreen({ navigation, route }) {
                       med.refillInfo.totalDoses ??
                       null;
                     if (remaining !== null) {
+                      const total = Math.max(
+                        med.refillInfo.totalDoses || 0,
+                        remaining
+                      );
                       supplyMeds.push({
                         name: med.name,
                         remaining,
-                        total: med.refillInfo.totalDoses || remaining,
+                        total,
                         isLow:
                           remaining <= (med.refillInfo.alertThreshold || 5),
                       });
