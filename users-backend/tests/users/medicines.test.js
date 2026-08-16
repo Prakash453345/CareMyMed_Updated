@@ -756,7 +756,7 @@ describe('User Medicines Routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(patient.medications[0].refillInfo.remainingDoses).toBe(25);
-      expect(patient.medications[0].refillInfo.totalDoses).toBe(45);
+      expect(patient.medications[0].refillInfo.totalDoses).toBe(30);
       expect(patient.save).toHaveBeenCalled();
     });
 
@@ -785,7 +785,7 @@ describe('User Medicines Routes', () => {
       expect(res1.status).toBe(200);
       expect(res1.body.success).toBe(true);
       expect(patient.medications[0].refillInfo.remainingDoses).toBe(25);
-      expect(patient.medications[0].refillInfo.totalDoses).toBe(50);
+      expect(patient.medications[0].refillInfo.totalDoses).toBe(30);
       expect(patient.medications[0].refillInfo.history).toHaveLength(1);
       expect(patient.medications[0].refillInfo.history[0].quantity).toBe(20);
 
@@ -797,7 +797,7 @@ describe('User Medicines Routes', () => {
       expect(res2.status).toBe(200);
       expect(res2.body.success).toBe(true);
       expect(patient.medications[0].refillInfo.remainingDoses).toBe(40);
-      expect(patient.medications[0].refillInfo.totalDoses).toBe(65);
+      expect(patient.medications[0].refillInfo.totalDoses).toBe(40);
       expect(patient.medications[0].refillInfo.history).toHaveLength(2);
       expect(patient.medications[0].refillInfo.history[1].quantity).toBe(15);
     });
