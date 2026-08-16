@@ -127,13 +127,25 @@ describe('Chatbot Sessions Route Tests', () => {
   });
 
   describe('GET /api/chatbot/sessions/:id', () => {
-    it('returns session details if found and matches patient context', async () => {
+    it('returns session details with structured attachments if found and matches patient context', async () => {
       const mockSession = {
         _id: 'session-1',
         title: 'Existing Chat',
         messages: [
           { role: 'assistant', text: 'Disclaimer' },
-          { role: 'user', text: 'Hello' },
+          {
+            role: 'user',
+            text: "What's this medicine for?",
+            image: '/uploads/chat_attachments/chat_123.jpg',
+            attachments: [
+              {
+                type: 'image',
+                url: '/uploads/chat_attachments/chat_123.jpg',
+                mimeType: 'image/jpeg',
+                fileName: 'Bidical.jpg',
+              },
+            ],
+          },
         ],
       };
       AIChatSession.findOne = jest.fn().mockResolvedValue(mockSession);
@@ -141,6 +153,8 @@ describe('Chatbot Sessions Route Tests', () => {
       const res = await request(app).get('/api/chatbot/sessions/session-1');
       expect(res.status).toBe(200);
       expect(res.body).toEqual(mockSession);
+      expect(res.body.messages[1].attachments[0].url).toContain('/uploads/chat_attachments/');
+      expect(res.body.messages[1].image).not.toContain('base64');
       expect(AIChatSession.findOne).toHaveBeenCalledWith({
         _id: 'session-1',
         patient_id: mockAuthState.profile._id,

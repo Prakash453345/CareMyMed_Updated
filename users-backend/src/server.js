@@ -140,6 +140,15 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+// Static uploads serving for persistent chat attachments & media
+const path = require('path');
+const fs = require('fs');
+const uploadsDir = path.join(__dirname, '../uploads/chat_attachments');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes

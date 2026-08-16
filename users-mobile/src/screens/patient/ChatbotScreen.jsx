@@ -1054,17 +1054,25 @@ export default function ChatbotScreen({ navigation, route }) {
                 
                 if (abortController.signal.aborted) return;
 
-                const sessionMessages = (res.data.messages || []).map(m => ({
-                    id: m._id || String(Math.random()),
-                    text: m.text,
-                    isUser: m.role === 'user',
-                    timestamp: new Date(m.timestamp).getTime(),
-                    cards: m.cards || [],
-                    suggestions: m.suggestions || [],
-                    image: m.image,
-                    audio: m.audio,
-                    audioDuration: m.audioDuration || null
-                }));
+                const baseUrl = process.env.EXPO_PUBLIC_CHATBOT_URL || api.defaults.baseURL || process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
+                const serverRoot = baseUrl.replace(/\/api\/?$/, '');
+
+                const sessionMessages = (res.data.messages || []).map(m => {
+                    const rawImg = m.image || (m.attachments && m.attachments.find(a => a.type === 'image')?.url);
+                    const resolvedImg = rawImg && rawImg.startsWith('/') ? `${serverRoot}${rawImg}` : rawImg;
+                    return {
+                        id: m._id || String(Math.random()),
+                        text: m.text,
+                        isUser: m.role === 'user',
+                        timestamp: new Date(m.timestamp).getTime(),
+                        cards: m.cards || [],
+                        suggestions: m.suggestions || [],
+                        image: resolvedImg,
+                        attachments: m.attachments || [],
+                        audio: m.audio,
+                        audioDuration: m.audioDuration || null
+                    };
+                });
 
                 setMessages(sessionMessages);
                 setLastSyncedAt(Date.now());

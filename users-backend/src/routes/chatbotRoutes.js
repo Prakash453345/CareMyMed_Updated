@@ -380,50 +380,66 @@ router.post(
             }
           }
 
-          // Try 2: Groq Vision API (using configurable GROQ_VISION_MODEL)
+          // Try 2: Groq Vision API (with multi-model fallback chain)
           if (!visionProcessed && groqApiKey) {
-            try {
-              const groqVisionRes = await axios.post(
-                'https://api.groq.com/openai/v1/chat/completions',
-                {
-                  model: groqVisionModel,
-                  messages: [
-                    {
-                      role: 'user',
-                      content: [
-                        {
-                          type: 'text',
-                          text: 'Transcribe and describe all visible text, numbers, titles, and card details from this image accurately.'
-                        },
-                        {
-                          type: 'image_url',
-                          image_url: {
-                            url: `data:${mimeType};base64,${base64Content}`
-                          }
-                        }
-                      ]
-                    }
-                  ],
-                  temperature: 0.2,
-                  max_tokens: 500
-                },
-                {
-                  headers: {
-                    Authorization: `Bearer ${groqApiKey}`,
-                    'Content-Type': 'application/json'
-                  },
-                  timeout: 10000
-                }
-              );
+            const visionCandidates = Array.from(
+              new Set([
+                groqVisionModel,
+                'llama-3.2-11b-vision-instruct',
+                'llama-3.2-90b-vision-instruct',
+                'llama-3.2-11b-vision-preview',
+              ])
+            );
 
-              const visionAnalysis = groqVisionRes.data.choices?.[0]?.message?.content;
-              if (visionAnalysis && visionAnalysis.trim()) {
-                visionContextText = `[GROQ VISION IMAGE ANALYSIS & TRANSCRIBED CONTENT]:\n${visionAnalysis.trim()}`;
-                visionProcessed = true;
+            for (const modelCandidate of visionCandidates) {
+              if (visionProcessed) break;
+              try {
+                const groqVisionRes = await axios.post(
+                  'https://api.groq.com/openai/v1/chat/completions',
+                  {
+                    model: modelCandidate,
+                    messages: [
+                      {
+                        role: 'user',
+                        content: [
+                          {
+                            type: 'text',
+                            text: 'Analyze this medication image in detail. Extract and list all visible brand names, generic active ingredients (e.g. Calcium, Vitamin D3, Paracetamol), dosage strengths (e.g. 500mg, 1000IU), manufacturer details, and packaging text accurately.',
+                          },
+                          {
+                            type: 'image_url',
+                            image_url: {
+                              url: `data:${mimeType};base64,${base64Content}`,
+                            },
+                          },
+                        ],
+                      },
+                    ],
+                    temperature: 0.2,
+                    max_tokens: 600,
+                  },
+                  {
+                    headers: {
+                      Authorization: `Bearer ${groqApiKey}`,
+                      'Content-Type': 'application/json',
+                    },
+                    timeout: 15000,
+                  }
+                );
+
+                const visionAnalysis =
+                  groqVisionRes.data.choices?.[0]?.message?.content;
+                if (visionAnalysis && visionAnalysis.trim()) {
+                  visionContextText = `[GROQ VISION IMAGE ANALYSIS & TRANSCRIBED CONTENT]:\n${visionAnalysis.trim()}`;
+                  visionProcessed = true;
+                }
+              } catch (groqVisionErr) {
+                visionError = groqVisionErr;
+                console.warn(
+                  `[ChatbotRoute] Groq Vision AI warning (${modelCandidate}):`,
+                  groqVisionErr?.response?.data || groqVisionErr.message
+                );
               }
-            } catch (groqVisionErr) {
-              visionError = groqVisionErr;
-              console.warn('[ChatbotRoute] Groq Vision AI warning:', groqVisionErr?.response?.data || groqVisionErr.message);
             }
           }
         }
@@ -562,16 +578,29 @@ router.post(
         }));
         let savedImageUri = undefined;
         let savedAttachments = [];
-        if (imageFile) {
+        if (imageFile && imageFile.buffer) {
           const mime = imageFile.mimetype || 'image/jpeg';
-          const base64 = imageFile.buffer.toString('base64');
-          savedImageUri = `data:${mime};base64,${base64}`;
+          const path = require('path');
+          const fs = require('fs');
+          const fileExt = imageFile.originalname
+            ? path.extname(imageFile.originalname)
+            : '.jpg';
+          const filename = `chat_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${fileExt || '.jpg'}`;
+          const uploadsDir = path.join(__dirname, '../uploads/chat_attachments');
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+          }
+          const filepath = path.join(uploadsDir, filename);
+          fs.writeFileSync(filepath, imageFile.buffer);
+
+          const publicUrl = `/uploads/chat_attachments/${filename}`;
+          savedImageUri = publicUrl;
           savedAttachments = [
             {
               type: 'image',
-              url: savedImageUri,
+              url: publicUrl,
               mimeType: mime,
-              fileName: imageFile.originalname || 'medical_image.jpg',
+              fileName: imageFile.originalname || filename,
             },
           ];
         }
