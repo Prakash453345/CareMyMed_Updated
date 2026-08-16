@@ -13,14 +13,26 @@ import { Package, X, Check, AlertCircle, Plus, Minus } from 'lucide-react-native
 import * as Haptics from 'expo-haptics';
 import { usePatientStore } from '../../store/usePatientStore';
 
-const calcMonthlyDoseRequirement = (med, months = 1) => {
-  if (!med) return Math.round(30 * months);
+/**
+ * derivePrescriptionModel — Extracts structured prescription metadata:
+ * - quantityPerDose: tablets/units per single dose (e.g., 1, 2, 0.5)
+ * - dosesPerDay: number of doses administered per day (e.g., 2 for morning + night)
+ * - dailyTabletConsumption: quantityPerDose * dosesPerDay
+ * - isPRN: true if SOS / As Needed / PRN medication
+ */
+export function derivePrescriptionModel(med) {
+  if (!med) {
+    return {
+      quantityPerDose: 1,
+      dosesPerDay: 1,
+      dailyTabletConsumption: 1,
+      isPRN: false,
+    };
+  }
 
   const medNameLower = (med.name || '').trim().toLowerCase();
-  let dailyDoses = 1;
   let fullMedObj = null;
 
-  // 1. Fetch patient medications from global Zustand store to get true daily schedule
   try {
     const storeState = usePatientStore.getState ? usePatientStore.getState() : null;
     const allPatientMeds = storeState?.patient?.medications || 
@@ -32,38 +44,8 @@ const calcMonthlyDoseRequirement = (med, months = 1) => {
         m => m.name && m.name.trim().toLowerCase() === medNameLower
       );
     }
-
-    // Inspect schedule slots in Zustand store (morning, afternoon, evening, night)
-    const schedule = storeState?.medicationSchedule;
-    if (schedule && medNameLower) {
-      let slotCount = 0;
-      Object.values(schedule).forEach((slotMeds) => {
-        if (Array.isArray(slotMeds)) {
-          slotMeds.forEach((item) => {
-            if (item.name && item.name.trim().toLowerCase() === medNameLower) {
-              slotCount++;
-            }
-          });
-        }
-      });
-      if (slotCount > 0) {
-        dailyDoses = Math.max(dailyDoses, slotCount);
-      }
-    }
-
-    // Inspect todayMeds or dashboardMeds list in store
-    const todayList = storeState?.todayMeds || storeState?.dashboardMeds || [];
-    if (Array.isArray(todayList) && medNameLower) {
-      const matchingTodayCount = todayList.filter(
-        item => item.name && item.name.trim().toLowerCase() === medNameLower
-      ).length;
-      if (matchingTodayCount > 0) {
-        dailyDoses = Math.max(dailyDoses, matchingTodayCount);
-      }
-    }
   } catch (e) {}
 
-  // Combine properties from med and fullMedObj
   const targetMed = fullMedObj ? { ...fullMedObj, ...med } : med;
 
   const freqStr = (typeof targetMed.frequency === 'string' ? targetMed.frequency : '') || 
@@ -72,78 +54,110 @@ const calcMonthlyDoseRequirement = (med, months = 1) => {
                   (typeof med.frequency === 'string' ? med.frequency : '') ||
                   (typeof med.instructions === 'string' ? med.instructions : '');
   const lowerFreq = freqStr.toLowerCase();
+  const lowerDosage = ((targetMed.dosage || med.dosage || '') + ' ' + (targetMed.unit || '')).toLowerCase();
 
-  // Check weekly / alternate day / monthly overrides
-  if (/once\s*a\s*week|weekly|1\/week|every\s*week|once\s*weekly/i.test(lowerFreq)) {
-    return Math.max(1, Math.round(4 * months));
-  }
-  if (/twice\s*a\s*week|2x\/week|2\s*times\s*a\s*week/i.test(lowerFreq)) {
-    return Math.max(1, Math.round(8 * months));
-  }
-  if (/twice\s*a\s*month|2x\/month|every\s*2\s*weeks|biweekly|2\s*times\s*a\s*month/i.test(lowerFreq)) {
-    return Math.max(1, Math.round(2 * months));
-  }
-  if (/once\s*a\s*month|monthly|1\/month/i.test(lowerFreq)) {
-    return Math.max(1, Math.round(1 * months));
-  }
-  if (/alternate\s*day/i.test(lowerFreq)) {
-    return Math.max(1, Math.round(15 * months));
-  }
-  const everyXDaysMatch = lowerFreq.match(/every\s*(\d+)\s*days?/i);
-  if (everyXDaysMatch && parseInt(everyXDaysMatch[1], 10) > 0) {
-    const daysInterval = parseInt(everyXDaysMatch[1], 10);
-    return Math.max(1, Math.round((30 / daysInterval) * months));
-  }
+  // 1. Detect SOS / PRN / As Needed
+  const isPRN = /sos|prn|as\s*needed|when\s*required|on\s*demand|if\s*needed|as\s*required/i.test(lowerFreq) ||
+                /as_needed/i.test(targetMed.slot || med.slot || '');
 
-  // Evaluate explicit array lengths & counts across targetMed & fullMedObj
-  const timesArr = (Array.isArray(targetMed.times) && targetMed.times.length > 0) ? targetMed.times :
-                   (Array.isArray(fullMedObj?.times) && fullMedObj.times.length > 0) ? fullMedObj.times : [];
-  if (timesArr.length > 0) {
-    dailyDoses = Math.max(dailyDoses, timesArr.length);
-  }
-
-  const scheduledTimesArr = (Array.isArray(targetMed.scheduledTimes) && targetMed.scheduledTimes.length > 0) ? targetMed.scheduledTimes :
-                            (Array.isArray(targetMed.scheduled_times) && targetMed.scheduled_times.length > 0) ? targetMed.scheduled_times :
-                            (Array.isArray(fullMedObj?.scheduledTimes) && fullMedObj.scheduledTimes.length > 0) ? fullMedObj.scheduledTimes : [];
-  if (scheduledTimesArr.length > 0) {
-    dailyDoses = Math.max(dailyDoses, scheduledTimesArr.length);
-  }
-
-  if (typeof targetMed.daily_doses_count === 'number' && targetMed.daily_doses_count > 0) {
-    dailyDoses = Math.max(dailyDoses, targetMed.daily_doses_count);
-  }
-  if (typeof targetMed.times_per_day === 'number' && targetMed.times_per_day > 0) {
-    dailyDoses = Math.max(dailyDoses, targetMed.times_per_day);
-  }
-  if (typeof targetMed.times_count === 'number' && targetMed.times_count > 0) {
-    dailyDoses = Math.max(dailyDoses, targetMed.times_count);
-  }
-  if (targetMed.schedule && typeof targetMed.schedule === 'object') {
-    const activeSlots = ['morning', 'afternoon', 'evening', 'night'].filter(s => !!targetMed.schedule[s]).length;
-    if (activeSlots > 0) dailyDoses = Math.max(dailyDoses, activeSlots);
-  }
-  if (typeof targetMed.frequency === 'number' && targetMed.frequency > 0) {
-    dailyDoses = Math.max(dailyDoses, targetMed.frequency);
-  }
-
-  // Regex matches on lowerFreq
-  if (/twice|2x|2\/day|2\s*times|bid|b\.i\.d|two\s*times|2\s*doses|two\s*tablets|twice\s*daily/i.test(lowerFreq)) {
-    dailyDoses = Math.max(dailyDoses, 2);
-  } else if (/thrice|3x|3\/day|3\s*times|tid|t\.i\.d|three\s*times|3\s*doses|three\s*tablets|three\s*daily/i.test(lowerFreq)) {
-    dailyDoses = Math.max(dailyDoses, 3);
-  } else if (/4x|4\/day|4\s*times|qid|q\.i\.d|four\s*times|4\s*doses/i.test(lowerFreq)) {
-    dailyDoses = Math.max(dailyDoses, 4);
+  // 2. Extract quantityPerDose (tablets per dose)
+  let quantityPerDose = 1;
+  if (typeof targetMed.quantityPerDose === 'number' && targetMed.quantityPerDose > 0) {
+    quantityPerDose = targetMed.quantityPerDose;
+  } else if (typeof targetMed.pills_per_dose === 'number' && targetMed.pills_per_dose > 0) {
+    quantityPerDose = targetMed.pills_per_dose;
+  } else if (typeof targetMed.dose_quantity === 'number' && targetMed.dose_quantity > 0) {
+    quantityPerDose = targetMed.dose_quantity;
   } else {
-    const numMatch = lowerFreq.match(/(\d+)\s*(?:times|doses|tablets|pills|\/day|per\s*day)/i);
-    if (numMatch && parseInt(numMatch[1], 10) > 0) {
-      dailyDoses = Math.max(dailyDoses, parseInt(numMatch[1], 10));
+    // Check fractional / integer dose patterns in dosage string or instructions
+    if (/½|1\/2|0\.5/.test(lowerDosage) || /½|1\/2|0\.5/.test(lowerFreq)) {
+      quantityPerDose = 0.5;
+    } else {
+      const qtyMatch = lowerDosage.match(/(\d+(?:\.\d+)?)\s*(?:tablet|tablets|tab|tabs|pill|pills|cap|capsule|capsules)/i) ||
+                       lowerFreq.match(/(\d+(?:\.\d+)?)\s*(?:tablet|tablets|tab|tabs|pill|pills|cap|capsule|capsules)\s*(?:per|each|\/|\b)/i);
+      if (qtyMatch && parseFloat(qtyMatch[1]) > 0) {
+        quantityPerDose = parseFloat(qtyMatch[1]);
+      }
     }
   }
 
-  return Math.max(1, Math.round(30 * dailyDoses * months));
+  // 3. Extract dosesPerDay
+  let dosesPerDay = 1;
+
+  if (isPRN) {
+    dosesPerDay = 0; // PRN has no fixed daily frequency
+  } else {
+    // 3a. Indian 1-0-1 or 1-1-1 notation parsing
+    const dashMatch = lowerFreq.match(/\b([0-4])\s*-\s*([0-4])\s*-\s*([0-4])\b/);
+    if (dashMatch) {
+      const mDose = parseInt(dashMatch[1], 10);
+      const aDose = parseInt(dashMatch[2], 10);
+      const nDose = parseInt(dashMatch[3], 10);
+      const sumDoses = mDose + aDose + nDose;
+      if (sumDoses > 0) {
+        dosesPerDay = (mDose > 0 ? 1 : 0) + (aDose > 0 ? 1 : 0) + (nDose > 0 ? 1 : 0);
+        if (dosesPerDay > 0) quantityPerDose = Math.max(quantityPerDose, sumDoses / dosesPerDay);
+      }
+    } else {
+      // 3b. Check schedule store slot occurrences
+      try {
+        const storeState = usePatientStore.getState ? usePatientStore.getState() : null;
+        const schedule = storeState?.medicationSchedule;
+        if (schedule && medNameLower) {
+          let slotCount = 0;
+          Object.values(schedule).forEach((slotMeds) => {
+            if (Array.isArray(slotMeds)) {
+              slotMeds.forEach((item) => {
+                if (item.name && item.name.trim().toLowerCase() === medNameLower) {
+                  slotCount++;
+                }
+              });
+            }
+          });
+          if (slotCount > 0) dosesPerDay = Math.max(dosesPerDay, slotCount);
+        }
+      } catch (e) {}
+
+      // 3c. Check explicit time array lengths
+      const timesArr = (Array.isArray(targetMed.times) && targetMed.times.length > 0) ? targetMed.times :
+                       (Array.isArray(fullMedObj?.times) && fullMedObj.times.length > 0) ? fullMedObj.times : [];
+      if (timesArr.length > 0) dosesPerDay = Math.max(dosesPerDay, timesArr.length);
+
+      const scheduledTimesArr = (Array.isArray(targetMed.scheduledTimes) && targetMed.scheduledTimes.length > 0) ? targetMed.scheduledTimes :
+                                (Array.isArray(targetMed.scheduled_times) && targetMed.scheduled_times.length > 0) ? targetMed.scheduled_times :
+                                (Array.isArray(fullMedObj?.scheduledTimes) && fullMedObj.scheduledTimes.length > 0) ? fullMedObj.scheduledTimes : [];
+      if (scheduledTimesArr.length > 0) dosesPerDay = Math.max(dosesPerDay, scheduledTimesArr.length);
+
+      // 3d. Frequency keyword parsing
+      if (/twice|2x|2\/day|2\s*times|bid|b\.i\.d|two\s*times|twice\s*daily/i.test(lowerFreq)) {
+        dosesPerDay = Math.max(dosesPerDay, 2);
+      } else if (/thrice|3x|3\/day|3\s*times|tid|t\.i\.d|three\s*times|three\s*daily/i.test(lowerFreq)) {
+        dosesPerDay = Math.max(dosesPerDay, 3);
+      } else if (/4x|4\/day|4\s*times|qid|q\.i\.d|four\s*times/i.test(lowerFreq)) {
+        dosesPerDay = Math.max(dosesPerDay, 4);
+      }
+    }
+  }
+
+  const dailyTabletConsumption = isPRN ? 0 : quantityPerDose * dosesPerDay;
+
+  return {
+    quantityPerDose,
+    dosesPerDay,
+    dailyTabletConsumption,
+    isPRN,
+  };
+}
+
+const calcMonthlyDoseRequirement = (med, months = 1) => {
+  if (!med) return Math.round(30 * months);
+  const rx = derivePrescriptionModel(med);
+  if (rx.isPRN) return Math.round(30 * months); // Default standard package sizes for PRN
+  return Math.max(1, Math.round(rx.dailyTabletConsumption * 30 * months));
 };
 
 export default function SupplyUpdateModal({ visible, onClose, med, onConfirm }) {
+  const rx = derivePrescriptionModel(med);
   const oneMonthCount = calcMonthlyDoseRequirement(med, 1);
   const twoMonthsCount = calcMonthlyDoseRequirement(med, 2);
   const threeMonthsCount = calcMonthlyDoseRequirement(med, 3);
@@ -171,7 +185,11 @@ export default function SupplyUpdateModal({ visible, onClose, med, onConfirm }) 
 
   if (!med) return null;
 
-  const presets = [
+  const presets = rx.isPRN ? [
+    { label: '30 Units', count: 30, desc: `30 ${displayUnit}` },
+    { label: '60 Units', count: 60, desc: `60 ${displayUnit}` },
+    { label: '90 Units', count: 90, desc: `90 ${displayUnit}` },
+  ] : [
     { label: '1 Month', count: oneMonthCount, desc: `≈ ${oneMonthCount} ${displayUnit}` },
     { label: '2 Months', count: twoMonthsCount, desc: `≈ ${twoMonthsCount} ${displayUnit}` },
     { label: '3 Months', count: threeMonthsCount, desc: `≈ ${threeMonthsCount} ${displayUnit}` },
@@ -215,8 +233,11 @@ export default function SupplyUpdateModal({ visible, onClose, med, onConfirm }) 
     }
   };
 
-  const monthlyRate = oneMonthCount / 30;
-  const estDaysLeft = Math.max(0, Math.round(remainingDoses / (monthlyRate || 1)));
+  const estDaysLeft = rx.isPRN || rx.dailyTabletConsumption <= 0
+    ? null
+    : Math.max(0, Math.round(remainingDoses / rx.dailyTabletConsumption));
+
+  const unitSingular = displayUnit.toLowerCase().replace(/s$/, '');
 
   return (
     <Modal
@@ -259,10 +280,26 @@ export default function SupplyUpdateModal({ visible, onClose, med, onConfirm }) 
                   {remainingDoses} {displayUnit} remaining
                 </Text>
                 <Text style={styles.stockSub}>
-                  ≈ {estDaysLeft} {estDaysLeft === 1 ? 'day' : 'days'} estimated supply left
+                  {rx.isPRN
+                    ? 'As Needed (PRN) • Dosed on symptom occurrence'
+                    : estDaysLeft !== null
+                    ? `≈ ${estDaysLeft} ${estDaysLeft === 1 ? 'day' : 'days'} estimated supply left`
+                    : 'Flexible schedule'}
                 </Text>
               </View>
             </View>
+          </View>
+
+          {/* Transparent Prescription Breakdown Card */}
+          <View style={styles.breakdownCard}>
+            <Text style={styles.breakdownTitle}>💡 Refill Requirement Formula</Text>
+            <Text style={styles.breakdownText}>
+              {rx.isPRN ? (
+                "As Needed (PRN) medication — dosage frequency varies by symptom need."
+              ) : (
+                `Based on: ${rx.quantityPerDose} ${unitSingular}${rx.quantityPerDose === 1 ? '' : 's'} × ${rx.dosesPerDay} dose${rx.dosesPerDay === 1 ? '' : 's'}/day (${rx.dailyTabletConsumption} ${displayUnit.toLowerCase()}/day)`
+              )}
+            </Text>
           </View>
 
           {/* Presets */}
@@ -442,6 +479,26 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#64748B',
     marginTop: 1,
+  },
+  breakdownCard: {
+    backgroundColor: '#EEF2FF',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderColor: '#C7D2FE',
+    borderWidth: 1,
+    gap: 3,
+  },
+  breakdownTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4338CA',
+  },
+  breakdownText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#3730A3',
+    lineHeight: 17,
   },
   sectionLabel: {
     fontSize: 13,
