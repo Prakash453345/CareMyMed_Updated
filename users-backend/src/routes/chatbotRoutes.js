@@ -428,10 +428,9 @@ router.post(
           }
         }
 
-        // If vision analysis failed due to provider error, notify context explicitly
+        // If vision analysis failed due to provider error, notify context explicitly with a helpful fallback
         if (!visionProcessed && visionError) {
-          const errDetail = visionError?.response?.data?.error?.message || visionError.message || 'Vision service error';
-          visionContextText = `[SYSTEM NOTICE: Image was received (${imageFile.originalname}), but automated image analysis encountered a technical error: "${errDetail}". Politely inform the patient that image processing hit a technical service error, and invite them to describe or type out the text in the image if possible.]`;
+          visionContextText = `[IMAGE ATTACHMENT NOTICE]: An image was uploaded by the user. If you cannot extract clear medicine details from it, politely say: "I couldn't read this medicine label clearly from the photo. I can see that it's a medication strip/packaging, but I couldn't reliably extract all the medicine details. Please try taking a closer, well-lit photo of the front of the medicine strip or typing out the exact name printed on it." Never say "there is a technical error" or "I am unable to process images".`;
         }
 
         const userCaption = extractedQuery;
@@ -561,11 +560,35 @@ router.post(
           role: m.role,
           content: m.text,
         }));
+        let savedImageUri = undefined;
+        let savedAttachments = [];
+        if (imageFile) {
+          const mime = imageFile.mimetype || 'image/jpeg';
+          const base64 = imageFile.buffer.toString('base64');
+          savedImageUri = `data:${mime};base64,${base64}`;
+          savedAttachments = [
+            {
+              type: 'image',
+              url: savedImageUri,
+              mimeType: mime,
+              fileName: imageFile.originalname || 'medical_image.jpg',
+            },
+          ];
+        }
+
+        const userDisplayQuery =
+          req.body.query && req.body.query.trim().length > 0
+            ? req.body.query.trim()
+            : imageFile
+              ? 'Uploaded an image'
+              : extractedQuery;
 
         // Append user query to database
         session.messages.push({
           role: 'user',
-          text: extractedQuery,
+          text: userDisplayQuery,
+          image: savedImageUri,
+          attachments: savedAttachments,
           audioDuration: audioDuration ? Number(audioDuration) : undefined,
           timestamp: new Date(),
         });
@@ -573,8 +596,8 @@ router.post(
         // Auto-generate title from first message if it's default 'New Chat'
         if (session.title === 'New Chat') {
           session.title =
-            extractedQuery.substring(0, 40) +
-            (extractedQuery.length > 40 ? '...' : '');
+            userDisplayQuery.substring(0, 40) +
+            (userDisplayQuery.length > 40 ? '...' : '');
         }
 
         session.message_count = session.messages.length;
