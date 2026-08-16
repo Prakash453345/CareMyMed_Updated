@@ -117,8 +117,8 @@ export default function ProgressiveMedCard({
                     {/* Liquid Sweep Action Button */}
                     <LiquidConfirmButton
                         taken={currentSlot.taken}
-                        label="Mark Slot as Taken"
-                        takenLabel="Taken"
+                        label="TAKE SLOT"
+                        takenLabel="TAKEN"
                         onPress={() => onToggleSlot?.(currentSlot)}
                     />
                 </View>

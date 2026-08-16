@@ -127,48 +127,50 @@ export default function LiquidConfirmButton({
 
     return (
         <Animated.View style={[{ transform: [{ scale: scaleAnim }] }]}>
-            <Pressable
-                style={s.btnContainer}
-                onPress={handlePress}
-                disabled={disabled || taken}
-            >
-                {/* Background Liquid Sweep Layer */}
-                <Animated.View
-                    style={[
-                        s.liquidFill,
-                        { width: sweepWidth },
-                    ]}
-                />
-
-                {/* Button Content Layer */}
-                <View style={s.contentRow}>
-                    <Animated.View
-                        style={{
-                            opacity: checkAnim,
-                            transform: [
-                                { translateX: checkTranslateX },
-                                { scale: checkScale },
-                            ],
-                            marginRight: checkAnim.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [0, 4],
-                            }),
-                        }}
+                    <Pressable
+                        style={[s.btnContainer, taken && s.btnContainerTaken]}
+                        onPress={handlePress}
+                        disabled={disabled || taken}
                     >
-                        <Check size={14} color="#FFFFFF" strokeWidth={2.8} />
-                    </Animated.View>
+                        {/* Background Liquid Sweep Layer */}
+                        {!taken && (
+                            <Animated.View
+                                style={[
+                                    s.liquidFill,
+                                    { width: sweepWidth },
+                                ]}
+                            />
+                        )}
 
-                    <Animated.Text
-                        style={[
-                            s.btnText,
-                            taken && s.btnTextTaken,
-                            { opacity: textOpacity },
-                        ]}
-                    >
-                        {taken ? takenLabel : label}
-                    </Animated.Text>
-                </View>
-            </Pressable>
+                        {/* Button Content Layer */}
+                        <View style={s.contentRow}>
+                            <Animated.View
+                                style={{
+                                    opacity: checkAnim,
+                                    transform: [
+                                        { translateX: checkTranslateX },
+                                        { scale: checkScale },
+                                    ],
+                                    marginRight: checkAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [0, 4],
+                                    }),
+                                }}
+                            >
+                                <Check size={14} color={taken ? "#10B981" : "#FFFFFF"} strokeWidth={2.8} />
+                            </Animated.View>
+
+                            <Animated.Text
+                                style={[
+                                    s.btnText,
+                                    taken && s.btnTextTaken,
+                                    { opacity: textOpacity },
+                                ]}
+                            >
+                                {taken ? (takenLabel || 'TAKEN') : (label || 'TAKE')}
+                            </Animated.Text>
+                        </View>
+                    </Pressable>
         </Animated.View>
     );
 }
@@ -183,16 +185,19 @@ const s = StyleSheet.create({
         alignItems: 'center',
         overflow: 'hidden',
         position: 'relative',
+        borderWidth: 1.5,
+        borderColor: 'transparent',
     },
     btnContainerTaken: {
-        backgroundColor: '#059669',
+        backgroundColor: '#FFFFFF',
+        borderColor: '#DCFCE7',
     },
     liquidFill: {
         position: 'absolute',
         left: 0,
         top: 0,
         bottom: 0,
-        backgroundColor: '#059669',
+        backgroundColor: '#6D28D9',
         borderRadius: 12,
     },
     contentRow: {
@@ -204,10 +209,10 @@ const s = StyleSheet.create({
     btnText: {
         color: '#FFFFFF',
         fontSize: 13,
-        fontWeight: '700',
-        letterSpacing: -0.1,
+        fontWeight: '800',
+        letterSpacing: 0.2,
     },
     btnTextTaken: {
-        color: '#FFFFFF',
+        color: '#10B981',
     },
 });

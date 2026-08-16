@@ -559,12 +559,13 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPre
               </Animated.View>
 
               {/* Text content */}
-              <View style={{ flex: 1, gap: 4 }}>
+              <View style={{ flex: 1, gap: 3, justifyContent: "center" }}>
+                {/* Line 1: Title + Dosage Badge */}
                 <View
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    gap: 6,
+                    gap: 8,
                     flexWrap: "wrap",
                   }}
                 >
@@ -573,20 +574,26 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPre
                   >
                     {med.name}
                   </Animated.Text>
-                  {med.taken && (
-                    <Animated.View style={{ transform: [{ scale: takenBadgeScale }] }}>
-                      <View style={styles.takenBadge}>
-                        <CheckCircle2 size={10} color="#10B981" />
-                        <Text style={styles.takenBadgeTxt}>
-                          {med.marked_by === "caller"
-                            ? t("medications.by_caller", {
-                                defaultValue: "By Caller",
-                              })
-                            : t("medications.taken", { defaultValue: "Taken" })}
-                        </Text>
-                      </View>
-                    </Animated.View>
-                  )}
+                  {med.dosage ? (
+                    <View
+                      style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 2,
+                        borderRadius: 6,
+                        backgroundColor: med.taken ? "#DCFCE7" : "#F3E8FF",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: "800",
+                          color: med.taken ? "#15803D" : "#7C3AED",
+                        }}
+                      >
+                        {med.dosage}
+                      </Text>
+                    </View>
+                  ) : null}
                   {med.verifiedByCaller && (
                     <View style={styles.verifiedBadge}>
                       <Shield size={9} color="#059669" />
@@ -596,61 +603,74 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPre
                     </View>
                   )}
                 </View>
-                <View
+
+                {/* Line 2: Status / Time Subtext */}
+                <Text
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 8,
-                    flexWrap: "wrap",
-                    marginTop: 2,
+                    fontSize: 12,
+                    fontWeight: "600",
+                    color: med.taken ? "#15803D" : "#64748B",
                   }}
                 >
-                  <Text style={styles.medDose}>
-                    {med.preferred_time ? `${med.preferred_time} · ` : ""}
-                    {med.dosage}
-                  </Text>
-                  {hasRefillInfo && (
-                    <Pressable
-                      onPress={(e) => {
-                        e?.stopPropagation?.();
-                        onOpenSupplyModal?.(med);
+                  {med.taken
+                    ? med.taken_at
+                      ? `Taken at ${new Date(med.taken_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                      : `Taken`
+                    : med.preferred_time || "10:00 AM"}
+                </Text>
+
+                {/* Line 3: Supply Pill Badge */}
+                {hasRefillInfo && (
+                  <Pressable
+                    onPress={(e) => {
+                      e?.stopPropagation?.();
+                      onOpenSupplyModal?.(med);
+                    }}
+                    hitSlop={6}
+                    style={({ pressed }) => [
+                      {
+                        flexDirection: "row",
+                        alignItems: "center",
+                        alignSelf: "flex-start",
+                        gap: 4,
+                        paddingHorizontal: 8,
+                        paddingVertical: 2.5,
+                        borderRadius: 6,
+                        backgroundColor: med.taken
+                          ? "#DCFCE7"
+                          : isLowSupply
+                          ? "#FEF2F2"
+                          : "#F1F5F9",
+                        borderWidth: 1,
+                        borderColor: med.taken
+                          ? "#A7F3D0"
+                          : isLowSupply
+                          ? "#FECACA"
+                          : "#E2E8F0",
+                        opacity: pressed ? 0.75 : 1,
+                        marginTop: 2,
+                      },
+                    ]}
+                  >
+                    {isLowSupply ? (
+                      <AlertCircle size={10} color="#EF4444" strokeWidth={3} />
+                    ) : (
+                      <Package size={10} color={med.taken ? "#15803D" : "#64748B"} strokeWidth={2.5} />
+                    )}
+                    <Text
+                      style={{
+                        fontSize: 9,
+                        fontWeight: "800",
+                        color: med.taken ? "#15803D" : isLowSupply ? "#EF4444" : "#64748B",
+                        letterSpacing: 0.3,
+                        textTransform: "uppercase",
                       }}
-                      hitSlop={6}
-                      style={({ pressed }) => [
-                        {
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 4,
-                          paddingHorizontal: 8,
-                          paddingVertical: 2.5,
-                          borderRadius: 8,
-                          backgroundColor: isLowSupply ? "#FEF2F2" : "#F1F5F9",
-                          borderWidth: 1,
-                          borderColor: isLowSupply ? "#FECACA" : "#E2E8F0",
-                          opacity: pressed ? 0.75 : 1,
-                        },
-                      ]}
                     >
-                      {isLowSupply ? (
-                        <AlertCircle size={10} color="#EF4444" strokeWidth={3} />
-                      ) : (
-                        <Package size={10} color="#64748B" strokeWidth={2.5} />
-                      )}
-                      <Text
-                        style={{
-                          fontSize: 9,
-                          fontWeight: "800",
-                          color: isLowSupply ? "#EF4444" : "#64748B",
-                          letterSpacing: 0.3,
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        {displayDoses}{" "}
-                        {isLowSupply ? "Left (Update)" : "Supply Left"}
-                      </Text>
-                    </Pressable>
-                  )}
-                </View>
+                      {displayDoses}{" "}
+                      {isLowSupply ? "Left (Update)" : "Supply Left"}
+                    </Text>
+                  </Pressable>
+                )}
               </View>
 
               {/* Liquid Confirm Button */}
@@ -658,8 +678,8 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPre
                 <LiquidConfirmButton
                   taken={med.taken}
                   onPress={() => onToggle?.(med)}
-                  label={t("medications.take", { defaultValue: "Take Now" })}
-                  takenLabel={t("medications.taken", { defaultValue: "Taken" })}
+                  label={t("medications.take", { defaultValue: "TAKE" })}
+                  takenLabel={t("medications.taken", { defaultValue: "TAKEN" })}
                 />
               </View>
             </View>
