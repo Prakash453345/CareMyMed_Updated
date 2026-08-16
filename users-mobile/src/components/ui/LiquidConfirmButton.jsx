@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Animated, Easing } from 'react-native';
 import { Check } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -6,7 +6,7 @@ import { colors, radius, FONT, METRIC_FONT } from '../../theme';
 
 /**
  * LiquidConfirmButton — Swiggy / PhonePe-grade liquid sweep confirmation button.
- * Single tap triggers a left-to-right emerald sweep, checkmark slide-in, and label morph.
+ * Single tap triggers a left-to-right sweep, checkmark morph, and double-tap guard.
  */
 export default function LiquidConfirmButton({
     taken = false,
@@ -15,6 +15,7 @@ export default function LiquidConfirmButton({
     takenLabel = 'Taken',
     disabled = false,
 }) {
+    const [isCompleting, setIsCompleting] = useState(false);
     const sweepAnim = useRef(new Animated.Value(taken ? 1 : 0)).current;
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const checkAnim = useRef(new Animated.Value(taken ? 1 : 0)).current;
@@ -35,7 +36,7 @@ export default function LiquidConfirmButton({
                     useNativeDriver: false,
                 }),
                 Animated.sequence([
-                    Animated.delay(120),
+                    Animated.delay(100),
                     Animated.parallel([
                         Animated.timing(textOpacity, {
                             toValue: 0.4,
@@ -56,6 +57,7 @@ export default function LiquidConfirmButton({
                     }),
                 ]),
             ]).start(() => {
+                setIsCompleting(false);
                 if (!wasTaken) {
                     try {
                         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -80,14 +82,17 @@ export default function LiquidConfirmButton({
                     duration: 150,
                     useNativeDriver: true,
                 }),
-            ]).start();
+            ]).start(() => {
+                setIsCompleting(false);
+            });
         }
     }, [taken]);
 
     const handlePress = () => {
-        if (disabled || taken) return;
+        if (disabled || taken || isCompleting) return;
+        setIsCompleting(true);
 
-        // 1. Immediate tactile depress
+        // 1. Immediate tactile depress (0-100ms)
         Animated.timing(scaleAnim, {
             toValue: 0.94,
             duration: 60,
@@ -108,6 +113,11 @@ export default function LiquidConfirmButton({
 
         // 3. Trigger Parent Handler
         onPress?.();
+
+        // Safety fallback to unblock after 1000ms if parent async fails
+        setTimeout(() => {
+            setIsCompleting(false);
+        }, 1000);
     };
 
     const sweepWidth = sweepAnim.interpolate({
@@ -130,7 +140,7 @@ export default function LiquidConfirmButton({
                     <Pressable
                         style={[s.btnContainer, taken && s.btnContainerTaken]}
                         onPress={handlePress}
-                        disabled={disabled || taken}
+                        disabled={disabled || taken || isCompleting}
                     >
                         {/* Background Liquid Sweep Layer */}
                         {!taken && (

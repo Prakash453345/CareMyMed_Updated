@@ -409,6 +409,11 @@ router.put('/mark', authenticateSession, async (req, res) => {
     if (!med)
       return res.status(404).json({ error: 'Medicine not found in schedule' });
 
+    const wasAlreadyInState = med.taken === taken;
+    if (wasAlreadyInState) {
+      return res.json({ message: 'Medicine state already up to date', log });
+    }
+
     med.taken = taken;
     med.taken_at = taken ? new Date() : null;
     med.marked_by = marked_by;

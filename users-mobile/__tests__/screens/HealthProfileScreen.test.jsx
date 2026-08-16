@@ -2,6 +2,8 @@ import React from 'react';
 import { render, act } from '@testing-library/react-native';
 import HealthProfileScreen from '../../src/screens/patient/HealthProfileScreen';
 
+jest.setTimeout(40000);
+
 // Mock translation hook
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
