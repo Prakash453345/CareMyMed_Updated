@@ -341,6 +341,8 @@ const TactileWheelPicker = ({
     ];
   }, [safeData]);
 
+  const isUserScrollingRef = useRef(false);
+
   const handleScrollEnd = (event) => {
     try {
       const y = event.nativeEvent?.contentOffset?.y || 0;
@@ -348,6 +350,7 @@ const TactileWheelPicker = ({
       if (dataIndex >= 0 && dataIndex < safeData.length) {
         const item = safeData[dataIndex];
         if (item && item.value !== undefined && String(item.value) !== String(selectedValue)) {
+          isUserScrollingRef.current = true;
           onValueChange(item.value);
           try {
             Haptics.selectionAsync().catch(() => {});
@@ -360,6 +363,10 @@ const TactileWheelPicker = ({
   };
 
   useEffect(() => {
+    if (isUserScrollingRef.current) {
+      isUserScrollingRef.current = false;
+      return;
+    }
     const index = safeData.findIndex((item) => String(item.value) === String(selectedValue));
     if (index !== -1) {
       const timer = setTimeout(() => {

@@ -698,8 +698,13 @@ const VISIBLE_ROWS = 5;
 const WheelCol = ({ data, selectedValue, onValueChange, colWidth = 72 }) => {
   const ref = useRef(null);
   const isProg = useRef(false);
+  const isUserScrollingRef = useRef(false);
 
   useEffect(() => {
+    if (isUserScrollingRef.current) {
+      isUserScrollingRef.current = false;
+      return;
+    }
     const idx = data.indexOf(selectedValue);
     if (idx >= 0 && ref.current) {
       isProg.current = true;
@@ -714,12 +719,14 @@ const WheelCol = ({ data, selectedValue, onValueChange, colWidth = 72 }) => {
     }
   }, [selectedValue, data]);
 
-  const onScroll = useCallback(
+  const handleMomentumScrollEnd = useCallback(
     (e) => {
       if (isProg.current) return;
       const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
-      if (idx >= 0 && idx < data.length && data[idx] !== selectedValue)
+      if (idx >= 0 && idx < data.length && data[idx] !== selectedValue) {
+        isUserScrollingRef.current = true;
         onValueChange(data[idx]);
+      }
     },
     [data, selectedValue, onValueChange],
   );
@@ -751,7 +758,8 @@ const WheelCol = ({ data, selectedValue, onValueChange, colWidth = 72 }) => {
         showsVerticalScrollIndicator={false}
         snapToInterval={ITEM_H}
         decelerationRate="fast"
-        onScroll={onScroll}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        onScrollEndDrag={handleMomentumScrollEnd}
         scrollEventThrottle={16}
         contentContainerStyle={{
           paddingTop: ITEM_H * Math.floor(VISIBLE_ROWS / 2),
