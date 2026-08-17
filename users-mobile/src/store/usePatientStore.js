@@ -840,8 +840,8 @@ const usePatientStore = create((set, get) => ({
         const prevDashboardMeds = get().dashboardMeds;
         const prevSchedule = get().medicationSchedule;
 
-        const medId = med?.id || med?._id;
-        const medName = med?.name;
+        const medId = typeof med === 'object' ? (med?.id || med?._id) : (typeof med === 'string' ? med : null);
+        const medName = typeof med === 'object' ? med?.name : (typeof med === 'string' ? med : null);
 
         set(s => {
             const mapMed = (m) => {
@@ -849,10 +849,11 @@ const usePatientStore = create((set, get) => ({
                                 (medName && m.name === medName);
                 if (isMatch) {
                     const currentInfo = m.refillInfo || { totalDoses: 30, remainingDoses: 0, alertThreshold: 5 };
+                    const newRemaining = (currentInfo.remainingDoses || 0) + addQty;
                     const newRefillInfo = {
                         ...currentInfo,
-                        remainingDoses: (currentInfo.remainingDoses || 0) + addQty,
-                        totalDoses: (currentInfo.totalDoses || 0) + addQty,
+                        remainingDoses: newRemaining,
+                        totalDoses: newRemaining,
                         lastRefillDate: new Date().toISOString(),
                     };
                     return { ...m, refillInfo: newRefillInfo };
