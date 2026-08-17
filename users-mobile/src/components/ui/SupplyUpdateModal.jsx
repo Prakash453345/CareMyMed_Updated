@@ -7,157 +7,48 @@ import {
   Pressable,
   TextInput,
   ActivityIndicator,
-  Animated,
 } from 'react-native';
 import { Package, X, Check, AlertCircle, Plus, Minus } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { usePatientStore } from '../../store/usePatientStore';
+import {
+  derivePrescriptionModel as engineDerivePrescriptionModel,
+  calculateDaysRemaining,
+  calculateRefillPresets,
+} from '../../utils/medicationSupplyEngine';
 
-/**
- * derivePrescriptionModel — Extracts structured prescription metadata:
- * - quantityPerDose: tablets/units per single dose (e.g., 1, 2, 0.5)
- * - dosesPerDay: number of doses administered per day (e.g., 2 for morning + night)
- * - dailyTabletConsumption: quantityPerDose * dosesPerDay
- * - isPRN: true if SOS / As Needed / PRN medication
- */
 export function derivePrescriptionModel(med) {
-  if (!med) {
-    return {
-      quantityPerDose: 1,
-      dosesPerDay: 1,
-      dailyTabletConsumption: 1,
-      isPRN: false,
-    };
-  }
-
-  const medNameLower = (med.name || '').trim().toLowerCase();
-  let fullMedObj = null;
-
-  try {
-    const storeState = usePatientStore.getState ? usePatientStore.getState() : null;
-    const allPatientMeds = storeState?.patient?.medications || 
-                           storeState?.patientData?.medications || 
-                           storeState?.medications || [];
-
-    if (Array.isArray(allPatientMeds) && medNameLower) {
-      fullMedObj = allPatientMeds.find(
-        m => m.name && m.name.trim().toLowerCase() === medNameLower
-      );
-    }
-  } catch (e) {}
-
-  const targetMed = fullMedObj ? { ...fullMedObj, ...med } : med;
-
-  const freqStr = (typeof targetMed.frequency === 'string' ? targetMed.frequency : '') || 
-                  (typeof targetMed.frequency_type === 'string' ? targetMed.frequency_type : '') ||
-                  (typeof targetMed.instructions === 'string' ? targetMed.instructions : '') ||
-                  (typeof med.frequency === 'string' ? med.frequency : '') ||
-                  (typeof med.instructions === 'string' ? med.instructions : '');
-  const lowerFreq = freqStr.toLowerCase();
-  const lowerDosage = ((targetMed.dosage || med.dosage || '') + ' ' + (targetMed.unit || '')).toLowerCase();
-
-  // 1. Detect SOS / PRN / As Needed
-  const isPRN = /sos|prn|as\s*needed|when\s*required|on\s*demand|if\s*needed|as\s*required/i.test(lowerFreq) ||
-                /as_needed/i.test(targetMed.slot || med.slot || '');
-
-  // 2. Extract quantityPerDose (tablets per dose)
-  let quantityPerDose = 1;
-  if (typeof targetMed.quantityPerDose === 'number' && targetMed.quantityPerDose > 0) {
-    quantityPerDose = targetMed.quantityPerDose;
-  } else if (typeof targetMed.pills_per_dose === 'number' && targetMed.pills_per_dose > 0) {
-    quantityPerDose = targetMed.pills_per_dose;
-  } else if (typeof targetMed.dose_quantity === 'number' && targetMed.dose_quantity > 0) {
-    quantityPerDose = targetMed.dose_quantity;
-  } else {
-    // Check fractional / integer dose patterns in dosage string or instructions
-    if (/½|1\/2|0\.5/.test(lowerDosage) || /½|1\/2|0\.5/.test(lowerFreq)) {
-      quantityPerDose = 0.5;
-    } else {
-      const qtyMatch = lowerDosage.match(/(\d+(?:\.\d+)?)\s*(?:tablet|tablets|tab|tabs|pill|pills|cap|capsule|capsules)/i) ||
-                       lowerFreq.match(/(\d+(?:\.\d+)?)\s*(?:tablet|tablets|tab|tabs|pill|pills|cap|capsule|capsules)\s*(?:per|each|\/|\b)/i);
-      if (qtyMatch && parseFloat(qtyMatch[1]) > 0) {
-        quantityPerDose = parseFloat(qtyMatch[1]);
-      }
-    }
-  }
-
-  // 3. Extract dosesPerDay
-  let dosesPerDay = 1;
-
-  if (isPRN) {
-    dosesPerDay = 0; // PRN has no fixed daily frequency
-  } else {
-    // 3a. Indian 1-0-1 or 1-1-1 notation parsing
-    const dashMatch = lowerFreq.match(/\b([0-4])\s*-\s*([0-4])\s*-\s*([0-4])\b/);
-    if (dashMatch) {
-      const mDose = parseInt(dashMatch[1], 10);
-      const aDose = parseInt(dashMatch[2], 10);
-      const nDose = parseInt(dashMatch[3], 10);
-      const sumDoses = mDose + aDose + nDose;
-      if (sumDoses > 0) {
-        dosesPerDay = (mDose > 0 ? 1 : 0) + (aDose > 0 ? 1 : 0) + (nDose > 0 ? 1 : 0);
-        if (dosesPerDay > 0) quantityPerDose = Math.max(quantityPerDose, sumDoses / dosesPerDay);
-      }
-    } else {
-      // 3b. Check schedule store slot occurrences
-      try {
-        const storeState = usePatientStore.getState ? usePatientStore.getState() : null;
-        const schedule = storeState?.medicationSchedule;
-        if (schedule && medNameLower) {
-          let slotCount = 0;
-          Object.values(schedule).forEach((slotMeds) => {
-            if (Array.isArray(slotMeds)) {
-              slotMeds.forEach((item) => {
-                if (item.name && item.name.trim().toLowerCase() === medNameLower) {
-                  slotCount++;
-                }
-              });
-            }
-          });
-          if (slotCount > 0) dosesPerDay = Math.max(dosesPerDay, slotCount);
-        }
-      } catch (e) {}
-
-      // 3c. Check explicit time array lengths
-      const timesArr = (Array.isArray(targetMed.times) && targetMed.times.length > 0) ? targetMed.times :
-                       (Array.isArray(fullMedObj?.times) && fullMedObj.times.length > 0) ? fullMedObj.times : [];
-      if (timesArr.length > 0) dosesPerDay = Math.max(dosesPerDay, timesArr.length);
-
-      const scheduledTimesArr = (Array.isArray(targetMed.scheduledTimes) && targetMed.scheduledTimes.length > 0) ? targetMed.scheduledTimes :
-                                (Array.isArray(targetMed.scheduled_times) && targetMed.scheduled_times.length > 0) ? targetMed.scheduled_times :
-                                (Array.isArray(fullMedObj?.scheduledTimes) && fullMedObj.scheduledTimes.length > 0) ? fullMedObj.scheduledTimes : [];
-      if (scheduledTimesArr.length > 0) dosesPerDay = Math.max(dosesPerDay, scheduledTimesArr.length);
-
-      // 3d. Frequency keyword parsing
-      if (/twice|2x|2\/day|2\s*times|bid|b\.i\.d|two\s*times|twice\s*daily/i.test(lowerFreq)) {
-        dosesPerDay = Math.max(dosesPerDay, 2);
-      } else if (/thrice|3x|3\/day|3\s*times|tid|t\.i\.d|three\s*times|three\s*daily/i.test(lowerFreq)) {
-        dosesPerDay = Math.max(dosesPerDay, 3);
-      } else if (/4x|4\/day|4\s*times|qid|q\.i\.d|four\s*times/i.test(lowerFreq)) {
-        dosesPerDay = Math.max(dosesPerDay, 4);
-      }
-    }
-  }
-
-  const dailyTabletConsumption = isPRN ? 0 : quantityPerDose * dosesPerDay;
-
-  return {
-    quantityPerDose,
-    dosesPerDay,
-    dailyTabletConsumption,
-    isPRN,
-  };
+  const storeState = typeof usePatientStore?.getState === 'function' ? usePatientStore.getState() : null;
+  return engineDerivePrescriptionModel(med, storeState);
 }
 
 const calcMonthlyDoseRequirement = (med, months = 1) => {
   if (!med) return Math.round(30 * months);
-  const rx = derivePrescriptionModel(med);
-  if (rx.isPRN) return Math.round(30 * months); // Default standard package sizes for PRN
-  return Math.max(1, Math.round(rx.dailyTabletConsumption * 30 * months));
+  const storeState = typeof usePatientStore?.getState === 'function' ? usePatientStore.getState() : null;
+  const rx = engineDerivePrescriptionModel(med, storeState);
+  if (rx.isPRN) return Math.round(30 * months);
+  const presets = calculateRefillPresets(rx.dailyTabletConsumption, [months]);
+  return presets[0]?.tablets || Math.round(30 * months);
 };
 
 export default function SupplyUpdateModal({ visible, onClose, med, onConfirm }) {
-  const rx = derivePrescriptionModel(med);
+  const storeState = typeof usePatientStore?.getState === 'function' ? usePatientStore.getState() : null;
+  const rx = engineDerivePrescriptionModel(med, storeState);
+
+  // Debug logging when modal opens
+  useEffect(() => {
+    if (visible && med) {
+      console.log('SUPPLY DEBUG', {
+        selectedMedication: med,
+        masterMedication: rx.prescription,
+        quantityPerDose: rx.quantityPerDose,
+        dosesPerDay: rx.dosesPerDay,
+        dailyConsumption: rx.dailyTabletConsumption,
+        isPRN: rx.isPRN,
+      });
+    }
+  }, [visible, med, rx]);
+
   const oneMonthCount = calcMonthlyDoseRequirement(med, 1);
   const twoMonthsCount = calcMonthlyDoseRequirement(med, 2);
   const threeMonthsCount = calcMonthlyDoseRequirement(med, 3);
@@ -235,7 +126,7 @@ export default function SupplyUpdateModal({ visible, onClose, med, onConfirm }) 
 
   const estDaysLeft = rx.isPRN || rx.dailyTabletConsumption <= 0
     ? null
-    : Math.max(0, Math.round(remainingDoses / rx.dailyTabletConsumption));
+    : calculateDaysRemaining(remainingDoses, rx.dailyTabletConsumption);
 
   const unitSingular = displayUnit.toLowerCase().replace(/s$/, '');
 
@@ -324,63 +215,65 @@ export default function SupplyUpdateModal({ visible, onClose, med, onConfirm }) 
             })}
           </View>
 
-          {/* Custom Stepper */}
+          {/* Custom Input */}
           <View style={styles.customContainer}>
-            <Text style={styles.customLabel}>Custom Quantity</Text>
+            <View style={styles.customHeader}>
+              <Text style={styles.sectionLabel}>Or Enter Custom Quantity</Text>
+              {isCustom && <Text style={styles.customBadge}>Custom Active</Text>}
+            </View>
             <View style={styles.stepperRow}>
               <Pressable
+                style={styles.stepBtn}
                 onPress={() => handleAdjustCustom(-5)}
-                style={styles.stepperBtn}
                 hitSlop={8}
               >
                 <Minus size={18} color="#475569" strokeWidth={2.5} />
               </Pressable>
+
               <TextInput
-                style={styles.stepperInput}
+                style={[styles.customInput, isCustom && styles.customInputActive]}
                 keyboardType="number-pad"
-                value={isCustom ? customQty : String(selectedQty)}
-                onChangeText={(txt) => {
-                  setIsCustom(true);
-                  handleCustomChange(txt);
-                }}
-                maxLength={4}
+                value={customQty}
+                onChangeText={handleCustomChange}
+                onFocus={() => setIsCustom(true)}
+                selectTextOnFocus
               />
+
               <Pressable
+                style={styles.stepBtn}
                 onPress={() => handleAdjustCustom(5)}
-                style={styles.stepperBtn}
                 hitSlop={8}
               >
                 <Plus size={18} color="#475569" strokeWidth={2.5} />
               </Pressable>
-              <Text style={styles.stepperUnit}>{displayUnit}</Text>
+
+              <Text style={styles.inputUnit}>{displayUnit}</Text>
             </View>
           </View>
 
-          {errorMsg ? (
+          {/* Error Message */}
+          {errorMsg && (
             <View style={styles.errorBanner}>
               <AlertCircle size={14} color="#EF4444" />
               <Text style={styles.errorTxt}>{errorMsg}</Text>
             </View>
-          ) : null}
+          )}
 
-          {/* Confirm Button */}
+          {/* Action Button */}
           <Pressable
+            style={[styles.submitBtn, isSubmitting && styles.submitBtnDisabled]}
             onPress={handleSubmit}
-            disabled={isSubmitting}
-            style={({ pressed }) => [
-              styles.confirmBtn,
-              pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] },
-            ]}
+            disabled={isSubmitting || selectedQty <= 0}
           >
             {isSubmitting ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <View style={styles.btnContentRow}>
+              <>
                 <Check size={18} color="#FFFFFF" strokeWidth={3} />
-                <Text style={styles.confirmBtnText}>
-                  Confirm +{selectedQty} {displayUnit}
+                <Text style={styles.submitBtnTxt}>
+                  Add {selectedQty} {displayUnit}
                 </Text>
-              </View>
+              </>
             )}
           </Pressable>
         </Pressable>
@@ -397,17 +290,17 @@ const styles = StyleSheet.create({
   },
   sheetContainer: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 32,
     gap: 16,
   },
   handlebar: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
+    width: 36,
+    height: 5,
+    borderRadius: 3,
     backgroundColor: '#E2E8F0',
     alignSelf: 'center',
     marginBottom: 4,
@@ -423,8 +316,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   iconBox: {
-    width: 44,
-    height: 44,
+    width: 42,
+    height: 42,
     borderRadius: 14,
     backgroundColor: '#EEF2FF',
     alignItems: 'center',
@@ -512,12 +405,14 @@ const styles = StyleSheet.create({
   chip: {
     flex: 1,
     backgroundColor: '#F8FAFC',
-    borderRadius: 16,
+    borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 8,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: '#E2E8F0',
+    gap: 2,
   },
   chipSelected: {
     backgroundColor: '#EEF2FF',
@@ -525,96 +420,103 @@ const styles = StyleSheet.create({
   },
   chipTitle: {
     fontSize: 13,
-    fontWeight: '800',
-    color: '#334155',
+    fontWeight: '700',
+    color: '#475569',
   },
   chipTitleSelected: {
     color: '#4F46E5',
+    fontWeight: '800',
   },
   chipSub: {
     fontSize: 10,
     fontWeight: '600',
     color: '#94A3B8',
-    marginTop: 2,
   },
   chipSubSelected: {
     color: '#6366F1',
   },
   customContainer: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
+    gap: 8,
   },
-  customLabel: {
-    fontSize: 12,
+  customHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  customBadge: {
+    fontSize: 10,
     fontWeight: '700',
-    color: '#64748B',
-    marginBottom: 8,
+    color: '#6366F1',
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
   stepperRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
-  stepperBtn: {
-    width: 36,
-    height: 36,
+  stepBtn: {
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepperInput: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#CBD5E1',
+  customInput: {
+    flex: 1,
+    height: 44,
+    backgroundColor: '#F8FAFC',
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
-    minWidth: 64,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
     textAlign: 'center',
-  },
-  stepperUnit: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#475569',
+    color: '#0F172A',
+  },
+  customInputActive: {
+    borderColor: '#6366F1',
+    backgroundColor: '#FFFFFF',
+  },
+  inputUnit: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
   },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: '#FEF2F2',
-    padding: 10,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   errorTxt: {
     fontSize: 12,
-    fontWeight: '600',
     color: '#EF4444',
+    fontWeight: '600',
     flex: 1,
   },
-  confirmBtn: {
+  submitBtn: {
+    height: 50,
+    borderRadius: 16,
     backgroundColor: '#6366F1',
-    borderRadius: 18,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnContentRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
+    marginTop: 6,
   },
-  confirmBtnText: {
+  submitBtnDisabled: {
+    opacity: 0.6,
+  },
+  submitBtnTxt: {
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
   },
 });
