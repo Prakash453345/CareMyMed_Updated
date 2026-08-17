@@ -61,8 +61,8 @@ describe('SupplyUpdateModal Integration with Supply Engine', () => {
     expect(getByText('≈ 120 Tablets')).toBeTruthy();
     expect(getByText('≈ 180 Tablets')).toBeTruthy();
 
-    // 49 Tablets remaining / 2 = 24.5 days estimated supply left
-    expect(getByText('≈ 24.5 days estimated supply left')).toBeTruthy();
+    // 49 Tablets remaining / 2 = 24.5 days estimated supply left (24 full days + 1 dose)
+    expect(getByText('≈ 24.5 days estimated supply left (24 full days + 1 dose)')).toBeTruthy();
     expect(getByText('Based on: 1 tablet × 2 doses/day (2 tablets/day)')).toBeTruthy();
   });
 

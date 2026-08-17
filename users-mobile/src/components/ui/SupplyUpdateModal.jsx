@@ -174,7 +174,9 @@ export default function SupplyUpdateModal({ visible, onClose, med, onConfirm }) 
                   {rx.isPRN
                     ? 'As Needed (PRN) • Dosed on symptom occurrence'
                     : estDaysLeft !== null
-                    ? `≈ ${estDaysLeft} ${estDaysLeft === 1 ? 'day' : 'days'} estimated supply left`
+                    ? estDaysLeft % 1 !== 0
+                      ? `≈ ${estDaysLeft} days estimated supply left (${Math.floor(estDaysLeft)} full days + 1 dose)`
+                      : `≈ ${estDaysLeft} ${estDaysLeft === 1 ? 'day' : 'days'} estimated supply left`
                     : 'Flexible schedule'}
                 </Text>
               </View>
