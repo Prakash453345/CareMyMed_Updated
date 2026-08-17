@@ -386,7 +386,6 @@ router.post(
               new Set([
                 process.env.GROQ_VISION_MODEL || 'qwen/qwen3.6-27b',
                 'qwen/qwen3.6-27b',
-                'qwen-2.5-coder-32b',
                 'llama-3.2-11b-vision-instruct',
                 'llama-3.2-90b-vision-instruct',
               ])

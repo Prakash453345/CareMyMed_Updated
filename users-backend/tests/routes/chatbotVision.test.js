@@ -20,7 +20,6 @@ describe('Groq Vision Model Candidate Pipeline', () => {
       new Set([
         groqVisionModel,
         'qwen/qwen3.6-27b',
-        'qwen-2.5-coder-32b',
         'llama-3.2-11b-vision-instruct',
         'llama-3.2-90b-vision-instruct',
       ])
@@ -37,7 +36,6 @@ describe('Groq Vision Model Candidate Pipeline', () => {
       new Set([
         groqVisionModel,
         'qwen/qwen3.6-27b',
-        'qwen-2.5-coder-32b',
         'llama-3.2-11b-vision-instruct',
       ])
     );
