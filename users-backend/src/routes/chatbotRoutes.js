@@ -384,10 +384,11 @@ router.post(
           if (!visionProcessed && groqApiKey) {
             const visionCandidates = Array.from(
               new Set([
-                groqVisionModel,
+                process.env.GROQ_VISION_MODEL || 'qwen/qwen3.6-27b',
+                'qwen/qwen3.6-27b',
+                'qwen-2.5-coder-32b',
                 'llama-3.2-11b-vision-instruct',
                 'llama-3.2-90b-vision-instruct',
-                'llama-3.2-11b-vision-preview',
               ])
             );
 
@@ -404,7 +405,7 @@ router.post(
                         content: [
                           {
                             type: 'text',
-                            text: 'Analyze this medication image in detail. Extract and list all visible brand names, generic active ingredients (e.g. Calcium, Vitamin D3, Paracetamol), dosage strengths (e.g. 500mg, 1000IU), manufacturer details, and packaging text accurately.',
+                            text: 'Analyze this medical/medication image carefully and accurately. Perform detailed OCR and extract: 1. Brand name (e.g. Bidical 500, Metformin), 2. Generic ingredients (e.g. Calcium, Vitamin D3), 3. Dosage strength (e.g. 500mg), 4. Manufacturer, 5. All readable label text. Be precise and clear.',
                           },
                           {
                             type: 'image_url',
@@ -415,7 +416,7 @@ router.post(
                         ],
                       },
                     ],
-                    temperature: 0.2,
+                    temperature: 0.1,
                     max_tokens: 600,
                   },
                   {
@@ -432,6 +433,7 @@ router.post(
                 if (visionAnalysis && visionAnalysis.trim()) {
                   visionContextText = `[GROQ VISION IMAGE ANALYSIS & TRANSCRIBED CONTENT]:\n${visionAnalysis.trim()}`;
                   visionProcessed = true;
+                  console.log(`[ChatbotRoute] Groq Vision succeeded with model: ${modelCandidate}`);
                 }
               } catch (groqVisionErr) {
                 visionError = groqVisionErr;

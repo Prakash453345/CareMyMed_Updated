@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TextInput, Pressable, KeyboardAvoidingView,
-    Platform, Animated, ActivityIndicator, StatusBar, Image, PanResponder, Vibration, AppState
+    Platform, Animated, ActivityIndicator, StatusBar, Image, PanResponder, Vibration, AppState, Modal
 } from 'react-native';
 import Reanimated, { 
     FadeIn, FadeInDown, FadeOut, 
@@ -25,6 +25,8 @@ import AlertManager from '../../utils/AlertManager';
 import { globalChatCache, removeCachedSession } from './ChatHistoryScreen';
 import TabScreenTransition from '../../components/ui/TabScreenTransition';
 import HeroTransition from '../../livingGlass/components/HeroTransition';
+import { resolveChatAttachmentUrl } from '../../utils/mediaResolver';
+import useChatStore from '../../store/useChatStore';
 import RecoveryManager, { RecordingResult, RecordingResultStatus } from '../../services/RecoveryManager';
 import RecoverableBoundary from '../../components/RecoverableBoundary';
 
@@ -389,7 +391,7 @@ function formatDuration(secs) {
 }
 
 // ── Single chat bubble ─────────────────────────────────────────────────────
-function ChatBubble({ message }) {
+function ChatBubble({ message, onPressImage }) {
     const isUser = message.isUser;
     const scale = useSharedValue(0.97);
     const borderScale = useSharedValue(1);
@@ -463,7 +465,9 @@ function ChatBubble({ message }) {
                     <LinearGradient colors={['#6366F1', '#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
                     
                     {message.image ? (
-                        <Image source={{ uri: message.image }} style={[styles.chatImage, message.text && { marginBottom: 10 }]} resizeMode="cover" />
+                        <Pressable onPress={() => onPressImage && onPressImage(message.image)}>
+                            <Image source={{ uri: message.image }} style={[styles.chatImage, message.text && { marginBottom: 10 }]} resizeMode="cover" />
+                        </Pressable>
                     ) : null}
 
                     {message.audio ? (
@@ -515,7 +519,9 @@ function ChatBubble({ message }) {
                 )}
 
                 {message.image ? (
-                    <Image source={{ uri: message.image }} style={styles.chatImage} resizeMode="cover" />
+                    <Pressable onPress={() => onPressImage && onPressImage(message.image)}>
+                        <Image source={{ uri: message.image }} style={styles.chatImage} resizeMode="cover" />
+                    </Pressable>
                 ) : null}
 
                 {message.audio ? (
@@ -996,6 +1002,7 @@ export default function ChatbotScreen({ navigation, route }) {
 
     const [messages, setMessages] = useState(getInitialMessages);
     const [isLoadingSession, setIsLoadingSession] = useState(false);
+    const [selectedViewerImage, setSelectedViewerImage] = useState(null);
 
     const scrollToBottom = useCallback(() => {
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
@@ -1054,12 +1061,9 @@ export default function ChatbotScreen({ navigation, route }) {
                 
                 if (abortController.signal.aborted) return;
 
-                const baseUrl = process.env.EXPO_PUBLIC_CHATBOT_URL || api.defaults.baseURL || process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
-                const serverRoot = baseUrl.replace(/\/api\/?$/, '');
-
                 const sessionMessages = (res.data.messages || []).map(m => {
                     const rawImg = m.image || (m.attachments && m.attachments.find(a => a.type === 'image')?.url);
-                    const resolvedImg = rawImg && rawImg.startsWith('/') ? `${serverRoot}${rawImg}` : rawImg;
+                    const resolvedImg = resolveChatAttachmentUrl(rawImg);
                     return {
                         id: m._id || String(Math.random()),
                         text: m.text,
@@ -1601,24 +1605,9 @@ export default function ChatbotScreen({ navigation, route }) {
                     style: 'destructive',
                     onPress: async () => {
                         const targetId = activeSessionId;
-                        
-                        // 1. Optimistically delete local caches
-                        delete globalChatCache[targetId];
-                        AsyncStorage.removeItem(`chatbot_session_${targetId}`).catch(() => {});
-                        
-                        // 2. Optimistically remove from list cache
-                        removeCachedSession(targetId);
-                        
-                        // 3. Navigate back immediately (zero-latency transition)
                         navigation.goBack();
-                        
-                        // 4. Perform network request in background
-                        try {
-                            const params = isCompanion ? { patientId: targetPatientId } : {};
-                            await apiService.chatbot.deleteSession(targetId, params);
-                        } catch (err) {
-                            console.warn('Failed to delete chat session in background:', err);
-                        }
+                        const params = isCompanion ? { patientId: targetPatientId } : {};
+                        await useChatStore.getState().deleteSession(targetId, params);
                     }
                 }
             ],
@@ -1817,7 +1806,7 @@ export default function ChatbotScreen({ navigation, route }) {
         if (item.isSkeleton) {
             return <ChatBubbleSkeleton isUser={item.isUser} width={item.width} />;
         }
-        return <ChatBubble message={item} isUser={item.isUser} />;
+        return <ChatBubble message={item} isUser={item.isUser} onPressImage={(img) => setSelectedViewerImage(img)} />;
     }, []);
 
     const keyExtractor = useCallback((item) => item.id, []);
@@ -2064,6 +2053,23 @@ export default function ChatbotScreen({ navigation, route }) {
                 </View>
                 </RecoverableBoundary>
             </KeyboardAvoidingView>
+
+            {/* ── Image Viewer Modal ── */}
+            <Modal
+                visible={!!selectedViewerImage}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setSelectedViewerImage(null)}
+            >
+                <View style={styles.imageViewerBackdrop}>
+                    <Pressable style={styles.imageViewerCloseBtn} onPress={() => setSelectedViewerImage(null)} hitSlop={15}>
+                        <X size={26} color="#FFFFFF" strokeWidth={2.5} />
+                    </Pressable>
+                    {selectedViewerImage ? (
+                        <Image source={{ uri: selectedViewerImage }} style={styles.imageViewerFullImage} resizeMode="contain" />
+                    ) : null}
+                </View>
+            </Modal>
         </View>
         </TabScreenTransition>
     );
@@ -2072,6 +2078,29 @@ export default function ChatbotScreen({ navigation, route }) {
 // ══════════════════════════════════════════════════════════════════════════════
 const styles = StyleSheet.create({
     screen: { flex: 1, backgroundColor: '#F8FAFC' },
+
+    imageViewerBackdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    imageViewerCloseBtn: {
+        position: 'absolute',
+        top: 50,
+        right: 20,
+        zIndex: 10,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    imageViewerFullImage: {
+        width: '92%',
+        height: '80%',
+    },
 
     // ── Header ──
     header: {

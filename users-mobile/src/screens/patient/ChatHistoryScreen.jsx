@@ -12,9 +12,9 @@ import { useAuth } from '../../context/AuthContext';
 import usePatientStore from '../../store/usePatientStore';
 import { apiService, handleApiError } from '../../lib/api';
 import AlertManager from '../../utils/AlertManager';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import CompanionHeader from '../../components/ui/CompanionHeader';
 import TabScreenTransition from '../../components/ui/TabScreenTransition';
+import useChatStore from '../../store/useChatStore';
 
 export const globalChatCache = {}; // Keyed by sessionId: { messages, title, updatedAt, sessionId }
 export let cachedSessions = null;
@@ -156,11 +156,17 @@ export default function ChatHistoryScreen() {
             const params = isCompanion ? { patientId: targetPatientId } : {};
             const res = await apiService.chatbot.getSessions(params);
             const fetched = res.data || [];
-            setSessions(fetched);
-            cachedSessions = fetched;
+            
+            // Filter out any sessions tracked as deleted by useChatStore
+            const deletedSet = useChatStore.getState().deletedSessionIds;
+            const filtered = fetched.filter(s => !deletedSet.has(s._id));
+            
+            setSessions(filtered);
+            useChatStore.getState().setSessions(filtered);
+            cachedSessions = filtered;
             
             // Fire off background preloading
-            preloadRecentSessions(fetched, isCompanion, targetPatientId);
+            preloadRecentSessions(filtered, isCompanion, targetPatientId);
         } catch (err) {
             console.warn('Failed to load chat sessions:', err);
             const apiErr = handleApiError(err);
@@ -189,6 +195,7 @@ export default function ChatHistoryScreen() {
                 setSessions(prev => {
                     const next = [newSession, ...prev];
                     cachedSessions = next;
+                    useChatStore.getState().setSessions(next);
                     return next;
                 });
             }
@@ -224,32 +231,15 @@ export default function ChatHistoryScreen() {
                     text: 'Delete',
                     style: 'destructive',
                     onPress: async () => {
-                        const previousSessions = [...sessions];
-                        
-                        // 1. Optimistically update local state immediately
+                        // Optimistically update local state immediately
                         setSessions(prev => {
                             const next = prev.filter(s => s._id !== session._id);
                             cachedSessions = next;
                             return next;
                         });
                         
-                        try {
-                            const params = isCompanion ? { patientId: targetPatientId } : {};
-                            await apiService.chatbot.deleteSession(session._id, params);
-                            
-                            // Clear caches
-                            delete globalChatCache[session._id];
-                            await AsyncStorage.removeItem(`chatbot_session_${session._id}`);
-                        } catch (err) {
-                            console.warn('Failed to delete session:', err);
-                            
-                            // 2. Revert state on error
-                            setSessions(previousSessions);
-                            cachedSessions = previousSessions;
-                            
-                            const apiErr = handleApiError(err);
-                            AlertManager.alert('Error', apiErr.message || 'Could not delete conversation.', [{ text: 'OK' }], { type: 'error' });
-                        }
+                        const params = isCompanion ? { patientId: targetPatientId } : {};
+                        await useChatStore.getState().deleteSession(session._id, params);
                     }
                 }
             ],
