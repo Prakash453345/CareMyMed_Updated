@@ -1142,10 +1142,9 @@ export default function PatientHomeScreen({ navigation }) {
 
   useEffect(() => {
     const initSync = async () => {
+      await HealthSyncService.initialize();
       const status = await HealthSyncService.getStatus();
       setSyncStatus(status);
-      if (status.enabled && status.connected)
-        await HealthSyncService.initialize();
     };
     initSync();
     const unsub = HealthSyncService.addListener((update) => {

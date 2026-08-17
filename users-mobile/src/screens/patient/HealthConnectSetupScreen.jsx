@@ -120,12 +120,16 @@ export default function HealthConnectSetupScreen({ navigation }) {
                 const { Pedometer } = require('expo-sensors');
                 const isAvailable = await Pedometer.isAvailableAsync();
                 if (isAvailable) {
-                    const { status } = await Pedometer.getPermissionsAsync();
+                    let { status } = await Pedometer.getPermissionsAsync();
+                    if (status !== 'granted') {
+                        const req = await Pedometer.requestPermissionsAsync();
+                        status = req.status;
+                    }
                     if (status === 'granted') {
                         const startOfToday = new Date();
                         startOfToday.setHours(0, 0, 0, 0);
                         const res = await Pedometer.getStepCountAsync(startOfToday, new Date());
-                        if (res && typeof res.steps === 'number' && res.steps > 0 && active) {
+                        if (res && typeof res.steps === 'number' && active) {
                             setLocalPedometerSteps(res.steps);
                         }
                     }

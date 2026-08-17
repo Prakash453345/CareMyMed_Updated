@@ -33,29 +33,37 @@ class HealthSyncService {
      * Initialize the sync service and set up AppState listener.
      * Call this once when the app starts (after authentication).
      */
-    static async initialize() {
-        if (!isHealthSupported()) {
-            console.log('⚡ Health sync: Platform not supported');
-            return false;
-        }
+    static _pedometerSubscription = null;
+    static _lastPedometerSteps = 0;
 
+    /**
+     * Initialize the sync service and set up AppState listener.
+     * Call this once when the app starts (after authentication).
+     */
+    static async initialize() {
         const enabled = await this.isSyncEnabled();
         if (!enabled) {
-            console.log('⚡ Health sync: Not enabled by user');
+            console.log('⚡ Health sync: Disabled by user setting');
             return false;
         }
 
-        const initialized = await initializeHealthPlatform();
-        if (!initialized) {
-            console.log('⚡ Health sync: Platform initialization failed');
-            return false;
+        let healthPlatformOk = false;
+        if (isHealthSupported()) {
+            try {
+                const initialized = await initializeHealthPlatform();
+                if (initialized) {
+                    const permStatus = await checkPermissionStatus();
+                    if (permStatus === 'granted') {
+                        healthPlatformOk = true;
+                    }
+                }
+            } catch (platformErr) {
+                console.warn('⚡ Health sync: HealthConnect/HealthKit init error:', platformErr);
+            }
         }
 
-        const permStatus = await checkPermissionStatus();
-        if (permStatus !== 'granted') {
-            console.log(`⚡ Health sync: Permissions ${permStatus}`);
-            return false;
-        }
+        // Initialize phone hardware Pedometer step tracking (standalone sensor)
+        await this._initializePedometerTracking();
 
         // Start listening for app foreground events
         this._setupAppStateListener();
@@ -63,8 +71,59 @@ class HealthSyncService {
         // Do an immediate sync on initialization
         this.syncNow();
 
-        console.log('✅ Health sync service initialized');
+        console.log('✅ Health sync service initialized (HealthPlatform:', healthPlatformOk, ')');
         return true;
+    }
+
+    /**
+     * Initialize native hardware pedometer step tracking (expo-sensors).
+     */
+    static async _initializePedometerTracking() {
+        try {
+            const { Pedometer } = require('expo-sensors');
+            const isAvailable = await Pedometer.isAvailableAsync();
+            if (!isAvailable) {
+                console.log('⚡ Pedometer: Hardware step sensor not available on this device');
+                return false;
+            }
+
+            let { status } = await Pedometer.getPermissionsAsync();
+            if (status !== 'granted') {
+                console.log('⚡ Pedometer: Requesting ACTIVITY_RECOGNITION permissions...');
+                const req = await Pedometer.requestPermissionsAsync();
+                status = req.status;
+            }
+
+            if (status === 'granted') {
+                const startOfToday = new Date();
+                startOfToday.setHours(0, 0, 0, 0);
+                const initialResult = await Pedometer.getStepCountAsync(startOfToday, new Date());
+                if (initialResult && typeof initialResult.steps === 'number') {
+                    this._lastPedometerSteps = initialResult.steps;
+                    console.log(`✅ Pedometer: Loaded ${initialResult.steps} steps taken today`);
+                }
+
+                if (!this._pedometerSubscription) {
+                    this._pedometerSubscription = Pedometer.watchStepCount((event) => {
+                        if (event && typeof event.steps === 'number') {
+                            this._lastPedometerSteps += event.steps;
+                            this._notifyListeners({
+                                syncing: false,
+                                lastSync: new Date(),
+                                pedometerSteps: this._lastPedometerSteps,
+                            });
+                        }
+                    });
+                }
+                return true;
+            } else {
+                console.warn('⚡ Pedometer: Permission not granted');
+                return false;
+            }
+        } catch (err) {
+            console.warn('⚡ Pedometer initialization error:', err);
+            return false;
+        }
     }
 
     /**
@@ -103,12 +162,16 @@ class HealthSyncService {
     }
 
     /**
-     * Clean up the AppState listener.
+     * Clean up the AppState listener and pedometer subscription.
      */
     static cleanup() {
         if (this._appStateSubscription) {
             this._appStateSubscription.remove();
             this._appStateSubscription = null;
+        }
+        if (this._pedometerSubscription) {
+            this._pedometerSubscription.remove();
+            this._pedometerSubscription = null;
         }
         this._listeners = [];
     }
@@ -119,9 +182,10 @@ class HealthSyncService {
     static async isSyncEnabled() {
         try {
             const val = await AsyncStorage.getItem(STORAGE_KEYS.SYNC_ENABLED);
-            return val === 'true';
+            // Default to true if not explicitly set to 'false'
+            return val !== 'false';
         } catch {
-            return false;
+            return true;
         }
     }
 
