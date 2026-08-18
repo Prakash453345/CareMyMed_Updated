@@ -69,4 +69,13 @@ describe('Groq Vision Model Candidate Pipeline', () => {
     expect(content).toContain('Calcium');
     expect(content).toContain('Vitamin D3');
   });
+
+  it('persists stable server upload URIs for historical image hydration', () => {
+    const filename = 'img_1786942468332_abc123.jpg';
+    const publicUrl = `/uploads/chat_attachments/${filename}`;
+    
+    expect(publicUrl).toMatch(/^\/uploads\/chat_attachments\/img_\d+_[a-z0-9]+\.jpg$/);
+    expect(publicUrl).not.toContain('file://');
+    expect(publicUrl).not.toContain('ph://');
+  });
 });

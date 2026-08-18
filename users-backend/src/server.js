@@ -283,6 +283,13 @@ app.use(
 // Companion Routes
 app.use('/api/companion', companionRoutes);
 
+// Static Uploads Serving (Chat Attachments & Media)
+const uploadsDirectory = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDirectory)) {
+  fs.mkdirSync(uploadsDirectory, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsDirectory));
+
 // ─── Chatbot API ───────────────────────────────
 const chatbotRoutes = require('./routes/chatbotRoutes');
 app.use('/api/chatbot', authenticate, requireSubscription, chatbotRoutes);
