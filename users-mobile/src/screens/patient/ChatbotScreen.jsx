@@ -304,12 +304,16 @@ const getMascotForMessage = (text) => {
 };
 
 // ── Skeleton message loaders ────────────────────────────────────────────────
-export const SKELETON_MESSAGES = [
-    { id: 'sk-1', isSkeleton: true, isUser: false, width: '75%' },
-    { id: 'sk-2', isSkeleton: true, isUser: false, width: '45%' },
-    { id: 'sk-3', isSkeleton: true, isUser: true, width: '60%' },
-    { id: 'sk-4', isSkeleton: true, isUser: false, width: '90%' },
+export const FULL_VIEWPORT_SKELETONS = [
+    { id: 'sk-1', isSkeleton: true, isUser: false, width: '78%' },
+    { id: 'sk-2', isSkeleton: true, isUser: false, width: '48%' },
+    { id: 'sk-3', isSkeleton: true, isUser: true, width: '65%' },
+    { id: 'sk-4', isSkeleton: true, isUser: false, width: '85%' },
+    { id: 'sk-5', isSkeleton: true, isUser: true, width: '55%' },
+    { id: 'sk-6', isSkeleton: true, isUser: false, width: '70%' },
 ];
+
+export const SKELETON_MESSAGES = FULL_VIEWPORT_SKELETONS;
 
 function ChatBubbleSkeleton({ isUser, width }) {
     const pulseAnim = useRef(new Animated.Value(0.4)).current;
@@ -351,7 +355,7 @@ function ChatBubbleSkeleton({ isUser, width }) {
                 {/* Skeleton Text Line 1 */}
                 <View style={{ height: 10, width: '85%', borderRadius: 5, backgroundColor: isUser ? '#C7D2FE' : '#CBD5E1' }} />
                 {/* Skeleton Text Line 2 (shorter line for natural speech bubble appearance) */}
-                {width !== '45%' && (
+                {width !== '48%' && width !== '55%' && (
                     <View style={{ height: 10, width: '55%', borderRadius: 5, backgroundColor: isUser ? '#D9E2FE' : '#E2E8F0' }} />
                 )}
             </Animated.View>
@@ -359,6 +363,65 @@ function ChatBubbleSkeleton({ isUser, width }) {
                 <Animated.View style={[styles.avatarCircleUser, { backgroundColor: '#E2E8F0', opacity: pulseAnim }]} />
             )}
         </View>
+    );
+}
+
+// ── Centered Care Assistant Preparing State ─────────────────────────────────
+function CenteredCareAssistantPreparing({ isCompanion, patientName }) {
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    
+    useEffect(() => {
+        const animation = Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, { toValue: 1.08, duration: 900, useNativeDriver: true }),
+                Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true })
+            ])
+        );
+        animation.start();
+        return () => animation.stop();
+    }, [pulseAnim]);
+
+    const patientShortName = patientName?.split(' ')[0];
+
+    return (
+        <Reanimated.View 
+            entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(200)}
+            style={styles.centeredPreparingContainer}
+        >
+            <Animated.View style={[styles.preparingAvatarHalo, { transform: [{ scale: pulseAnim }] }]}>
+                <LinearGradient
+                    colors={['#EEF2FF', '#E0E7FF', '#C7D2FE']}
+                    style={styles.preparingAvatarGradient}
+                >
+                    <Image 
+                        source={require('../../../assets/doctor_mascot.jpg')} 
+                        style={styles.preparingAvatarImg} 
+                    />
+                </LinearGradient>
+            </Animated.View>
+
+            <View style={styles.preparingSparkleBadge}>
+                <Sparkles size={14} color="#6366F1" strokeWidth={2.5} />
+                <Text style={styles.preparingSparkleTxt}>Care Assistant</Text>
+            </View>
+
+            <Text style={styles.preparingTitle}>
+                {isCompanion
+                    ? `Preparing ${patientShortName || 'patient'}'s conversation…`
+                    : "Preparing your care conversation…"}
+            </Text>
+            
+            <Text style={styles.preparingSub}>
+                Connecting to secure health records & medications
+            </Text>
+
+            <View style={styles.preparingDotsRow}>
+                <TypingDot delay={0} />
+                <TypingDot delay={200} />
+                <TypingDot delay={400} />
+            </View>
+        </Reanimated.View>
     );
 }
 
@@ -800,6 +863,7 @@ export default function ChatbotScreen({ navigation, route }) {
     const [isCompanionLoading, setIsCompanionLoading] = useState(isCompanion);
 
     const [isHydrating, setIsHydrating] = useState(false);
+    const [isPreparingNewSession, setIsPreparingNewSession] = useState(!routeSessionId);
     const [lastSyncedAt, setLastSyncedAt] = useState(null);
 
     const sessionCreationPromiseRef = useRef(null);
@@ -808,6 +872,7 @@ export default function ChatbotScreen({ navigation, route }) {
     // Auto-create chat session in the background if no sessionId is provided
     useEffect(() => {
         if (!activeSessionId && targetPatientId) {
+            setIsPreparingNewSession(true);
             const initBackgroundCreation = async () => {
                 const data = isCompanion ? { patientId: targetPatientId } : {};
                 
@@ -852,9 +917,12 @@ export default function ChatbotScreen({ navigation, route }) {
                     console.warn('[ChatbotScreen] Background session creation failed/timed out:', err.message);
                 } finally {
                     sessionCreationPromiseRef.current = null;
+                    setIsPreparingNewSession(false);
                 }
             };
             initBackgroundCreation();
+        } else {
+            setIsPreparingNewSession(false);
         }
     }, [activeSessionId, targetPatientId, isCompanion]);
 
@@ -1871,66 +1939,73 @@ export default function ChatbotScreen({ navigation, route }) {
                 </View>
             </View>
 
-            {/* ── Messages ── */}
+            {/* ── Messages Viewport State Machine ── */}
             <KeyboardAvoidingView 
                 style={{ flex: 1 }} 
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
             >
-                <FlatList
-                    ref={flatListRef}
-                    data={messages}
-                    renderItem={renderMessage}
-                    keyExtractor={keyExtractor}
-                    contentContainerStyle={styles.messageList}
-                    showsVerticalScrollIndicator={false}
-                    ListHeaderComponent={
-                        !messages.some(m => m.isUser) ? (
-                            isCompanion && isCompanionLoading ? (
-                                <View style={{ padding: 20, alignItems: 'center' }}>
-                                    <ActivityIndicator size="small" color="#6366F1" />
-                                </View>
-                            ) : (
-                                <WelcomeSnapshotCard
-                                    firstName={isCompanion ? (displayName || 'there') : (patient?.first_name || displayName || 'there')}
-                                    medsCount={medsCount}
-                                    takenCount={takenCount}
-                                    vitals={activeVitals}
-                                    streak={activeStreak}
-                                    userRole={userRole}
-                                    patientName={companionData?.patient?.name}
-                                />
-                            )
-                        ) : null
-                    }
-                    ListFooterComponent={
-                        <>
-                            {!messages.some(m => m.isUser) && (
-                                <QuickActionsDashboard 
-                                    onPress={(s) => handleSend(s)} 
-                                    userRole={userRole}
-                                    patientName={companionData?.patient?.name}
-                                />
-                            )}
-                            {isTyping ? <TypingIndicator stage={typingStage} /> : null}
-                            {!isTyping && followUpSuggestions && followUpSuggestions.length > 0 ? (
-                                <View style={styles.followUpContainer}>
-                                    {followUpSuggestions.map((chip, idx) => (
-                                        <Pressable
-                                            key={idx}
-                                            style={({ pressed }) => [
-                                                styles.followUpChip,
-                                                pressed && { opacity: 0.7 }
-                                            ]}
-                                            onPress={() => handleSend(chip)}
-                                        >
-                                            <Text style={styles.followUpText}>{chip}</Text>
-                                        </Pressable>
-                                    ))}
-                                </View>
-                            ) : null}
-                        </>
-                    }
-                />
+                {isPreparingNewSession ? (
+                    <CenteredCareAssistantPreparing 
+                        isCompanion={isCompanion} 
+                        patientName={companionData?.patient?.name} 
+                    />
+                ) : (
+                    <FlatList
+                        ref={flatListRef}
+                        data={messages}
+                        renderItem={renderMessage}
+                        keyExtractor={keyExtractor}
+                        contentContainerStyle={styles.messageList}
+                        showsVerticalScrollIndicator={false}
+                        ListHeaderComponent={
+                            !messages.some(m => !m.isSkeleton && m.isUser) ? (
+                                isCompanion && isCompanionLoading ? (
+                                    <View style={{ padding: 20, alignItems: 'center' }}>
+                                        <ActivityIndicator size="small" color="#6366F1" />
+                                    </View>
+                                ) : (
+                                    <WelcomeSnapshotCard
+                                        firstName={isCompanion ? (displayName || 'there') : (patient?.first_name || displayName || 'there')}
+                                        medsCount={medsCount}
+                                        takenCount={takenCount}
+                                        vitals={activeVitals}
+                                        streak={activeStreak}
+                                        userRole={userRole}
+                                        patientName={companionData?.patient?.name}
+                                    />
+                                )
+                            ) : null
+                        }
+                        ListFooterComponent={
+                            <>
+                                {!messages.some(m => !m.isSkeleton && m.isUser) && (
+                                    <QuickActionsDashboard 
+                                        onPress={(s) => handleSend(s)} 
+                                        userRole={userRole}
+                                        patientName={companionData?.patient?.name}
+                                    />
+                                )}
+                                {isTyping ? <TypingIndicator stage={typingStage} /> : null}
+                                {!isTyping && followUpSuggestions && followUpSuggestions.length > 0 ? (
+                                    <View style={styles.followUpContainer}>
+                                        {followUpSuggestions.map((chip, idx) => (
+                                            <Pressable
+                                                key={idx}
+                                                style={({ pressed }) => [
+                                                    styles.followUpChip,
+                                                    pressed && { opacity: 0.7 }
+                                                ]}
+                                                onPress={() => handleSend(chip)}
+                                            >
+                                                <Text style={styles.followUpText}>{chip}</Text>
+                                            </Pressable>
+                                        ))}
+                                    </View>
+                                ) : null}
+                            </>
+                        }
+                    />
+                )}
 
                 {/* ── Attachment Preview Bar (Images) ── */}
                 {attachments.length > 0 && (
@@ -2572,4 +2647,77 @@ const styles = StyleSheet.create({
     summaryRowItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: '#F1F5F9' },
     summaryRowLabel: { fontSize: 12, fontWeight: '500', color: '#475569' },
     summaryRowValue: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
+
+    // ── Centered Care Assistant Preparing Loading State ──
+    centeredPreparingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        paddingBottom: 40,
+    },
+    preparingAvatarHalo: {
+        width: 88,
+        height: 88,
+        borderRadius: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 16,
+        elevation: 8,
+        marginBottom: 20,
+    },
+    preparingAvatarGradient: {
+        width: 88,
+        height: 88,
+        borderRadius: 44,
+        padding: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    preparingAvatarImg: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+    },
+    preparingSparkleBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        backgroundColor: '#EEF2FF',
+        borderWidth: 1,
+        borderColor: '#C7D2FE',
+        marginBottom: 14,
+    },
+    preparingSparkleTxt: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#4F46E5',
+    },
+    preparingTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#0F172A',
+        textAlign: 'center',
+        letterSpacing: -0.4,
+        marginBottom: 6,
+    },
+    preparingSub: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: '#64748B',
+        textAlign: 'center',
+        marginBottom: 20,
+        maxWidth: 260,
+    },
+    preparingDotsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
 });
