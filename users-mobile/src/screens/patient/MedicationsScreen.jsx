@@ -580,14 +580,16 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPre
                         paddingHorizontal: 8,
                         paddingVertical: 2,
                         borderRadius: 6,
-                        backgroundColor: med.taken ? "#DCFCE7" : "#F3E8FF",
+                        backgroundColor: med.taken ? "#ECFDF5" : "#EEF2FF",
+                        borderWidth: 1,
+                        borderColor: med.taken ? "#A7F3D0" : "#C7D2FE",
                       }}
                     >
                       <Text
                         style={{
                           fontSize: 11,
                           fontWeight: "800",
-                          color: med.taken ? "#15803D" : "#7C3AED",
+                          color: med.taken ? "#047857" : "#4F46E5",
                         }}
                       >
                         {med.dosage}
@@ -609,14 +611,14 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPre
                   style={{
                     fontSize: 12,
                     fontWeight: "600",
-                    color: med.taken ? "#15803D" : "#64748B",
+                    color: med.taken ? "#059669" : "#64748B",
                   }}
                 >
                   {med.taken
                     ? med.taken_at
-                      ? `Taken at ${new Date(med.taken_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                      : `Taken`
-                    : med.preferred_time || "10:00 AM"}
+                      ? `✓ Taken • ${new Date(med.taken_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                      : `✓ Taken`
+                    : med.preferred_time ? `Scheduled • ${med.preferred_time}` : "Scheduled • 10:00 AM"}
                 </Text>
 
                 {/* Line 3: Supply Pill Badge */}
@@ -637,10 +639,10 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPre
                         paddingVertical: 2.5,
                         borderRadius: 6,
                         backgroundColor: med.taken
-                          ? "#DCFCE7"
+                          ? "#ECFDF5"
                           : isLowSupply
                           ? "#FEF2F2"
-                          : "#F1F5F9",
+                          : "#F8FAFC",
                         borderWidth: 1,
                         borderColor: med.taken
                           ? "#A7F3D0"
@@ -655,13 +657,13 @@ const SwipeableMedCard = ({ med, onToggle, onSnooze, swRef: externalSwRef, onPre
                     {isLowSupply ? (
                       <AlertCircle size={10} color="#EF4444" strokeWidth={3} />
                     ) : (
-                      <Package size={10} color={med.taken ? "#15803D" : "#64748B"} strokeWidth={2.5} />
+                      <Package size={10} color={med.taken ? "#047857" : "#475569"} strokeWidth={2.5} />
                     )}
                     <Text
                       style={{
                         fontSize: 9,
                         fontWeight: "800",
-                        color: med.taken ? "#15803D" : isLowSupply ? "#EF4444" : "#64748B",
+                        color: med.taken ? "#047857" : isLowSupply ? "#EF4444" : "#475569",
                         letterSpacing: 0.3,
                         textTransform: "uppercase",
                       }}
@@ -3915,7 +3917,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: spacing.screen,
     paddingTop: 8,
-    paddingBottom: layout.TAB_BAR_CLEARANCE + 80,
+    paddingBottom: layout.TAB_BAR_CLEARANCE + 120,
   },
 
   // ── Chart card ──
