@@ -7,12 +7,20 @@ import { API_BASE_URL, getAccessTokenForRequest } from '../lib/api';
  * or local file URIs (file://...) to a fully-qualified URI for React Native Image rendering.
  */
 export function resolveChatAttachmentUrl(rawUrl) {
-  if (!rawUrl) return null;
-  if (typeof rawUrl !== 'string') return null;
+  if (!rawUrl || typeof rawUrl !== 'string') return null;
+
+  let path = rawUrl;
+
+  // Convert legacy /uploads/chat_attachments/ paths to protected /api/chatbot/attachments/
+  if (path.includes('/uploads/chat_attachments/')) {
+    path = path.replace('/uploads/chat_attachments/', '/api/chatbot/attachments/');
+  } else if (path.includes('uploads/chat_attachments/')) {
+    path = path.replace('uploads/chat_attachments/', 'api/chatbot/attachments/');
+  }
 
   // 1. If already a full http/https or file:// URI, return as-is
-  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://') || rawUrl.startsWith('file://') || rawUrl.startsWith('data:')) {
-    return rawUrl;
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('file://') || path.startsWith('data:')) {
+    return path;
   }
 
   // 2. Resolve API host domain
@@ -21,7 +29,7 @@ export function resolveChatAttachmentUrl(rawUrl) {
   host = host.replace(/\/api\/?$/, '').replace(/\/+$/, '');
 
   // 3. Prepend host to relative path
-  const normalizedPath = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${host}${normalizedPath}`;
 }
 
