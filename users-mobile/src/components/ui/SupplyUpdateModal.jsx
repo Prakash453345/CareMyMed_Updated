@@ -17,23 +17,23 @@ import {
   calculateRefillPresets,
 } from '../../utils/medicationSupplyEngine';
 
-export function derivePrescriptionModel(med) {
+export function derivePrescriptionModel(med, schedule = null) {
   const storeState = typeof usePatientStore?.getState === 'function' ? usePatientStore.getState() : null;
-  return engineDerivePrescriptionModel(med, storeState);
+  return engineDerivePrescriptionModel(med, storeState, schedule);
 }
 
-const calcMonthlyDoseRequirement = (med, months = 1) => {
+const calcMonthlyDoseRequirement = (med, months = 1, schedule = null) => {
   if (!med) return Math.round(30 * months);
   const storeState = typeof usePatientStore?.getState === 'function' ? usePatientStore.getState() : null;
-  const rx = engineDerivePrescriptionModel(med, storeState);
+  const rx = engineDerivePrescriptionModel(med, storeState, schedule);
   if (rx.isPRN) return Math.round(30 * months);
   const presets = calculateRefillPresets(rx.dailyTabletConsumption, [months]);
   return presets[0]?.tablets || Math.round(30 * months);
 };
 
-export default function SupplyUpdateModal({ visible, onClose, med, onConfirm }) {
+export default function SupplyUpdateModal({ visible, onClose, med, schedule, onConfirm }) {
   const storeState = typeof usePatientStore?.getState === 'function' ? usePatientStore.getState() : null;
-  const rx = engineDerivePrescriptionModel(med, storeState);
+  const rx = engineDerivePrescriptionModel(med, storeState, schedule);
 
   // Debug logging when modal opens
   useEffect(() => {
@@ -49,9 +49,9 @@ export default function SupplyUpdateModal({ visible, onClose, med, onConfirm }) 
     }
   }, [visible, med, rx]);
 
-  const oneMonthCount = calcMonthlyDoseRequirement(med, 1);
-  const twoMonthsCount = calcMonthlyDoseRequirement(med, 2);
-  const threeMonthsCount = calcMonthlyDoseRequirement(med, 3);
+  const oneMonthCount = calcMonthlyDoseRequirement(med, 1, schedule);
+  const twoMonthsCount = calcMonthlyDoseRequirement(med, 2, schedule);
+  const threeMonthsCount = calcMonthlyDoseRequirement(med, 3, schedule);
 
   const [selectedQty, setSelectedQty] = useState(oneMonthCount);
   const [customQty, setCustomQty] = useState(String(oneMonthCount));
@@ -65,14 +65,14 @@ export default function SupplyUpdateModal({ visible, onClose, med, onConfirm }) 
 
   useEffect(() => {
     if (visible && med) {
-      const defaultQty = calcMonthlyDoseRequirement(med, 1);
+      const defaultQty = calcMonthlyDoseRequirement(med, 1, schedule);
       setSelectedQty(defaultQty);
       setCustomQty(String(defaultQty));
       setIsCustom(false);
       setIsSubmitting(false);
       setErrorMsg(null);
     }
-  }, [visible, med]);
+  }, [visible, med, schedule]);
 
   if (!med) return null;
 

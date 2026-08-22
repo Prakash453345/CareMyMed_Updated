@@ -2978,6 +2978,7 @@ export default function MedicationsScreen({ navigation, route }) {
           visible={!!supplyModalMed}
           onClose={() => setSupplyModalMed(null)}
           med={supplyModalMed}
+          schedule={schedule}
           onConfirm={(medItem, qty) => updateMedSupply(medItem, qty)}
         />
 

@@ -115,32 +115,65 @@ export function resolveQuantityPerDose(prescription, selectedSlot) {
 /**
  * Resolves dosesPerDay using strict hierarchical source priority & slot deduplication.
  * Priority:
- * 1. Master prescription explicit times/scheduledTimes/slots array length
- * 2. Store medicationSchedule deduplicated slot occurrences
- * 3. Store dashboardMeds deduplicated slot occurrences
- * 4. Structured frequency string & Indian 1-0-1 notation
- * 5. Default fallback = 1
+ * 1. Explicitly passed active rendered schedule (from MedicationsScreen/HomeScreen) or store medicationSchedule
+ * 2. Master prescription explicit times/scheduledTimes/slots array length
+ * 3. All master medications array in store (unique times across matching entries)
+ * 4. Flat dashboardMeds deduplicated slot occurrences
+ * 5. Structured frequency string & Indian 1-0-1 notation
+ * 6. Default fallback = 1
  */
-export function resolveDosesPerDay(prescription, selectedSlot, storeState) {
+export function resolveDosesPerDay(prescription, selectedSlot, storeState, explicitSchedule = null) {
   if (isPRNMedication(prescription, selectedSlot)) {
     return 0; // PRN has 0 fixed daily doses
   }
 
   const selectedNameNorm = normalizeMedicationName(selectedSlot?.name || selectedSlot?.medicine_name || prescription?.name);
-  const sources = {};
 
-  // Source 1: Master prescription explicit array length
+  // Priority 1: Explicitly passed active rendered schedule (or store medicationSchedule)
+  const targetSchedule = explicitSchedule || storeState?.medicationSchedule;
+  if (targetSchedule && selectedNameNorm) {
+    const uniqueSlots = new Set();
+    Object.entries(targetSchedule).forEach(([slotName, slotMeds]) => {
+      if (Array.isArray(slotMeds)) {
+        slotMeds.forEach(item => {
+          if (normalizeMedicationName(item.name || item.medicine_name) === selectedNameNorm) {
+            uniqueSlots.add(slotName);
+          }
+        });
+      }
+    });
+    if (uniqueSlots.size > 0) {
+      return uniqueSlots.size;
+    }
+  }
+
+  // Priority 2: Flat dashboardMeds deduplicated slot occurrences across today's active dashboard
+  const dashboardMeds = storeState?.dashboardMeds;
+  if (Array.isArray(dashboardMeds) && selectedNameNorm) {
+    const uniqueSlots = new Set();
+    dashboardMeds.forEach(item => {
+      if (normalizeMedicationName(item.name || item.medicine_name) === selectedNameNorm) {
+        const slotKey = item.type || item.scheduled_time || item.slot || item.id || item.time || Math.random().toString();
+        uniqueSlots.add(slotKey);
+      }
+    });
+    if (uniqueSlots.size > 0) {
+      return uniqueSlots.size;
+    }
+  }
+
+  // Priority 3: Master prescription explicit array length
   if (prescription) {
     const timesArr = Array.isArray(prescription.times) && prescription.times.length > 0 ? prescription.times :
                      Array.isArray(prescription.scheduledTimes) && prescription.scheduledTimes.length > 0 ? prescription.scheduledTimes :
                      Array.isArray(prescription.scheduled_times) && prescription.scheduled_times.length > 0 ? prescription.scheduled_times :
                      Array.isArray(prescription.slots) && prescription.slots.length > 0 ? prescription.slots : null;
     if (timesArr && timesArr.length > 0) {
-      sources.masterTimes = timesArr.length;
+      return timesArr.length;
     }
   }
 
-  // Source 2: All master medications array in store (gather unique times across all matching entries)
+  // Priority 4: All master medications array in store (gather unique times across all matching entries)
   const allMeds = storeState?.patient?.medications ||
                   storeState?.patientData?.medications ||
                   storeState?.medications || [];
@@ -157,44 +190,11 @@ export function resolveDosesPerDay(prescription, selectedSlot, storeState) {
       }
     });
     if (uniqueTimesFromAllMeds.size > 0) {
-      sources.allMedsTimes = uniqueTimesFromAllMeds.size;
+      return uniqueTimesFromAllMeds.size;
     }
   }
 
-  // Source 3: Grouped medicationSchedule deduplicated slot occurrences
-  const schedule = storeState?.medicationSchedule;
-  if (schedule && selectedNameNorm) {
-    const uniqueSlots = new Set();
-    Object.entries(schedule).forEach(([slotName, slotMeds]) => {
-      if (Array.isArray(slotMeds)) {
-        slotMeds.forEach(item => {
-          if (normalizeMedicationName(item.name || item.medicine_name) === selectedNameNorm) {
-            uniqueSlots.add(slotName);
-          }
-        });
-      }
-    });
-    if (uniqueSlots.size > 0) {
-      sources.medicationSchedule = uniqueSlots.size;
-    }
-  }
-
-  // Source 4: Flat dashboardMeds deduplicated slot occurrences
-  const dashboardMeds = storeState?.dashboardMeds;
-  if (Array.isArray(dashboardMeds) && selectedNameNorm) {
-    const uniqueSlots = new Set();
-    dashboardMeds.forEach(item => {
-      if (normalizeMedicationName(item.name || item.medicine_name) === selectedNameNorm) {
-        const slotKey = item.type || item.scheduled_time || item.slot || item.id || item.time || Math.random().toString();
-        uniqueSlots.add(slotKey);
-      }
-    });
-    if (uniqueSlots.size > 0) {
-      sources.dashboardMeds = uniqueSlots.size;
-    }
-  }
-
-  // Source 5: Frequency string text parsing & Indian 1-0-1 notation
+  // Priority 5: Frequency string text parsing & Indian 1-0-1 notation
   const freqStr = (
     (typeof prescription?.frequency === 'string' ? prescription.frequency : '') ||
     (typeof prescription?.instructions === 'string' ? prescription.instructions : '') ||
@@ -209,31 +209,26 @@ export function resolveDosesPerDay(prescription, selectedSlot, storeState) {
       const aDose = parseInt(dashMatch[2], 10);
       const nDose = parseInt(dashMatch[3], 10);
       const activeSlots = (mDose > 0 ? 1 : 0) + (aDose > 0 ? 1 : 0) + (nDose > 0 ? 1 : 0);
-      if (activeSlots > 0) {
-        sources.freqText = activeSlots;
-      }
+      if (activeSlots > 0) return activeSlots;
     } else if (/twice|2x|2\/day|2\s*times|bid|b\.i\.d|two\s*times|twice\s*daily/i.test(freqStr)) {
-      sources.freqText = 2;
+      return 2;
     } else if (/thrice|3x|3\/day|3\s*times|tid|t\.i\.d|three\s*times|three\s*daily/i.test(freqStr)) {
-      sources.freqText = 3;
+      return 3;
     } else if (/4x|4\/day|4\s*times|qid|q\.i\.d|four\s*times/i.test(freqStr)) {
-      sources.freqText = 4;
+      return 4;
     } else if (/once|1x|1\/day|1\s*time|qd|q\.d|once\s*daily/i.test(freqStr)) {
-      sources.freqText = 1;
+      return 1;
     }
   }
 
-  // Evaluate final dosesPerDay by taking the maximum active slot count derived across all valid sources
-  const validVals = Object.values(sources).filter(v => typeof v === 'number' && v > 0);
-  const dosesPerDay = validVals.length > 0 ? Math.max(...validVals) : 1;
-
-  return dosesPerDay;
+  // Priority 6: Default fallback = 1
+  return 1;
 }
 
 /**
  * Derives the complete normalized prescription model.
  */
-export function derivePrescriptionModel(selectedMed, storeState = null) {
+export function derivePrescriptionModel(selectedMed, storeState = null, explicitSchedule = null) {
   if (!selectedMed) {
     return {
       prescription: null,
@@ -252,7 +247,7 @@ export function derivePrescriptionModel(selectedMed, storeState = null) {
   const masterMed = matchMasterMedication(selectedMed, allMeds);
   const isPRN = isPRNMedication(masterMed, selectedMed);
   const quantityPerDose = resolveQuantityPerDose(masterMed, selectedMed);
-  const dosesPerDay = resolveDosesPerDay(masterMed, selectedMed, storeState);
+  const dosesPerDay = resolveDosesPerDay(masterMed, selectedMed, storeState, explicitSchedule);
   const dailyTabletConsumption = isPRN ? 0 : quantityPerDose * dosesPerDay;
 
   return {

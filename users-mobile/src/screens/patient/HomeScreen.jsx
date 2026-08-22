@@ -510,6 +510,7 @@ export default function PatientHomeScreen({ navigation }) {
   const vitalsHistory = usePatientStore((s) => s.vitalsHistory);
   const aiPrediction = usePatientStore((s) => s.aiPrediction);
   const meds = usePatientStore((s) => s.dashboardMeds);
+  const medicationSchedule = usePatientStore((s) => s.medicationSchedule);
   const adherenceDetails = usePatientStore((s) => s.adherenceDetails);
   const healthHistory = usePatientStore((s) => s.healthHistory);
   const isCached = usePatientStore((s) => s.isCached);
@@ -3223,6 +3224,7 @@ export default function PatientHomeScreen({ navigation }) {
               visible={!!supplyModalMed}
               onClose={() => setSupplyModalMed(null)}
               med={supplyModalMed}
+              schedule={medicationSchedule}
               onConfirm={(medItem, qty) => updateMedSupply(medItem, qty)}
             />
 

@@ -215,5 +215,28 @@ describe('medicationSupplyEngine — Architecture-Grade Test Suite', () => {
       expect(rx.dosesPerDay).toBe(3);
       expect(rx.dailyTabletConsumption).toBe(3);
     });
+
+    it('prioritizes explicit rendered schedule parameter over store state (58 remaining = 29 days, presets [60, 120, 180])', () => {
+      const selectedSlot = { name: 'Metformin', dosage: '500mg', type: 'night' };
+      const explicitSchedule = {
+        morning: [{ name: 'Metformin 500mg', type: 'morning' }],
+        night: [{ name: 'Metformin 500mg', type: 'night' }],
+      };
+
+      const rx = derivePrescriptionModel(selectedSlot, null, explicitSchedule);
+      expect(rx.quantityPerDose).toBe(1);
+      expect(rx.dosesPerDay).toBe(2);
+      expect(rx.dailyTabletConsumption).toBe(2);
+
+      const daysLeft = calculateDaysRemaining(58, rx.dailyTabletConsumption);
+      expect(daysLeft).toBe(29);
+
+      const presets = calculateRefillPresets(rx.dailyTabletConsumption, [1, 2, 3]);
+      expect(presets).toEqual([
+        { months: 1, tablets: 60 },
+        { months: 2, tablets: 120 },
+        { months: 3, tablets: 180 },
+      ]);
+    });
   });
 });
