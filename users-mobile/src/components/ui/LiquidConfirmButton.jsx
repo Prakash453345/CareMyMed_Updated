@@ -2,24 +2,22 @@ import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Animated, Easing } from 'react-native';
 import { Check } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, radius, FONT, METRIC_FONT } from '../../theme';
 
 /**
- * LiquidConfirmButton — Swiggy / PhonePe-grade liquid sweep confirmation button.
- * Single tap triggers a left-to-right sweep, checkmark morph, and double-tap guard.
+ * LiquidConfirmButton — Premium liquid sweep confirmation button.
+ * Smoothly sweeps from Take (Purple) to Taken (Emerald Checkmark & Border).
  */
 export default function LiquidConfirmButton({
     taken = false,
     onPress,
-    label = 'Take Now',
-    takenLabel = 'Taken',
+    label = 'TAKE',
+    takenLabel = 'TAKEN',
     disabled = false,
 }) {
     const [isCompleting, setIsCompleting] = useState(false);
     const sweepAnim = useRef(new Animated.Value(taken ? 1 : 0)).current;
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const checkAnim = useRef(new Animated.Value(taken ? 1 : 0)).current;
-    const textOpacity = useRef(new Animated.Value(1)).current;
 
     const prevTakenRef = useRef(taken);
 
@@ -28,63 +26,56 @@ export default function LiquidConfirmButton({
         prevTakenRef.current = taken;
 
         if (taken) {
-            Animated.parallel([
-                Animated.timing(sweepAnim, {
-                    toValue: 1,
-                    duration: 280,
-                    easing: Easing.out(Easing.cubic),
-                    useNativeDriver: false,
-                }),
-                Animated.sequence([
-                    Animated.delay(100),
-                    Animated.parallel([
-                        Animated.timing(textOpacity, {
-                            toValue: 0.4,
-                            duration: 60,
-                            useNativeDriver: true,
-                        }),
-                        Animated.spring(checkAnim, {
-                            toValue: 1,
-                            friction: 7,
-                            tension: 90,
-                            useNativeDriver: true,
-                        }),
-                    ]),
-                    Animated.timing(textOpacity, {
+            if (!wasTaken) {
+                // Smooth transition from Untaken -> Taken
+                Animated.parallel([
+                    Animated.timing(sweepAnim, {
                         toValue: 1,
-                        duration: 80,
-                        useNativeDriver: true,
+                        duration: 320,
+                        easing: Easing.out(Easing.cubic),
+                        useNativeDriver: false,
                     }),
-                ]),
-            ]).start(() => {
-                setIsCompleting(false);
-                if (!wasTaken) {
+                    Animated.spring(checkAnim, {
+                        toValue: 1,
+                        friction: 6,
+                        tension: 80,
+                        useNativeDriver: false,
+                    }),
+                ]).start(() => {
+                    setIsCompleting(false);
                     try {
                         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
                     } catch (e) {}
-                }
-            });
-        } else {
-            Animated.parallel([
-                Animated.timing(sweepAnim, {
-                    toValue: 0,
-                    duration: 220,
-                    easing: Easing.inOut(Easing.quad),
-                    useNativeDriver: false,
-                }),
-                Animated.timing(checkAnim, {
-                    toValue: 0,
-                    duration: 180,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(textOpacity, {
-                    toValue: 1,
-                    duration: 150,
-                    useNativeDriver: true,
-                }),
-            ]).start(() => {
+                });
+            } else {
+                // Direct mount / state sync with taken = true
+                sweepAnim.setValue(1);
+                checkAnim.setValue(1);
                 setIsCompleting(false);
-            });
+            }
+        } else {
+            if (wasTaken) {
+                // Transition from Taken -> Untaken
+                Animated.parallel([
+                    Animated.timing(sweepAnim, {
+                        toValue: 0,
+                        duration: 240,
+                        easing: Easing.inOut(Easing.quad),
+                        useNativeDriver: false,
+                    }),
+                    Animated.timing(checkAnim, {
+                        toValue: 0,
+                        duration: 180,
+                        useNativeDriver: false,
+                    }),
+                ]).start(() => {
+                    setIsCompleting(false);
+                });
+            } else {
+                sweepAnim.setValue(0);
+                checkAnim.setValue(0);
+                setIsCompleting(false);
+            }
         }
     }, [taken]);
 
@@ -92,90 +83,121 @@ export default function LiquidConfirmButton({
         if (disabled || taken || isCompleting) return;
         setIsCompleting(true);
 
-        // 1. Immediate tactile depress (0-100ms)
-        Animated.timing(scaleAnim, {
-            toValue: 0.94,
-            duration: 60,
-            useNativeDriver: true,
-        }).start(() => {
+        // Tactile depress animation
+        Animated.sequence([
+            Animated.timing(scaleAnim, {
+                toValue: 0.93,
+                duration: 70,
+                useNativeDriver: false,
+            }),
             Animated.spring(scaleAnim, {
                 toValue: 1,
                 friction: 6,
-                tension: 100,
-                useNativeDriver: true,
-            }).start();
-        });
+                tension: 110,
+                useNativeDriver: false,
+            }),
+        ]).start();
 
-        // 2. Trigger Haptic on initial tap
         try {
             Haptics.selectionAsync().catch(() => {});
         } catch (e) {}
 
-        // 3. Trigger Parent Handler
         onPress?.();
 
-        // Safety fallback to unblock after 1000ms if parent async fails
+        // Safety fallback to unblock if parent handler takes longer
         setTimeout(() => {
             setIsCompleting(false);
-        }, 1000);
+        }, 1200);
     };
 
-    const sweepWidth = sweepAnim.interpolate({
+    const containerBgColor = sweepAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['#7C3AED', '#FFFFFF'],
+    });
+
+    const containerBorderColor = sweepAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['transparent', '#DCFCE7'],
+    });
+
+    const liquidWidth = sweepAnim.interpolate({
         inputRange: [0, 1],
         outputRange: ['0%', '100%'],
     });
 
+    const liquidBgColor = sweepAnim.interpolate({
+        inputRange: [0, 0.5, 1],
+        outputRange: ['#6D28D9', '#059669', '#DCFCE7'],
+    });
+
+    const textColor = sweepAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['#FFFFFF', '#10B981'],
+    });
+
     const checkScale = checkAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: [0.6, 1],
+        outputRange: [0.5, 1],
+    });
+
+    const checkOpacity = checkAnim.interpolate({
+        inputRange: [0, 0.2, 1],
+        outputRange: [0, 0.8, 1],
     });
 
     const showCheck = taken || isCompleting;
 
     return (
-        <Animated.View style={[{ transform: [{ scale: scaleAnim }] }]}>
-                    <Pressable
-                        style={[s.btnContainer, taken && s.btnContainerTaken]}
-                        onPress={handlePress}
-                        disabled={disabled || taken || isCompleting}
-                    >
-                        {/* Background Liquid Sweep Layer */}
-                        {!taken && (
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+            <Pressable
+                onPress={handlePress}
+                disabled={disabled || taken || isCompleting}
+            >
+                <Animated.View
+                    style={[
+                        s.btnContainer,
+                        {
+                            backgroundColor: containerBgColor,
+                            borderColor: containerBorderColor,
+                        },
+                    ]}
+                >
+                    {/* Background Liquid Sweep Layer */}
+                    <Animated.View
+                        style={[
+                            s.liquidFill,
+                            {
+                                width: liquidWidth,
+                                backgroundColor: liquidBgColor,
+                            },
+                        ]}
+                    />
+
+                    {/* Button Content Layer */}
+                    <View style={s.contentRow}>
+                        {showCheck && (
                             <Animated.View
-                                style={[
-                                    s.liquidFill,
-                                    { width: sweepWidth },
-                                ]}
-                            />
+                                style={{
+                                    opacity: taken ? 1 : checkOpacity,
+                                    transform: [{ scale: checkScale }],
+                                    marginRight: 4,
+                                }}
+                            >
+                                <Check size={15} color="#10B981" strokeWidth={3} />
+                            </Animated.View>
                         )}
 
-                        {/* Button Content Layer */}
-                        <View style={s.contentRow}>
-                            {showCheck && (
-                                <Animated.View
-                                    style={{
-                                        opacity: checkAnim,
-                                        transform: [
-                                            { scale: checkScale },
-                                        ],
-                                        marginRight: 4,
-                                    }}
-                                >
-                                    <Check size={15} color="#10B981" strokeWidth={3} />
-                                </Animated.View>
-                            )}
-
-                            <Animated.Text
-                                style={[
-                                    s.btnText,
-                                    taken && s.btnTextTaken,
-                                    { opacity: textOpacity },
-                                ]}
-                            >
-                                {taken ? (takenLabel || 'TAKEN') : (label || 'TAKE')}
-                            </Animated.Text>
-                        </View>
-                    </Pressable>
+                        <Animated.Text
+                            style={[
+                                s.btnText,
+                                { color: textColor },
+                            ]}
+                        >
+                            {taken ? (takenLabel || 'TAKEN') : (label || 'TAKE')}
+                        </Animated.Text>
+                    </View>
+                </Animated.View>
+            </Pressable>
         </Animated.View>
     );
 }
@@ -185,24 +207,17 @@ const s = StyleSheet.create({
         height: 38,
         paddingHorizontal: 16,
         borderRadius: 12,
-        backgroundColor: '#7C3AED',
         justifyContent: 'center',
         alignItems: 'center',
         overflow: 'hidden',
         position: 'relative',
         borderWidth: 1.5,
-        borderColor: 'transparent',
-    },
-    btnContainerTaken: {
-        backgroundColor: '#FFFFFF',
-        borderColor: '#DCFCE7',
     },
     liquidFill: {
         position: 'absolute',
         left: 0,
         top: 0,
         bottom: 0,
-        backgroundColor: '#6D28D9',
         borderRadius: 12,
     },
     contentRow: {
@@ -212,12 +227,8 @@ const s = StyleSheet.create({
         zIndex: 2,
     },
     btnText: {
-        color: '#FFFFFF',
         fontSize: 13,
         fontWeight: '800',
-        letterSpacing: 0.2,
-    },
-    btnTextTaken: {
-        color: '#10B981',
+        letterSpacing: 0.3,
     },
 });
