@@ -12,6 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 import usePatientStore from '../../store/usePatientStore';
 import { apiService, handleApiError } from '../../lib/api';
 import AlertManager from '../../utils/AlertManager';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import CompanionHeader from '../../components/ui/CompanionHeader';
 import TabScreenTransition from '../../components/ui/TabScreenTransition';
 import useChatStore from '../../store/useChatStore';

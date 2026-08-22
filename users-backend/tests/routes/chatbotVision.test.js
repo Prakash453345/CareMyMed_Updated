@@ -20,8 +20,6 @@ describe('Groq Vision Model Candidate Pipeline', () => {
       new Set([
         groqVisionModel,
         'qwen/qwen3.6-27b',
-        'llama-3.2-11b-vision-instruct',
-        'llama-3.2-90b-vision-instruct',
       ])
     );
 
@@ -36,7 +34,6 @@ describe('Groq Vision Model Candidate Pipeline', () => {
       new Set([
         groqVisionModel,
         'qwen/qwen3.6-27b',
-        'llama-3.2-11b-vision-instruct',
       ])
     );
 
@@ -70,11 +67,11 @@ describe('Groq Vision Model Candidate Pipeline', () => {
     expect(content).toContain('Vitamin D3');
   });
 
-  it('persists stable server upload URIs for historical image hydration', () => {
-    const filename = 'img_1786942468332_abc123.jpg';
-    const publicUrl = `/uploads/chat_attachments/${filename}`;
+  it('persists stable server attachment URIs with attachmentId for authenticated media access', () => {
+    const attachmentId = 'att_1786942468332_abc123';
+    const publicUrl = `/api/chatbot/attachments/${attachmentId}`;
     
-    expect(publicUrl).toMatch(/^\/uploads\/chat_attachments\/img_\d+_[a-z0-9]+\.jpg$/);
+    expect(publicUrl).toMatch(/^\/api\/chatbot\/attachments\/att_\d+_[a-z0-9]+$/);
     expect(publicUrl).not.toContain('file://');
     expect(publicUrl).not.toContain('ph://');
   });

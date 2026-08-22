@@ -342,7 +342,7 @@ router.post(
 
         const googleVisionKey = process.env.GOOGLE_VISION_API_KEY;
         const groqApiKey = process.env.GROQ_API_KEY;
-        const groqVisionModel = process.env.GROQ_VISION_MODEL || 'llama-3.2-11b-vision-instruct';
+        const groqVisionModel = process.env.GROQ_VISION_MODEL || 'qwen/qwen3.6-27b';
 
         if (imageFile.buffer) {
           const base64Content = imageFile.buffer.toString('base64');
@@ -384,10 +384,8 @@ router.post(
           if (!visionProcessed && groqApiKey) {
             const visionCandidates = Array.from(
               new Set([
-                process.env.GROQ_VISION_MODEL || 'qwen/qwen3.6-27b',
+                groqVisionModel,
                 'qwen/qwen3.6-27b',
-                'llama-3.2-11b-vision-instruct',
-                'llama-3.2-90b-vision-instruct',
               ])
             );
 
@@ -586,6 +584,7 @@ router.post(
           const fileExt = imageFile.originalname
             ? path.extname(imageFile.originalname)
             : '.jpg';
+          const attachmentId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
           const filename = `chat_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${fileExt || '.jpg'}`;
           const uploadsDir = path.join(__dirname, '../uploads/chat_attachments');
           if (!fs.existsSync(uploadsDir)) {
@@ -594,14 +593,16 @@ router.post(
           const filepath = path.join(uploadsDir, filename);
           fs.writeFileSync(filepath, imageFile.buffer);
 
-          const publicUrl = `/uploads/chat_attachments/${filename}`;
+          const publicUrl = `/api/chatbot/attachments/${attachmentId}`;
           savedImageUri = publicUrl;
           savedAttachments = [
             {
+              attachmentId,
               type: 'image',
               url: publicUrl,
               mimeType: mime,
               fileName: imageFile.originalname || filename,
+              storagePath: filename,
             },
           ];
         }
@@ -708,5 +709,92 @@ router.post(
     }
   }
 );
+
+/**
+ * GET /api/chatbot/attachments/:attachmentId
+ * Authenticated attachment download endpoint.
+ * Validates token via `authenticate` middleware, verifies session ownership,
+ * enforces strict path traversal protection, and serves file bytes.
+ */
+router.get('/attachments/:attachmentId', authenticate, async (req, res) => {
+  try {
+    const patientId = await getPatientId(req);
+    if (!patientId) {
+      return res.status(400).json({ error: 'Patient context not found.' });
+    }
+
+    const rawId = req.params.attachmentId;
+    if (!rawId || typeof rawId !== 'string') {
+      return res.status(400).json({ error: 'Invalid attachment ID.' });
+    }
+
+    const path = require('path');
+    const fs = require('fs');
+
+    // Path traversal check on requested identifier
+    const sanitizedId = path.basename(rawId);
+    if (sanitizedId !== rawId || rawId.includes('..')) {
+      return res.status(400).json({ error: 'Invalid attachment request path.' });
+    }
+
+    // Find active or past session belonging to patientId containing this attachmentId or filename
+    const session = await AIChatSession.findOne({
+      patient_id: patientId,
+      $or: [
+        { 'messages.attachments.attachmentId': sanitizedId },
+        { 'messages.attachments.url': { $regex: sanitizedId } },
+        { 'messages.attachments.storagePath': sanitizedId },
+        { 'messages.image': { $regex: sanitizedId } },
+      ],
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Attachment not found or access denied.' });
+    }
+
+    // Locate the matching attachment object from session messages
+    let storageFileName = null;
+    for (const msg of session.messages) {
+      if (msg.attachments && msg.attachments.length > 0) {
+        for (const att of msg.attachments) {
+          if (
+            att.attachmentId === sanitizedId ||
+            att.storagePath === sanitizedId ||
+            (att.url && att.url.includes(sanitizedId))
+          ) {
+            storageFileName = att.storagePath || (att.url ? path.basename(att.url) : null);
+            break;
+          }
+        }
+      }
+      if (!storageFileName && msg.image && msg.image.includes(sanitizedId)) {
+        storageFileName = path.basename(msg.image);
+      }
+      if (storageFileName) break;
+    }
+
+    if (!storageFileName) {
+      storageFileName = sanitizedId;
+    }
+
+    const safeFilename = path.basename(storageFileName);
+    const uploadsDir = path.resolve(__dirname, '../uploads/chat_attachments');
+    const targetPath = path.resolve(uploadsDir, safeFilename);
+
+    // Enforce that target path is strictly inside uploadsDir
+    if (!targetPath.startsWith(uploadsDir)) {
+      return res.status(400).json({ error: 'Invalid file target path.' });
+    }
+
+    if (!fs.existsSync(targetPath)) {
+      return res.status(404).json({ error: 'Attachment file does not exist on disk.' });
+    }
+
+    return res.sendFile(targetPath);
+  } catch (err) {
+    console.error('[ChatbotRoutes] Attachment fetch error:', err);
+    return res.status(500).json({ error: 'Failed to retrieve attachment.' });
+  }
+});
 
 module.exports = router;

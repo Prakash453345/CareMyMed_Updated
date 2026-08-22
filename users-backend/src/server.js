@@ -140,14 +140,13 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-// Static uploads serving for persistent chat attachments & media
+// Persistent chat attachments & media directory initialization
 const path = require('path');
 const fs = require('fs');
 const uploadsDir = path.join(__dirname, '../uploads/chat_attachments');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -283,12 +282,7 @@ app.use(
 // Companion Routes
 app.use('/api/companion', companionRoutes);
 
-// Static Uploads Serving (Chat Attachments & Media)
-const uploadsDirectory = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadsDirectory)) {
-  fs.mkdirSync(uploadsDirectory, { recursive: true });
-}
-app.use('/uploads', express.static(uploadsDirectory));
+
 
 // ─── Chatbot API ───────────────────────────────
 const chatbotRoutes = require('./routes/chatbotRoutes');
