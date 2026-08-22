@@ -191,5 +191,29 @@ describe('medicationSupplyEngine — Architecture-Grade Test Suite', () => {
         { months: 3, tablets: 180 },
       ]);
     });
+
+    it('resolves dosesPerDay = 2 from structured frequency text (1-0-1 or BID) even if single slot item is passed without store schedule', () => {
+      const selectedSlot = { name: 'Metformin', frequency: '1-0-1', type: 'night' };
+      const rx = derivePrescriptionModel(selectedSlot, null);
+
+      expect(rx.quantityPerDose).toBe(1);
+      expect(rx.dosesPerDay).toBe(2);
+      expect(rx.dailyTabletConsumption).toBe(2);
+    });
+
+    it('resolves dosesPerDay = 3 when master prescription lists 3 times (morning, afternoon, night)', () => {
+      const selectedSlot = { name: 'Amoxicillin', type: 'morning' };
+      const storeState = {
+        patient: {
+          medications: [
+            { _id: 'm_amox', name: 'Amoxicillin 500mg', times: ['morning', 'afternoon', 'night'] },
+          ],
+        },
+      };
+
+      const rx = derivePrescriptionModel(selectedSlot, storeState);
+      expect(rx.dosesPerDay).toBe(3);
+      expect(rx.dailyTabletConsumption).toBe(3);
+    });
   });
 });
