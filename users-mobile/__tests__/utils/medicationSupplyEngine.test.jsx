@@ -161,5 +161,35 @@ describe('medicationSupplyEngine — Architecture-Grade Test Suite', () => {
       const daysLeft = calculateDaysRemaining(49, rx.dailyTabletConsumption);
       expect(daysLeft).toBeNull();
     });
+
+    it('correctly resolves dosesPerDay = 2 when single slot item has times: ["night"] but dashboardMeds has morning and night slots', () => {
+      const selectedSlot = { name: 'Metformin', dosage: '500mg', type: 'night', times: ['night'] };
+      const storeState = {
+        patient: {
+          medications: [
+            { _id: 'm1', name: 'Metformin 500mg', times: ['night'] },
+          ],
+        },
+        dashboardMeds: [
+          { name: 'Metformin', type: 'morning' },
+          { name: 'Metformin', type: 'night' },
+        ],
+      };
+
+      const rx = derivePrescriptionModel(selectedSlot, storeState);
+      expect(rx.quantityPerDose).toBe(1);
+      expect(rx.dosesPerDay).toBe(2);
+      expect(rx.dailyTabletConsumption).toBe(2);
+
+      const daysLeft = calculateDaysRemaining(49, rx.dailyTabletConsumption);
+      expect(daysLeft).toBe(24.5);
+
+      const presets = calculateRefillPresets(rx.dailyTabletConsumption, [1, 2, 3]);
+      expect(presets).toEqual([
+        { months: 1, tablets: 60 },
+        { months: 2, tablets: 120 },
+        { months: 3, tablets: 180 },
+      ]);
+    });
   });
 });

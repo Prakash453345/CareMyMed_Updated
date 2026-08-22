@@ -129,18 +129,39 @@ export function resolveDosesPerDay(prescription, selectedSlot, storeState) {
   const selectedNameNorm = normalizeMedicationName(selectedSlot?.name || selectedSlot?.medicine_name || prescription?.name);
   const sources = {};
 
-  // Priority 1: Master prescription explicit array length
+  // Source 1: Master prescription explicit array length
   if (prescription) {
     const timesArr = Array.isArray(prescription.times) && prescription.times.length > 0 ? prescription.times :
                      Array.isArray(prescription.scheduledTimes) && prescription.scheduledTimes.length > 0 ? prescription.scheduledTimes :
                      Array.isArray(prescription.scheduled_times) && prescription.scheduled_times.length > 0 ? prescription.scheduled_times :
                      Array.isArray(prescription.slots) && prescription.slots.length > 0 ? prescription.slots : null;
-    if (timesArr) {
+    if (timesArr && timesArr.length > 0) {
       sources.masterTimes = timesArr.length;
     }
   }
 
-  // Priority 2: Grouped medicationSchedule deduplicated slot occurrences
+  // Source 2: All master medications array in store (gather unique times across all matching entries)
+  const allMeds = storeState?.patient?.medications ||
+                  storeState?.patientData?.medications ||
+                  storeState?.medications || [];
+  if (Array.isArray(allMeds) && selectedNameNorm) {
+    const uniqueTimesFromAllMeds = new Set();
+    allMeds.forEach(m => {
+      if (normalizeMedicationName(m.name || m.medicine_name) === selectedNameNorm) {
+        const times = Array.isArray(m.times) && m.times.length > 0 ? m.times :
+                      Array.isArray(m.scheduledTimes) && m.scheduledTimes.length > 0 ? m.scheduledTimes :
+                      Array.isArray(m.scheduled_times) && m.scheduled_times.length > 0 ? m.scheduled_times :
+                      Array.isArray(m.slots) && m.slots.length > 0 ? m.slots :
+                      (m.type || m.scheduled_time ? [m.type || m.scheduled_time] : []);
+        times.forEach(t => uniqueTimesFromAllMeds.add(t));
+      }
+    });
+    if (uniqueTimesFromAllMeds.size > 0) {
+      sources.allMedsTimes = uniqueTimesFromAllMeds.size;
+    }
+  }
+
+  // Source 3: Grouped medicationSchedule deduplicated slot occurrences
   const schedule = storeState?.medicationSchedule;
   if (schedule && selectedNameNorm) {
     const uniqueSlots = new Set();
@@ -158,7 +179,7 @@ export function resolveDosesPerDay(prescription, selectedSlot, storeState) {
     }
   }
 
-  // Priority 3: Flat dashboardMeds deduplicated slot occurrences
+  // Source 4: Flat dashboardMeds deduplicated slot occurrences
   const dashboardMeds = storeState?.dashboardMeds;
   if (Array.isArray(dashboardMeds) && selectedNameNorm) {
     const uniqueSlots = new Set();
@@ -173,7 +194,7 @@ export function resolveDosesPerDay(prescription, selectedSlot, storeState) {
     }
   }
 
-  // Priority 4: Frequency string text parsing & Indian 1-0-1 notation
+  // Source 5: Frequency string text parsing & Indian 1-0-1 notation
   const freqStr = (
     (typeof prescription?.frequency === 'string' ? prescription.frequency : '') ||
     (typeof prescription?.instructions === 'string' ? prescription.instructions : '') ||
@@ -202,21 +223,9 @@ export function resolveDosesPerDay(prescription, selectedSlot, storeState) {
     }
   }
 
-  // Evaluate Priority Order
-  const dosesPerDay = sources.masterTimes ??
-                      sources.medicationSchedule ??
-                      sources.dashboardMeds ??
-                      sources.freqText ?? 1;
-
-  // Log mismatch warning if high-confidence sources disagree
-  const uniqueVals = new Set(Object.values(sources));
-  if (uniqueVals.size > 1) {
-    console.warn('[SUPPLY ENGINE MISMATCH]', {
-      medication: selectedSlot?.name || prescription?.name,
-      resolvedDosesPerDay: dosesPerDay,
-      sources,
-    });
-  }
+  // Evaluate final dosesPerDay by taking the maximum active slot count derived across all valid sources
+  const validVals = Object.values(sources).filter(v => typeof v === 'number' && v > 0);
+  const dosesPerDay = validVals.length > 0 ? Math.max(...validVals) : 1;
 
   return dosesPerDay;
 }
