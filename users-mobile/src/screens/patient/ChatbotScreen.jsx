@@ -25,7 +25,7 @@ import AlertManager from '../../utils/AlertManager';
 import { globalChatCache, removeCachedSession } from './ChatHistoryScreen';
 import TabScreenTransition from '../../components/ui/TabScreenTransition';
 import HeroTransition from '../../livingGlass/components/HeroTransition';
-import { resolveChatAttachmentUrl } from '../../utils/mediaResolver';
+import { resolveChatAttachmentUrl, AuthenticatedImage } from '../../utils/mediaResolver';
 import useChatStore from '../../store/useChatStore';
 import RecoveryManager, { RecordingResult, RecordingResultStatus } from '../../services/RecoveryManager';
 import RecoverableBoundary from '../../components/RecoverableBoundary';
@@ -529,7 +529,7 @@ function ChatBubble({ message, onPressImage }) {
                     
                     {message.image ? (
                         <Pressable onPress={() => onPressImage && onPressImage(message.image)}>
-                            <Image source={{ uri: message.image }} style={[styles.chatImage, message.text && { marginBottom: 10 }]} resizeMode="cover" />
+                            <AuthenticatedImage source={{ uri: message.image }} style={[styles.chatImage, message.text && { marginBottom: 10 }]} resizeMode="cover" />
                         </Pressable>
                     ) : null}
 
@@ -583,7 +583,7 @@ function ChatBubble({ message, onPressImage }) {
 
                 {message.image ? (
                     <Pressable onPress={() => onPressImage && onPressImage(message.image)}>
-                        <Image source={{ uri: message.image }} style={styles.chatImage} resizeMode="cover" />
+                        <AuthenticatedImage source={{ uri: message.image }} style={styles.chatImage} resizeMode="cover" />
                     </Pressable>
                 ) : null}
 
@@ -2011,7 +2011,7 @@ export default function ChatbotScreen({ navigation, route }) {
                 {attachments.length > 0 && (
                     <View style={styles.attachmentBar}>
                         <View style={styles.attachmentCard}>
-                            <Image source={{ uri: attachments[0].uri }} style={styles.attachmentThumb} />
+                            <AuthenticatedImage source={{ uri: attachments[0].uri }} style={styles.attachmentThumb} />
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.attachmentTitle} numberOfLines={1}>{attachments[0].name || 'Medical Attachment'}</Text>
                                 <Text style={styles.attachmentSub}>Ready to send • Add caption below</Text>
@@ -2141,7 +2141,7 @@ export default function ChatbotScreen({ navigation, route }) {
                         <X size={26} color="#FFFFFF" strokeWidth={2.5} />
                     </Pressable>
                     {selectedViewerImage ? (
-                        <Image source={{ uri: selectedViewerImage }} style={styles.imageViewerFullImage} resizeMode="contain" />
+                        <AuthenticatedImage source={{ uri: selectedViewerImage }} style={styles.imageViewerFullImage} resizeMode="contain" />
                     ) : null}
                 </View>
             </Modal>
