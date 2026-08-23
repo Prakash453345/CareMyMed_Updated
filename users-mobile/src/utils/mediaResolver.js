@@ -65,6 +65,9 @@ export async function resolveChatAttachmentSource(rawUrl) {
 export function AuthenticatedImage({ source, style, resizeMode, fallback = null, ...props }) {
   const [imageSource, setImageSource] = useState(null);
 
+  const rawUri = typeof source === 'string' ? source : source?.uri;
+  const isLocalNum = typeof source === 'number';
+
   useEffect(() => {
     let isMounted = true;
     const resolveSource = async () => {
@@ -73,12 +76,11 @@ export function AuthenticatedImage({ source, style, resizeMode, fallback = null,
         return;
       }
 
-      if (typeof source === 'number') {
+      if (isLocalNum) {
         if (isMounted) setImageSource(source);
         return;
       }
 
-      const rawUri = typeof source === 'string' ? source : source?.uri;
       if (!rawUri) {
         if (isMounted) setImageSource(null);
         return;
@@ -92,7 +94,7 @@ export function AuthenticatedImage({ source, style, resizeMode, fallback = null,
     return () => {
       isMounted = false;
     };
-  }, [source]);
+  }, [rawUri, isLocalNum ? source : null]);
 
   if (!imageSource) {
     return fallback || <View style={[style, { backgroundColor: '#F1F5F9' }]} />;

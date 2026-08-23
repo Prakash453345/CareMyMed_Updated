@@ -18,13 +18,6 @@ import TabScreenTransition from '../../components/ui/TabScreenTransition';
 import useChatStore from '../../store/useChatStore';
 
 export const globalChatCache = {}; // Keyed by sessionId: { messages, title, updatedAt, sessionId }
-export let cachedSessions = null;
-
-export const removeCachedSession = (sessionId) => {
-    if (Array.isArray(cachedSessions)) {
-        cachedSessions = cachedSessions.filter(s => s._id !== sessionId);
-    }
-};
 
 const preloadRecentSessions = async (recentSessions, isCompanion, targetPatientId) => {
     if (!recentSessions || recentSessions.length === 0) return;
