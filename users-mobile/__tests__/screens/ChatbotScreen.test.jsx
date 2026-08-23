@@ -89,6 +89,11 @@ jest.mock('lucide-react-native', () => {
     Shield: dummy,
     Plus: dummy,
     Square: dummy,
+    ArrowRight: dummy,
+    X: dummy,
+    CheckCheck: dummy,
+    AlertCircle: dummy,
+    RefreshCw: dummy,
   };
 });
 

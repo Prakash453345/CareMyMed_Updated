@@ -708,139 +708,102 @@ function TypingIndicator({ stage }) {
     );
 }
 
-// ── Welcome Snapshot Card ───────────────────────────────────────────────────
-function WelcomeSnapshotCard({ firstName, medsCount, takenCount, vitals, streak, userRole, patientName }) {
+// ── Care Assistant Landing Hero (CRED + Apple Health + ChatGPT Style) ───────
+function CareAssistantLandingHero({ firstName, medsCount, takenCount, userRole, patientName, onSelectSuggestion }) {
+    const isCompanion = userRole === 'companion';
     const remaining = medsCount - takenCount;
-    
-    // Determine BP text
-    let bpText = 'BP not logged';
-    if (vitals) {
-        if (vitals.systolic && vitals.diastolic) {
-            bpText = `BP stable ${vitals.systolic}/${vitals.diastolic} mmHg`;
-        } else if (vitals.blood_pressure) {
-            bpText = `BP stable ${vitals.blood_pressure.systolic}/${vitals.blood_pressure.diastolic} mmHg`;
-        }
-    }
-    
-    // Determine greeting based on time of day
     const hr = new Date().getHours();
     const greeting = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
-    
-    const isCompanion = userRole === 'companion';
-    const subText = isCompanion 
-        ? `Here is ${patientName || 'your family member'}'s health snapshot.`
-        : "Here's your health snapshot for today.";
-        
+    const displayNameText = firstName || 'there';
+
     return (
-        <View style={styles.welcomeCard}>
-            <LinearGradient 
-                colors={['#EEF2FF', '#E0E7FF']} 
-                start={{ x: 0, y: 0 }} 
-                end={{ x: 1, y: 1 }} 
-                style={styles.welcomeGradient}
-            >
-                <View style={styles.welcomeContent}>
-                    <Text style={styles.welcomeTitle}>{greeting}, <Text style={{ fontWeight: '800', color: '#4F46E5' }}>{firstName}!</Text> 👋</Text>
-                    <Text style={styles.welcomeSub}>{subText}</Text>
-                    
-                    <View style={styles.snapshotRow}>
-                        <View style={styles.snapshotBadge}>
-                            <CheckCircle2 size={12} color="#22C55E" />
-                            <Text style={styles.snapshotBadgeText}>
-                                {remaining === 0 ? 'All meds taken' : `${remaining} med${remaining > 1 ? 's' : ''} left`}
-                            </Text>
-                        </View>
-                        
-                        <View style={styles.snapshotBadge}>
-                            <Heart size={12} color="#EF4444" fill="#EF4444" />
-                            <Text style={styles.snapshotBadgeText}>{bpText}</Text>
-                        </View>
-                        
-                        <View style={styles.snapshotBadge}>
-                            <Flame size={12} color="#F97316" fill="#F97316" />
-                            <Text style={styles.snapshotBadgeText}>{streak} day streak</Text>
-                        </View>
-                    </View>
-                </View>
-                
+        <Reanimated.View 
+            entering={FadeInDown.springify().damping(18).stiffness(140)}
+            style={styles.landingHeroContainer}
+        >
+            {/* Focal Mascot Centerpiece with Soft Aura Glow */}
+            <View style={styles.landingMascotWrap}>
+                <View style={styles.landingMascotAura} />
                 <Image 
                     source={require('../../../assets/doctor_mascot.jpg')} 
-                    style={styles.robotMascot} 
-                    resizeMode="contain"
+                    style={styles.landingMascotAvatar} 
+                    resizeMode="cover"
                 />
-            </LinearGradient>
-        </View>
-    );
-}
+                <View style={styles.landingSparkleBadge}>
+                    <Sparkles size={14} color="#6366F1" strokeWidth={2.5} />
+                </View>
+            </View>
 
-// ── Quick Actions Dashboard ────────────────────────────────────────────────
-function QuickActionsDashboard({ onPress, userRole, patientName }) {
-    const isCompanion = userRole === 'companion';
-    const patientShortName = patientName?.split(' ')[0] || 'Patient';
-    
-    return (
-        <View style={styles.actionsDashboard}>
-            <View style={styles.actionsHeader}>
-                <Sparkles size={16} color="#6366F1" strokeWidth={2.5} />
-                <Text style={styles.actionsHeaderText}>Suggested Questions</Text>
+            {/* Powerful Greeting & One-Line Scope */}
+            <Text style={styles.landingGreeting}>
+                {greeting}, <Text style={{ color: '#6366F1', fontWeight: '800' }}>{displayNameText}</Text> ✨
+            </Text>
+            <Text style={styles.landingScopeSub}>
+                {isCompanion
+                    ? `I'm here to help track ${patientName || 'your family member'}'s medications, vitals, adherence & care.`
+                    : "I can help with your medications, vitals, adherence, or prescriptions."}
+            </Text>
+
+            {/* Contextual Action Cards Stack (2-3 High-Impact Cards) */}
+            <View style={styles.landingActionsStack}>
+                <Text style={styles.landingSectionLabel}>WHAT WOULD YOU LIKE TO DO?</Text>
+
+                {/* Card 1: Today's Med Doses */}
+                <Pressable
+                    style={({ pressed }) => [styles.landingActionCard, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}
+                    onPress={() => onSelectSuggestion(isCompanion ? `📋 What should ${patientName || 'Patient'} take today?` : '💊 What medications do I take today?')}
+                >
+                    <View style={[styles.landingIconCircle, { backgroundColor: '#EEF2FF' }]}>
+                        <Pill size={20} color="#4F46E5" strokeWidth={2.2} />
+                    </View>
+                    <View style={styles.landingCardTextWrap}>
+                        <Text style={styles.landingCardTitle}>
+                            {remaining === 0 ? "Check today's medications" : `Check ${remaining} remaining dose${remaining > 1 ? 's' : ''} today`}
+                        </Text>
+                        <Text style={styles.landingCardSub}>View schedule and dosage details</Text>
+                    </View>
+                    <ArrowRight size={16} color="#94A3B8" strokeWidth={2} />
+                </Pressable>
+
+                {/* Card 2: Medicine Visual Identification */}
+                <Pressable
+                    style={({ pressed }) => [styles.landingActionCard, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}
+                    onPress={() => onSelectSuggestion('📷 Identify a medicine packaging or blister strip from photo')}
+                >
+                    <View style={[styles.landingIconCircle, { backgroundColor: '#F0FDF4' }]}>
+                        <Paperclip size={20} color="#16A34A" strokeWidth={2.2} />
+                    </View>
+                    <View style={styles.landingCardTextWrap}>
+                        <Text style={styles.landingCardTitle}>Identify a medicine</Text>
+                        <Text style={styles.landingCardSub}>Upload a photo of a strip, bottle, or label</Text>
+                    </View>
+                    <ArrowRight size={16} color="#94A3B8" strokeWidth={2} />
+                </Pressable>
+
+                {/* Card 3: Health & Vitals Summary */}
+                <Pressable
+                    style={({ pressed }) => [styles.landingActionCard, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}
+                    onPress={() => onSelectSuggestion(isCompanion ? `📊 Show ${patientName || 'Patient'}'s weekly health report` : '📊 How is my weekly health summary?')}
+                >
+                    <View style={[styles.landingIconCircle, { backgroundColor: '#FFF7ED' }]}>
+                        <TrendingUp size={20} color="#EA580C" strokeWidth={2.2} />
+                    </View>
+                    <View style={styles.landingCardTextWrap}>
+                        <Text style={styles.landingCardTitle}>Weekly Health Summary</Text>
+                        <Text style={styles.landingCardSub}>Review adherence streak & vitals trends</Text>
+                    </View>
+                    <ArrowRight size={16} color="#94A3B8" strokeWidth={2} />
+                </Pressable>
             </View>
-            
-            <View style={styles.actionsGrid}>
-                {/* Row 1 */}
-                <View style={styles.actionsGridRow}>
-                    <Pressable style={styles.actionGridCard} onPress={() => onPress(isCompanion ? `📋 What should ${patientShortName} do today?` : '📋 What should I do today?')}>
-                        <View style={[styles.actionIconBox, { backgroundColor: '#FFF7ED' }]}>
-                            <Calendar size={18} color="#EA580C" />
-                        </View>
-                        <View style={styles.actionCardContent}>
-                            <Text style={styles.actionCardTitle}>{isCompanion ? `Today's Plan` : 'Today\'s Plan'}</Text>
-                            <Text style={styles.actionCardSub}>{isCompanion ? "See patient's schedule" : "See today's schedule"}</Text>
-                        </View>
-                    </Pressable>
-                    
-                    <Pressable style={styles.actionGridCard} onPress={() => onPress(isCompanion ? `📊 ${patientShortName}'s Weekly Health Summary` : '📊 Weekly Health Summary')}>
-                        <View style={[styles.actionIconBox, { backgroundColor: '#ECFDF5' }]}>
-                            <TrendingUp size={18} color="#059669" />
-                        </View>
-                        <View style={styles.actionCardContent}>
-                            <Text style={styles.actionCardTitle}>{isCompanion ? `Weekly Summary` : 'Weekly Summary'}</Text>
-                            <Text style={styles.actionCardSub}>{isCompanion ? "Progress this week" : "Your progress this week"}</Text>
-                        </View>
-                    </Pressable>
-                </View>
-                
-                {/* Row 2 */}
-                <View style={styles.actionsGridRow}>
-                    <Pressable style={styles.actionGridCard} onPress={() => onPress(isCompanion ? `💊 ${patientShortName}'s medications list` : '💊 My medications list')}>
-                        <View style={[styles.actionIconBox, { backgroundColor: '#EEF2FF' }]}>
-                            <Pill size={18} color="#4F46E5" />
-                        </View>
-                        <View style={styles.actionCardContent}>
-                            <Text style={styles.actionCardTitle}>{isCompanion ? `Medications List` : 'Medications'}</Text>
-                            <Text style={styles.actionCardSub}>{isCompanion ? "View prescribed meds" : "View active doses"}</Text>
-                        </View>
-                    </Pressable>
-                    
-                    <Pressable style={styles.actionGridCard} onPress={() => onPress(isCompanion ? `🩺 View ${patientShortName}'s vitals status` : '🩺 View vitals status')}>
-                        <View style={[styles.actionIconBox, { backgroundColor: '#F0FDF4' }]}>
-                            <Activity size={18} color="#16A34A" />
-                        </View>
-                        <View style={styles.actionCardContent}>
-                            <Text style={styles.actionCardTitle}>{isCompanion ? `Vitals Status` : 'Vitals Status'}</Text>
-                            <Text style={styles.actionCardSub}>Check BP, HR & trends</Text>
-                        </View>
-                    </Pressable>
-                </View>
-            </View>
-            
-            {/* Subtle Privacy Footnote */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 14 }}>
+
+            {/* Subtle Privacy Badge */}
+            <View style={styles.landingPrivacyRow}>
                 <Shield size={12} color="#94A3B8" />
-                <Text style={{ fontSize: 11, color: '#94A3B8', fontWeight: '500' }}>
+                <Text style={styles.landingPrivacyText}>
                     {isCompanion ? "Patient health data is encrypted and private." : "Your health data is encrypted and private."}
                 </Text>
             </View>
-        </View>
+        </Reanimated.View>
     );
 }
 
@@ -1877,9 +1840,6 @@ export default function ChatbotScreen({ navigation, route }) {
     };
 
     const renderMessage = useCallback(({ item }) => {
-        if (item.isSkeleton) {
-            return <ChatBubbleSkeleton isUser={item.isUser} width={item.width} />;
-        }
         return <ChatBubble message={item} isUser={item.isUser} onPressImage={(img) => setSelectedViewerImage(img)} />;
     }, []);
 
@@ -1964,13 +1924,13 @@ export default function ChatbotScreen({ navigation, route }) {
                         contentContainerStyle={styles.messageList}
                         showsVerticalScrollIndicator={false}
                         ListHeaderComponent={
-                            !messages.some(m => !m.isSkeleton && m.isUser) ? (
+                            !messages.some(m => m.isUser) ? (
                                 isCompanion && isCompanionLoading ? (
                                     <View style={{ padding: 20, alignItems: 'center' }}>
                                         <ActivityIndicator size="small" color="#6366F1" />
                                     </View>
                                 ) : (
-                                    <WelcomeSnapshotCard
+                                    <CareAssistantLandingHero
                                         firstName={isCompanion ? (displayName || 'there') : (patient?.first_name || displayName || 'there')}
                                         medsCount={medsCount}
                                         takenCount={takenCount}
@@ -1978,19 +1938,13 @@ export default function ChatbotScreen({ navigation, route }) {
                                         streak={activeStreak}
                                         userRole={userRole}
                                         patientName={companionData?.patient?.name}
+                                        onSelectSuggestion={(s) => handleSend(s)}
                                     />
                                 )
                             ) : null
                         }
                         ListFooterComponent={
                             <>
-                                {!messages.some(m => !m.isSkeleton && m.isUser) && (
-                                    <QuickActionsDashboard 
-                                        onPress={(s) => handleSend(s)} 
-                                        userRole={userRole}
-                                        patientName={companionData?.patient?.name}
-                                    />
-                                )}
                                 {isTyping ? <TypingIndicator stage={typingStage} /> : null}
                                 {!isTyping && followUpSuggestions && followUpSuggestions.length > 0 ? (
                                     <View style={styles.followUpContainer}>
@@ -2725,5 +2679,131 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+    },
+
+    // ── Care Assistant Landing Hero Styles (CRED + Apple Health + ChatGPT Style) ──
+    landingHeroContainer: {
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingTop: 24,
+        paddingBottom: 16,
+    },
+    landingMascotWrap: {
+        width: 84,
+        height: 84,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
+        position: 'relative',
+    },
+    landingMascotAura: {
+        position: 'absolute',
+        width: 104,
+        height: 104,
+        borderRadius: 52,
+        backgroundColor: 'rgba(99, 102, 241, 0.12)',
+    },
+    landingMascotAvatar: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+    },
+    landingSparkleBadge: {
+        position: 'absolute',
+        bottom: -2,
+        right: -2,
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        backgroundColor: '#EEF2FF',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    landingGreeting: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#0F172A',
+        letterSpacing: -0.4,
+        textAlign: 'center',
+        marginBottom: 6,
+    },
+    landingScopeSub: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#64748B',
+        textAlign: 'center',
+        lineHeight: 20,
+        maxWidth: 320,
+        marginBottom: 28,
+    },
+    landingActionsStack: {
+        width: '100%',
+        gap: 10,
+    },
+    landingSectionLabel: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#94A3B8',
+        letterSpacing: 0.8,
+        marginBottom: 4,
+        paddingLeft: 4,
+    },
+    landingActionCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.04,
+        shadowRadius: 12,
+        elevation: 2,
+        gap: 14,
+    },
+    landingIconCircle: {
+        width: 42,
+        height: 42,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    landingCardTextWrap: {
+        flex: 1,
+    },
+    landingCardTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#1E293B',
+        marginBottom: 2,
+    },
+    landingCardSub: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: '#64748B',
+    },
+    landingPrivacyRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        marginTop: 24,
+    },
+    landingPrivacyText: {
+        fontSize: 11,
+        fontWeight: '500',
+        color: '#94A3B8',
     },
 });
