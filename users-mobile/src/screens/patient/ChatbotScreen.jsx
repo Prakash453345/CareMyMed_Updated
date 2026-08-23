@@ -11,7 +11,8 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Send, Sparkles, Bot, User, Mic, Paperclip, Trash2, Pill, Flame, TrendingUp, CheckCircle2, Activity, Heart, Wind, Calendar, Shield, Plus, Square, X, CheckCheck, ArrowRight, ChevronRight, Info } from 'lucide-react-native';
+import { ArrowLeft, ChevronLeft, Send, Sparkles, Bot, User, Mic, Paperclip, Trash2, Pill, Flame, TrendingUp, CheckCircle2, Activity, Heart, Wind, Calendar, Shield, Plus, Square, X, CheckCheck, ArrowRight, ChevronRight, Info } from 'lucide-react-native';
+import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Path } from 'react-native-svg';
 import { colors } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -1864,10 +1865,24 @@ export default function ChatbotScreen({ navigation, route }) {
         <View style={[styles.screen, { paddingTop: insets.top }]}>
             <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
-            {/* ── Header ── */}
+            {/* ── Ambient Background Gradient & Sweeping Curves ── */}
+            <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                <Svg height="100%" width="100%" viewBox="0 0 400 850" preserveAspectRatio="none">
+                    <Defs>
+                        <SvgLinearGradient id="settingsTopBg" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <Stop offset="0%" stopColor="#E0E7FF" stopOpacity="0.85" />
+                            <Stop offset="40%" stopColor="#EEF2FF" stopOpacity="0.4" />
+                            <Stop offset="100%" stopColor="#F8FAFC" stopOpacity="0" />
+                        </SvgLinearGradient>
+                    </Defs>
+                    <Path d="M120 0 C220 130, 320 150, 400 120 L400 0 Z" fill="url(#settingsTopBg)" />
+                </Svg>
+            </View>
+
+            {/* ── Header Bar (Standardized with Settings & App Design System) ── */}
             <View style={styles.header}>
                 <Pressable onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={12}>
-                    <ArrowLeft size={22} color="#0F172A" strokeWidth={2.5} />
+                    <ChevronLeft size={22} color="#0F172A" strokeWidth={2.5} />
                 </Pressable>
                 <View style={styles.headerCenter}>
                     <HeroTransition id="chatbot_header_avatar">
@@ -1876,18 +1891,11 @@ export default function ChatbotScreen({ navigation, route }) {
                             style={styles.headerMascotAvatar} 
                         />
                     </HeroTransition>
-                    <View>
+                    <View style={styles.headerTitleGroup}>
                         <Text style={styles.headerTitle}>Care Assistant</Text>
-                        <View style={styles.onlineRow}>
-                            {isHydrating ? (
-                                <ActivityIndicator size="small" color="#6366F1" style={{ marginRight: 2, transform: [{ scale: 0.7 }] }} />
-                            ) : (
-                                <View style={styles.onlineDot} />
-                            )}
-                            <Text style={[styles.onlineText, isHydrating && { color: '#6366F1' }]}>
-                                {isHydrating ? 'Syncing...' : lastSyncedAt ? 'Updated just now' : 'Online'}
-                            </Text>
-                        </View>
+                        <Text style={styles.headerSub}>
+                            {isHydrating ? 'Syncing health context...' : lastSyncedAt ? 'Updated just now' : 'AI Concierge • Online'}
+                        </Text>
                     </View>
                 </View>
                 <View style={styles.headerRightActions}>
@@ -1895,7 +1903,7 @@ export default function ChatbotScreen({ navigation, route }) {
                         onPress={handleCreateSession} 
                         disabled={isCreating}
                         style={({ pressed }) => [
-                            styles.headerNewChatBtn,
+                            styles.headerActionBtn,
                             pressed && { opacity: 0.7 }
                         ]}
                         hitSlop={12}
@@ -1903,18 +1911,19 @@ export default function ChatbotScreen({ navigation, route }) {
                         {isCreating ? (
                             <ActivityIndicator size="small" color="#6366F1" />
                         ) : (
-                            <Plus size={20} color="#6366F1" strokeWidth={2.5} />
+                            <Plus size={18} color="#4338CA" strokeWidth={2.5} />
                         )}
                     </Pressable>
                     <Pressable 
                         onPress={handleDeleteChat} 
                         style={({ pressed }) => [
-                            styles.clearBtn,
+                            styles.headerActionBtn,
+                            styles.clearActionBtn,
                             pressed && { opacity: 0.7 }
                         ]}
                         hitSlop={12}
                     >
-                        <Trash2 size={20} color="#EF4444" strokeWidth={2} />
+                        <Trash2 size={18} color="#EF4444" strokeWidth={2} />
                     </Pressable>
                 </View>
             </View>
@@ -2151,24 +2160,53 @@ const styles = StyleSheet.create({
         height: '80%',
     },
 
-    // ── Header ──
+    // ── Header (Matching Settings & Standard App Design System) ──
     header: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingHorizontal: 16, paddingVertical: 12,
-        backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
-        shadowColor: '#0A2463', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 3,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(241, 245, 249, 0.8)',
     },
-    backBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
-    clearBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' },
+    backBtn: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+        elevation: 1,
+    },
+    headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+    headerMascotAvatar: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: '#E2E8F0' },
+    headerTitleGroup: { flex: 1 },
+    headerTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: -0.3 },
+    headerSub: { fontSize: 11.5, fontWeight: '600', color: '#64748B', marginTop: 1 },
     headerRightActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    headerNewChatBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
-    headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    headerAvatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-    headerMascotAvatar: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' },
-    headerTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', letterSpacing: -0.3 },
-    onlineRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
-    onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
-    onlineText: { fontSize: 11, fontWeight: '500', color: '#64748B' },
+    headerActionBtn: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: '#EEF2FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#C7D2FE',
+    },
+    clearActionBtn: {
+        backgroundColor: '#FEE2E2',
+        borderColor: '#FCA5A5',
+    },
 
     // ── Welcome card ──
     welcomeCard: {
