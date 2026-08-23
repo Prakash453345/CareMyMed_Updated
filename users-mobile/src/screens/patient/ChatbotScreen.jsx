@@ -11,7 +11,7 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Send, Sparkles, Bot, User, Mic, Paperclip, Trash2, Pill, Flame, TrendingUp, CheckCircle2, Activity, Heart, Wind, Calendar, Shield, Plus, Square, X, CheckCheck, ArrowRight } from 'lucide-react-native';
+import { ArrowLeft, Send, Sparkles, Bot, User, Mic, Paperclip, Trash2, Pill, Flame, TrendingUp, CheckCircle2, Activity, Heart, Wind, Calendar, Shield, Plus, Square, X, CheckCheck, ArrowRight, ChevronRight, Info } from 'lucide-react-native';
 import { colors } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -708,99 +708,113 @@ function TypingIndicator({ stage }) {
     );
 }
 
-// ── Care Assistant Landing Hero (CRED + Apple Health + ChatGPT Style) ───────
-function CareAssistantLandingHero({ firstName, medsCount, takenCount, userRole, patientName, onSelectSuggestion }) {
+// ── Editorial Care Assistant Landing Hero (Apple Health + Medical Concierge Style) ───────
+function CareAssistantLandingHero({ firstName, medsCount, takenCount, vitals, streak, userRole, patientName, onSelectSuggestion }) {
     const isCompanion = userRole === 'companion';
     const remaining = medsCount - takenCount;
     const hr = new Date().getHours();
-    const greeting = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
+    const greetingTime = hr < 12 ? 'GOOD MORNING' : hr < 17 ? 'GOOD AFTERNOON' : 'GOOD EVENING';
     const displayNameText = firstName || 'there';
+
+    let bpStatusText = 'Not logged';
+    if (vitals) {
+        if (vitals.systolic && vitals.diastolic) {
+            bpStatusText = `${vitals.systolic}/${vitals.diastolic} mmHg`;
+        } else if (vitals.blood_pressure) {
+            bpStatusText = `${vitals.blood_pressure.systolic}/${vitals.blood_pressure.diastolic} mmHg`;
+        }
+    }
+
+    const adherenceRateText = medsCount > 0 
+        ? (remaining === 0 ? '100% Complete' : `${takenCount}/${medsCount} taken`) 
+        : 'No doses scheduled';
 
     return (
         <Reanimated.View 
             entering={FadeInDown.springify().damping(18).stiffness(140)}
-            style={styles.landingHeroContainer}
+            style={styles.editorialLandingContainer}
         >
-            {/* Focal Mascot Centerpiece with Soft Aura Glow */}
-            <View style={styles.landingMascotWrap}>
-                <View style={styles.landingMascotAura} />
-                <Image 
-                    source={require('../../../assets/doctor_mascot.jpg')} 
-                    style={styles.landingMascotAvatar} 
-                    resizeMode="cover"
-                />
-                <View style={styles.landingSparkleBadge}>
-                    <Sparkles size={14} color="#6366F1" strokeWidth={2.5} />
+            {/* Top Editorial Headline */}
+            <View style={styles.editorialHeaderGroup}>
+                <Text style={styles.editorialEyebrow}>{greetingTime}</Text>
+                <Text style={styles.editorialNameTitle}>{displayNameText}</Text>
+                <Text style={styles.editorialStatusSentence}>
+                    {remaining === 0 
+                        ? "You're all caught up with today's medications." 
+                        : `You have ${remaining} medication dose${remaining > 1 ? 's' : ''} remaining today.`}
+                </Text>
+            </View>
+
+            {/* Hairline Divider */}
+            <View style={styles.editorialDivider} />
+
+            {/* Editorial Snapshot Summary Rows */}
+            <View style={styles.editorialSnapshotSection}>
+                <Text style={styles.editorialSectionHeading}>TODAY</Text>
+                
+                <View style={styles.editorialSnapshotRow}>
+                    <Text style={styles.editorialSnapshotLabel}>Medication adherence</Text>
+                    <Text style={[styles.editorialSnapshotValue, remaining === 0 && { color: '#10B981' }]}>
+                        {adherenceRateText}
+                    </Text>
+                </View>
+
+                <View style={styles.editorialSnapshotRow}>
+                    <Text style={styles.editorialSnapshotLabel}>Vitals status</Text>
+                    <Text style={styles.editorialSnapshotValue}>{bpStatusText}</Text>
+                </View>
+
+                <View style={styles.editorialSnapshotRow}>
+                    <Text style={styles.editorialSnapshotLabel}>Adherence streak</Text>
+                    <Text style={styles.editorialSnapshotValue}>{streak > 0 ? `${streak} days` : '—'}</Text>
                 </View>
             </View>
 
-            {/* Powerful Greeting & One-Line Scope */}
-            <Text style={styles.landingGreeting}>
-                {greeting}, <Text style={{ color: '#6366F1', fontWeight: '800' }}>{displayNameText}</Text> ✨
-            </Text>
-            <Text style={styles.landingScopeSub}>
-                {isCompanion
-                    ? `I'm here to help track ${patientName || 'your family member'}'s medications, vitals, adherence & care.`
-                    : "I can help with your medications, vitals, adherence, or prescriptions."}
-            </Text>
+            {/* Hairline Divider */}
+            <View style={styles.editorialDivider} />
 
-            {/* Contextual Action Cards Stack (2-3 High-Impact Cards) */}
-            <View style={styles.landingActionsStack}>
-                <Text style={styles.landingSectionLabel}>WHAT WOULD YOU LIKE TO DO?</Text>
+            {/* Text-First Conversational Actions */}
+            <View style={styles.editorialActionsSection}>
+                <Text style={styles.editorialSectionHeading}>WHAT CAN I HELP WITH?</Text>
 
-                {/* Card 1: Today's Med Doses */}
                 <Pressable
-                    style={({ pressed }) => [styles.landingActionCard, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}
+                    style={({ pressed }) => [styles.editorialActionRow, pressed && { opacity: 0.7 }]}
                     onPress={() => onSelectSuggestion(isCompanion ? `📋 What should ${patientName || 'Patient'} take today?` : '💊 What medications do I take today?')}
                 >
-                    <View style={[styles.landingIconCircle, { backgroundColor: '#EEF2FF' }]}>
-                        <Pill size={20} color="#4F46E5" strokeWidth={2.2} />
-                    </View>
-                    <View style={styles.landingCardTextWrap}>
-                        <Text style={styles.landingCardTitle}>
-                            {remaining === 0 ? "Check today's medications" : `Check ${remaining} remaining dose${remaining > 1 ? 's' : ''} today`}
-                        </Text>
-                        <Text style={styles.landingCardSub}>View schedule and dosage details</Text>
-                    </View>
-                    <ArrowRight size={16} color="#94A3B8" strokeWidth={2} />
+                    <Text style={styles.editorialActionText}>Today's medications</Text>
+                    <ChevronRight size={18} color="#94A3B8" />
                 </Pressable>
 
-                {/* Card 2: Medicine Visual Identification */}
                 <Pressable
-                    style={({ pressed }) => [styles.landingActionCard, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}
-                    onPress={() => onSelectSuggestion('📷 Identify a medicine packaging or blister strip from photo')}
-                >
-                    <View style={[styles.landingIconCircle, { backgroundColor: '#F0FDF4' }]}>
-                        <Paperclip size={20} color="#16A34A" strokeWidth={2.2} />
-                    </View>
-                    <View style={styles.landingCardTextWrap}>
-                        <Text style={styles.landingCardTitle}>Identify a medicine</Text>
-                        <Text style={styles.landingCardSub}>Upload a photo of a strip, bottle, or label</Text>
-                    </View>
-                    <ArrowRight size={16} color="#94A3B8" strokeWidth={2} />
-                </Pressable>
-
-                {/* Card 3: Health & Vitals Summary */}
-                <Pressable
-                    style={({ pressed }) => [styles.landingActionCard, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}
+                    style={({ pressed }) => [styles.editorialActionRow, pressed && { opacity: 0.7 }]}
                     onPress={() => onSelectSuggestion(isCompanion ? `📊 Show ${patientName || 'Patient'}'s weekly health report` : '📊 How is my weekly health summary?')}
                 >
-                    <View style={[styles.landingIconCircle, { backgroundColor: '#FFF7ED' }]}>
-                        <TrendingUp size={20} color="#EA580C" strokeWidth={2.2} />
-                    </View>
-                    <View style={styles.landingCardTextWrap}>
-                        <Text style={styles.landingCardTitle}>Weekly Health Summary</Text>
-                        <Text style={styles.landingCardSub}>Review adherence streak & vitals trends</Text>
-                    </View>
-                    <ArrowRight size={16} color="#94A3B8" strokeWidth={2} />
+                    <Text style={styles.editorialActionText}>Weekly health progress</Text>
+                    <ChevronRight size={18} color="#94A3B8" />
+                </Pressable>
+
+                <Pressable
+                    style={({ pressed }) => [styles.editorialActionRow, pressed && { opacity: 0.7 }]}
+                    onPress={() => onSelectSuggestion(isCompanion ? `🩺 View ${patientName || 'Patient'}'s vitals status` : '🩺 Check my vitals status')}
+                >
+                    <Text style={styles.editorialActionText}>Check my vitals</Text>
+                    <ChevronRight size={18} color="#94A3B8" />
+                </Pressable>
+
+                <Pressable
+                    style={({ pressed }) => [styles.editorialActionRow, pressed && { opacity: 0.7 }]}
+                    onPress={() => onSelectSuggestion('📷 Identify a medicine packaging or blister strip from photo')}
+                >
+                    <Text style={styles.editorialActionText}>Identify a medicine photo</Text>
+                    <ChevronRight size={18} color="#94A3B8" />
                 </Pressable>
             </View>
 
-            {/* Subtle Privacy Badge */}
-            <View style={styles.landingPrivacyRow}>
-                <Shield size={12} color="#94A3B8" />
-                <Text style={styles.landingPrivacyText}>
-                    {isCompanion ? "Patient health data is encrypted and private." : "Your health data is encrypted and private."}
+            {/* Tiny Muted Legal & Privacy Footnote */}
+            <View style={styles.editorialFooterRow}>
+                <Info size={12} color="#94A3B8" />
+                <Text style={styles.editorialFooterText}>
+                    AI guidance · Not a substitute for professional medical care
                 </Text>
             </View>
         </Reanimated.View>
@@ -2681,127 +2695,90 @@ const styles = StyleSheet.create({
         gap: 6,
     },
 
-    // ── Care Assistant Landing Hero Styles (CRED + Apple Health + ChatGPT Style) ──
-    landingHeroContainer: {
-        alignItems: 'center',
+    // ── Editorial Care Assistant Landing Styles (Apple Health + Medical Concierge Style) ──
+    editorialLandingContainer: {
         paddingHorizontal: 20,
-        paddingTop: 24,
-        paddingBottom: 16,
+        paddingTop: 28,
+        paddingBottom: 20,
     },
-    landingMascotWrap: {
-        width: 84,
-        height: 84,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 16,
-        position: 'relative',
+    editorialHeaderGroup: {
+        marginBottom: 20,
     },
-    landingMascotAura: {
-        position: 'absolute',
-        width: 104,
-        height: 104,
-        borderRadius: 52,
-        backgroundColor: 'rgba(99, 102, 241, 0.12)',
+    editorialEyebrow: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#6366F1',
+        letterSpacing: 1.2,
+        marginBottom: 4,
     },
-    landingMascotAvatar: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        borderWidth: 2,
-        borderColor: '#FFFFFF',
-    },
-    landingSparkleBadge: {
-        position: 'absolute',
-        bottom: -2,
-        right: -2,
-        width: 26,
-        height: 26,
-        borderRadius: 13,
-        backgroundColor: '#EEF2FF',
-        borderWidth: 2,
-        borderColor: '#FFFFFF',
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#6366F1',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    landingGreeting: {
-        fontSize: 22,
-        fontWeight: '700',
+    editorialNameTitle: {
+        fontSize: 32,
+        fontWeight: '800',
         color: '#0F172A',
-        letterSpacing: -0.4,
-        textAlign: 'center',
-        marginBottom: 6,
+        letterSpacing: -0.6,
+        marginBottom: 8,
     },
-    landingScopeSub: {
-        fontSize: 14,
+    editorialStatusSentence: {
+        fontSize: 16,
         fontWeight: '500',
-        color: '#64748B',
-        textAlign: 'center',
-        lineHeight: 20,
-        maxWidth: 320,
-        marginBottom: 28,
+        color: '#475569',
+        lineHeight: 22,
     },
-    landingActionsStack: {
-        width: '100%',
-        gap: 10,
+    editorialDivider: {
+        height: 1,
+        backgroundColor: '#E2E8F0',
+        marginVertical: 20,
     },
-    landingSectionLabel: {
+    editorialSnapshotSection: {
+        gap: 12,
+    },
+    editorialSectionHeading: {
         fontSize: 11,
         fontWeight: '800',
         color: '#94A3B8',
-        letterSpacing: 0.8,
-        marginBottom: 4,
-        paddingLeft: 4,
+        letterSpacing: 1,
+        marginBottom: 6,
     },
-    landingActionCard: {
+    editorialSnapshotRow: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
-        shadowColor: '#6366F1',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.04,
-        shadowRadius: 12,
-        elevation: 2,
-        gap: 14,
+        paddingVertical: 4,
     },
-    landingIconCircle: {
-        width: 42,
-        height: 42,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    landingCardTextWrap: {
-        flex: 1,
-    },
-    landingCardTitle: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#1E293B',
-        marginBottom: 2,
-    },
-    landingCardSub: {
-        fontSize: 12,
+    editorialSnapshotLabel: {
+        fontSize: 15,
         fontWeight: '500',
-        color: '#64748B',
+        color: '#334155',
     },
-    landingPrivacyRow: {
+    editorialSnapshotValue: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#0F172A',
+    },
+    editorialActionsSection: {
+        gap: 12,
+    },
+    editorialActionRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    editorialActionText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#1E293B',
+    },
+    editorialFooterRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
-        marginTop: 24,
+        marginTop: 32,
     },
-    landingPrivacyText: {
+    editorialFooterText: {
         fontSize: 11,
         fontWeight: '500',
         color: '#94A3B8',
