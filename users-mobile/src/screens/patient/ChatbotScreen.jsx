@@ -528,9 +528,12 @@ function ChatBubble({ message, onPressImage }) {
                     <LinearGradient colors={['#6366F1', '#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
                     
                     {message.image ? (
-                        <Pressable onPress={() => onPressImage && onPressImage(message.image)}>
-                            <AuthenticatedImage source={{ uri: message.image }} style={[styles.chatImage, message.text && { marginBottom: 10 }]} resizeMode="cover" />
-                        </Pressable>
+                        <AuthenticatedImage
+                            source={{ uri: message.image }}
+                            style={[styles.chatImage, message.text && { marginBottom: 10 }]}
+                            resizeMode="contain"
+                            onPress={() => onPressImage && onPressImage(message.image)}
+                        />
                     ) : null}
 
                     {message.audio ? (
@@ -582,9 +585,12 @@ function ChatBubble({ message, onPressImage }) {
                 )}
 
                 {message.image ? (
-                    <Pressable onPress={() => onPressImage && onPressImage(message.image)}>
-                        <AuthenticatedImage source={{ uri: message.image }} style={styles.chatImage} resizeMode="cover" />
-                    </Pressable>
+                    <AuthenticatedImage
+                        source={{ uri: message.image }}
+                        style={styles.chatImage}
+                        resizeMode="contain"
+                        onPress={() => onPressImage && onPressImage(message.image)}
+                    />
                 ) : null}
 
                 {message.audio ? (

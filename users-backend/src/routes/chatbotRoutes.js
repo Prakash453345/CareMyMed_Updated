@@ -385,6 +385,8 @@ router.post(
             const visionCandidates = Array.from(
               new Set([
                 groqVisionModel,
+                'llama-3.2-11b-vision-preview',
+                'llama-3.2-90b-vision-preview',
                 'qwen/qwen3.6-27b',
               ])
             );
