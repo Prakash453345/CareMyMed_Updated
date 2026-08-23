@@ -4,7 +4,7 @@ import { View, Text } from 'react-native';
 
 // Simple unit simulation of TactileWheelPicker scroll logic
 describe('TactileWheelPicker Scroll Architecture & Feedback Loop Protection', () => {
-  it('derives active index from physical content offset on momentum scroll end', () => {
+  it('derives active index from physical content offset on momentum scroll end with -2 placeholder offset', () => {
     const onValueChange = jest.fn();
     const itemHeight = 44;
     const items = [
@@ -19,7 +19,7 @@ describe('TactileWheelPicker Scroll Architecture & Feedback Loop Protection', ()
     let selectedValue = '01';
 
     const handleScrollEnd = (yOffset) => {
-      const dataIndex = Math.round(yOffset / itemHeight);
+      const dataIndex = Math.max(0, Math.min(items.length - 1, Math.round(yOffset / itemHeight) - 2));
       if (dataIndex >= 0 && dataIndex < items.length) {
         const item = items[dataIndex];
         if (item && item.value !== selectedValue) {
@@ -30,8 +30,8 @@ describe('TactileWheelPicker Scroll Architecture & Feedback Loop Protection', ()
       }
     };
 
-    // User flicks to index 3 (offset 132)
-    handleScrollEnd(132);
+    // User flicks to padded index 5 (offset 220 = (3 + 2) * 44) -> maps to data index 3 ('04')
+    handleScrollEnd(220);
 
     expect(onValueChange).toHaveBeenCalledWith('04');
     expect(selectedValue).toBe('04');

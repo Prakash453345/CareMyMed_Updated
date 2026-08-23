@@ -346,7 +346,10 @@ const TactileWheelPicker = ({
   const handleScrollEnd = (event) => {
     try {
       const y = event.nativeEvent?.contentOffset?.y || 0;
-      const dataIndex = Math.round(y / itemHeight);
+      const dataIndex = Math.max(
+        0,
+        Math.min(safeData.length - 1, Math.round(y / itemHeight) - 2)
+      );
       if (dataIndex >= 0 && dataIndex < safeData.length) {
         const item = safeData[dataIndex];
         if (item && item.value !== undefined && String(item.value) !== String(selectedValue)) {
@@ -372,7 +375,7 @@ const TactileWheelPicker = ({
       const timer = setTimeout(() => {
         try {
           flatListRef.current?.scrollToOffset?.({
-            offset: index * itemHeight,
+            offset: (index + 2) * itemHeight,
             animated: false,
           });
         } catch (e) {
@@ -493,7 +496,6 @@ const TactileWheelPicker = ({
           { useNativeDriver: true },
         )}
         onMomentumScrollEnd={handleScrollEnd}
-        onScrollEndDrag={handleScrollEnd}
         getItemLayout={(data, index) => ({
           length: itemHeight,
           offset: itemHeight * index,
@@ -504,15 +506,24 @@ const TactileWheelPicker = ({
   );
 };
 
-const GoogleFitHeightWeightPicker = ({
+const HeightWeightPickerModal = ({
+  visible,
+  onClose,
+  initialTab = "height",
   heightCm,
   weightKg,
   onHeightChange,
   onWeightChange,
 }) => {
-  const [activeTab, setActiveTab] = useState("height");
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [heightUnit, setHeightUnit] = useState("cm");
   const [weightUnit, setWeightUnit] = useState("kg");
+
+  useEffect(() => {
+    if (visible) {
+      setActiveTab(initialTab);
+    }
+  }, [visible, initialTab]);
 
   const heightCmData = useMemo(() => {
     return Array.from({ length: 151 }, (_, i) => {
@@ -572,204 +583,197 @@ const GoogleFitHeightWeightPicker = ({
     setActiveTab(tab);
   };
 
+  if (!visible) return null;
+
   return (
-    <View style={{ gap: 16 }}>
-      {/* ── TOP SEGMENTED TAB SWITCHER (HEIGHT | WEIGHT) ── */}
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View
         style={{
-          flexDirection: "row",
-          backgroundColor: "#F1F5F9",
-          borderRadius: 16,
-          padding: 4,
-          gap: 4,
+          flex: 1,
+          backgroundColor: "rgba(15, 23, 42, 0.65)",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: 20,
         }}
       >
         <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+        />
+
+        <View
           style={{
-            flex: 1,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            paddingVertical: 10,
-            borderRadius: 12,
-            backgroundColor: activeTab === "height" ? "#7C3AED" : "transparent",
+            width: "100%",
+            maxWidth: 380,
+            backgroundColor: "#FFFFFF",
+            borderRadius: 28,
+            padding: 24,
+            gap: 18,
+            shadowColor: "#0F172A",
+            shadowOffset: { width: 0, height: 12 },
+            shadowOpacity: 0.18,
+            shadowRadius: 24,
+            elevation: 16,
           }}
-          onPress={() => handleTabSwitch("height")}
         >
-          <Activity size={16} color={activeTab === "height" ? "#FFFFFF" : "#64748B"} />
-          <Text
-            style={{
-              fontSize: 14,
-              ...FONT.bold,
-              color: activeTab === "height" ? "#FFFFFF" : "#64748B",
-            }}
-          >
-            Height
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={{
-            flex: 1,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            paddingVertical: 10,
-            borderRadius: 12,
-            backgroundColor: activeTab === "weight" ? "#10B981" : "transparent",
-          }}
-          onPress={() => handleTabSwitch("weight")}
-        >
-          <Scale size={16} color={activeTab === "weight" ? "#FFFFFF" : "#64748B"} />
-          <Text
-            style={{
-              fontSize: 14,
-              ...FONT.bold,
-              color: activeTab === "weight" ? "#FFFFFF" : "#64748B",
-            }}
-          >
-            Weight
-          </Text>
-        </Pressable>
-      </View>
-
-      {/* ── FOCUSED METRIC CARD (HEIGHT OR WEIGHT) ── */}
-      {activeTab === "height" ? (
-        <View style={s.fitMetricCard}>
-          <View style={s.fitHeaderRow}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Activity size={16} color="#8B5CF6" />
-              <Text style={s.fitCardLabel}>HEIGHT</Text>
+          {/* Header */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              {activeTab === "height" ? (
+                <Activity size={20} color="#7C3AED" />
+              ) : (
+                <Scale size={20} color="#10B981" />
+              )}
+              <Text style={{ fontSize: 18, ...FONT.bold, color: "#0F172A" }}>
+                {activeTab === "height" ? "Adjust Height" : "Adjust Weight"}
+              </Text>
             </View>
-
-            <View style={s.unitToggleWrap}>
-              <Pressable
-                style={[s.unitTogglePill, heightUnit === "cm" && s.unitTogglePillActive]}
-                onPress={() => {
-                  try { Haptics.selectionAsync().catch(() => {}); } catch (e) {}
-                  setHeightUnit("cm");
-                }}
-              >
-                <Text style={[s.unitToggleText, heightUnit === "cm" && s.unitToggleTextActive]}>
-                  CM
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[s.unitTogglePill, heightUnit === "ft_in" && s.unitTogglePillActive]}
-                onPress={() => {
-                  try { Haptics.selectionAsync().catch(() => {}); } catch (e) {}
-                  setHeightUnit("ft_in");
-                }}
-              >
-                <Text style={[s.unitToggleText, heightUnit === "ft_in" && s.unitToggleTextActive]}>
-                  FT + IN
-                </Text>
-              </Pressable>
-            </View>
+            <Pressable onPress={onClose} hitSlop={10} style={{ padding: 4, borderRadius: 20, backgroundColor: "#F1F5F9" }}>
+              <X size={18} color="#64748B" />
+            </Pressable>
           </View>
 
-          <View style={s.fitReadoutRow}>
-            {heightUnit === "cm" ? (
-              <Text style={s.fitValueBig}>
-                {parsedCm} <Text style={s.fitUnitSmall}>CM</Text>
+          {/* Segmented Tab Switcher */}
+          <View
+            style={{
+              flexDirection: "row",
+              backgroundColor: "#F1F5F9",
+              borderRadius: 14,
+              padding: 3,
+              gap: 4,
+            }}
+          >
+            <Pressable
+              style={{
+                flex: 1,
+                alignItems: "center",
+                paddingVertical: 8,
+                borderRadius: 10,
+                backgroundColor: activeTab === "height" ? "#7C3AED" : "transparent",
+              }}
+              onPress={() => handleTabSwitch("height")}
+            >
+              <Text style={{ fontSize: 13, ...FONT.bold, color: activeTab === "height" ? "#FFFFFF" : "#64748B" }}>
+                Height
               </Text>
-            ) : (
-              <Text style={s.fitValueBig}>
-                {currentFeet} <Text style={s.fitUnitSmall}>FT</Text> {currentInches} <Text style={s.fitUnitSmall}>IN</Text>
+            </Pressable>
+            <Pressable
+              style={{
+                flex: 1,
+                alignItems: "center",
+                paddingVertical: 8,
+                borderRadius: 10,
+                backgroundColor: activeTab === "weight" ? "#10B981" : "transparent",
+              }}
+              onPress={() => handleTabSwitch("weight")}
+            >
+              <Text style={{ fontSize: 13, ...FONT.bold, color: activeTab === "weight" ? "#FFFFFF" : "#64748B" }}>
+                Weight
               </Text>
-            )}
-            <Text style={s.fitSubConversion}>
-              {heightUnit === "cm"
-                ? `≈ ${currentFeet} ft ${currentInches} in`
-                : `≈ ${parsedCm} cm`}
-            </Text>
+            </Pressable>
           </View>
 
-          <View style={{ marginTop: 6 }}>
-            {heightUnit === "cm" ? (
-              <TactileWheelPicker
-                data={heightCmData}
-                selectedValue={parsedCm}
-                onValueChange={(val) => onHeightChange(String(val))}
-                itemHeight={44}
-              />
-            ) : (
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <TactileWheelPicker
-                    data={feetData}
-                    selectedValue={currentFeet}
-                    onValueChange={handleFeetChange}
-                    itemHeight={44}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <TactileWheelPicker
-                    data={inchesData}
-                    selectedValue={currentInches}
-                    onValueChange={handleInchesChange}
-                    itemHeight={44}
-                  />
+          {/* Readout and Unit Toggle */}
+          {activeTab === "height" ? (
+            <View style={{ alignItems: "center", gap: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                {heightUnit === "cm" ? (
+                  <Text style={{ fontSize: 32, ...FONT.bold, color: "#7C3AED" }}>
+                    {parsedCm} <Text style={{ fontSize: 16, color: "#64748B" }}>CM</Text>
+                  </Text>
+                ) : (
+                  <Text style={{ fontSize: 32, ...FONT.bold, color: "#7C3AED" }}>
+                    {currentFeet} <Text style={{ fontSize: 16, color: "#64748B" }}>FT</Text> {currentInches} <Text style={{ fontSize: 16, color: "#64748B" }}>IN</Text>
+                  </Text>
+                )}
+
+                <View style={s.unitToggleWrap}>
+                  <Pressable
+                    style={[s.unitTogglePill, heightUnit === "cm" && s.unitTogglePillActive]}
+                    onPress={() => setHeightUnit("cm")}
+                  >
+                    <Text style={[s.unitToggleText, heightUnit === "cm" && s.unitToggleTextActive]}>CM</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[s.unitTogglePill, heightUnit === "ft_in" && s.unitTogglePillActive]}
+                    onPress={() => setHeightUnit("ft_in")}
+                  >
+                    <Text style={[s.unitToggleText, heightUnit === "ft_in" && s.unitToggleTextActive]}>FT+IN</Text>
+                  </Pressable>
                 </View>
               </View>
-            )}
-          </View>
-        </View>
-      ) : (
-        <View style={s.fitMetricCard}>
-          <View style={s.fitHeaderRow}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Scale size={16} color="#10B981" />
-              <Text style={s.fitCardLabel}>WEIGHT</Text>
-            </View>
-
-            <View style={s.unitToggleWrap}>
-              <Pressable
-                style={[s.unitTogglePill, weightUnit === "kg" && { backgroundColor: '#10B981' }]}
-                onPress={() => {
-                  try { Haptics.selectionAsync().catch(() => {}); } catch (e) {}
-                  setWeightUnit("kg");
-                }}
-              >
-                <Text style={[s.unitToggleText, weightUnit === "kg" && { color: '#FFFFFF' }]}>
-                  KG
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[s.unitTogglePill, weightUnit === "lbs" && { backgroundColor: '#10B981' }]}
-                onPress={() => {
-                  try { Haptics.selectionAsync().catch(() => {}); } catch (e) {}
-                  setWeightUnit("lbs");
-                }}
-              >
-                <Text style={[s.unitToggleText, weightUnit === "lbs" && { color: '#FFFFFF' }]}>
-                  LBS
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-
-          <View style={s.fitReadoutRow}>
-            {weightUnit === "kg" ? (
-              <Text style={[s.fitValueBig, { color: "#10B981" }]}>
-                {parsedKg} <Text style={s.fitUnitSmall}>KG</Text>
+              <Text style={{ fontSize: 12, ...FONT.medium, color: "#64748B" }}>
+                {heightUnit === "cm" ? `≈ ${currentFeet} ft ${currentInches} in` : `≈ ${parsedCm} cm`}
               </Text>
-            ) : (
-              <Text style={[s.fitValueBig, { color: "#10B981" }]}>
-                {currentLbs} <Text style={s.fitUnitSmall}>LBS</Text>
-              </Text>
-            )}
-            <Text style={[s.fitSubConversion, { color: "#10B981" }]}>
-              {weightUnit === "kg"
-                ? `≈ ${currentLbs} lbs`
-                : `≈ ${parsedKg} kg`}
-            </Text>
-          </View>
+            </View>
+          ) : (
+            <View style={{ alignItems: "center", gap: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                {weightUnit === "kg" ? (
+                  <Text style={{ fontSize: 32, ...FONT.bold, color: "#10B981" }}>
+                    {parsedKg} <Text style={{ fontSize: 16, color: "#64748B" }}>KG</Text>
+                  </Text>
+                ) : (
+                  <Text style={{ fontSize: 32, ...FONT.bold, color: "#10B981" }}>
+                    {currentLbs} <Text style={{ fontSize: 16, color: "#64748B" }}>LBS</Text>
+                  </Text>
+                )}
 
-          <View style={{ marginTop: 6 }}>
-            {weightUnit === "kg" ? (
+                <View style={s.unitToggleWrap}>
+                  <Pressable
+                    style={[s.unitTogglePill, weightUnit === "kg" && { backgroundColor: "#10B981" }]}
+                    onPress={() => setWeightUnit("kg")}
+                  >
+                    <Text style={[s.unitToggleText, weightUnit === "kg" && { color: "#FFFFFF" }]}>KG</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[s.unitTogglePill, weightUnit === "lbs" && { backgroundColor: "#10B981" }]}
+                    onPress={() => setWeightUnit("lbs")}
+                  >
+                    <Text style={[s.unitToggleText, weightUnit === "lbs" && { color: "#FFFFFF" }]}>LBS</Text>
+                  </Pressable>
+                </View>
+              </View>
+              <Text style={{ fontSize: 12, ...FONT.medium, color: "#64748B" }}>
+                {weightUnit === "kg" ? `≈ ${currentLbs} lbs` : `≈ ${parsedKg} kg`}
+              </Text>
+            </View>
+          )}
+
+          {/* Centered Wheel Picker */}
+          <View style={{ marginVertical: 4 }}>
+            {activeTab === "height" ? (
+              heightUnit === "cm" ? (
+                <TactileWheelPicker
+                  data={heightCmData}
+                  selectedValue={parsedCm}
+                  onValueChange={(val) => onHeightChange(String(val))}
+                  itemHeight={44}
+                  activeColor="#7C3AED"
+                />
+              ) : (
+                <View style={{ flexDirection: "row", gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <TactileWheelPicker
+                      data={feetData}
+                      selectedValue={currentFeet}
+                      onValueChange={handleFeetChange}
+                      itemHeight={44}
+                      activeColor="#7C3AED"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <TactileWheelPicker
+                      data={inchesData}
+                      selectedValue={currentInches}
+                      onValueChange={handleInchesChange}
+                      itemHeight={44}
+                      activeColor="#7C3AED"
+                    />
+                  </View>
+                </View>
+              )
+            ) : weightUnit === "kg" ? (
               <TactileWheelPicker
                 data={weightKgData}
                 selectedValue={parsedKg}
@@ -790,8 +794,113 @@ const GoogleFitHeightWeightPicker = ({
               />
             )}
           </View>
+
+          {/* Actions */}
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => [
+              {
+                backgroundColor: activeTab === "height" ? "#7C3AED" : "#10B981",
+                borderRadius: 14,
+                paddingVertical: 14,
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+          >
+            <Text style={{ fontSize: 15, ...FONT.bold, color: "#FFFFFF" }}>Done</Text>
+          </Pressable>
         </View>
-      )}
+      </View>
+    </Modal>
+  );
+};
+
+const GoogleFitHeightWeightPicker = ({
+  heightCm,
+  weightKg,
+  onHeightChange,
+  onWeightChange,
+}) => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalTab, setModalTab] = useState("height");
+
+  const parsedCm = Math.max(90, Math.min(240, safeParseVitalsNum(heightCm, 170)));
+  const parsedKg = Math.max(30, Math.min(220, safeParseVitalsNum(weightKg, 70)));
+
+  const totalInches = parsedCm / 2.54;
+  const currentFeet = Math.max(3, Math.min(8, Math.floor(totalInches / 12)));
+  const currentInches = Math.max(0, Math.min(11, Math.round(totalInches % 12)));
+  const currentLbs = Math.round(parsedKg / 0.45359237);
+
+  const openModal = (tab) => {
+    try { Haptics.selectionAsync().catch(() => {}); } catch (e) {}
+    setModalTab(tab);
+    setModalVisible(true);
+  };
+
+  return (
+    <View style={{ gap: 12 }}>
+      {/* Clean Height & Weight Summary Cards */}
+      <View style={{ flexDirection: "row", gap: 12 }}>
+        {/* Height Summary Card */}
+        <Pressable
+          onPress={() => openModal("height")}
+          style={({ pressed }) => [
+            s.fitMetricCard,
+            { flex: 1, opacity: pressed ? 0.85 : 1 },
+          ]}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Activity size={16} color="#7C3AED" />
+              <Text style={s.fitCardLabel}>HEIGHT</Text>
+            </View>
+            <ChevronRight size={16} color="#64748B" />
+          </View>
+          <Text style={{ fontSize: 24, ...FONT.bold, color: "#7C3AED", marginTop: 8 }}>
+            {parsedCm} <Text style={{ fontSize: 13, color: "#64748B" }}>CM</Text>
+          </Text>
+          <Text style={{ fontSize: 12, ...FONT.medium, color: "#64748B", marginTop: 2 }}>
+            ≈ {currentFeet} ft {currentInches} in
+          </Text>
+        </Pressable>
+
+        {/* Weight Summary Card */}
+        <Pressable
+          onPress={() => openModal("weight")}
+          style={({ pressed }) => [
+            s.fitMetricCard,
+            { flex: 1, opacity: pressed ? 0.85 : 1 },
+          ]}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Scale size={16} color="#10B981" />
+              <Text style={s.fitCardLabel}>WEIGHT</Text>
+            </View>
+            <ChevronRight size={16} color="#64748B" />
+          </View>
+          <Text style={{ fontSize: 24, ...FONT.bold, color: "#10B981", marginTop: 8 }}>
+            {parsedKg} <Text style={{ fontSize: 13, color: "#64748B" }}>KG</Text>
+          </Text>
+          <Text style={{ fontSize: 12, ...FONT.medium, color: "#64748B", marginTop: 2 }}>
+            ≈ {currentLbs} lbs
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* Centered Floating Wheel Editor Modal */}
+      <HeightWeightPickerModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        initialTab={modalTab}
+        heightCm={heightCm}
+        weightKg={weightKg}
+        onHeightChange={onHeightChange}
+        onWeightChange={onWeightChange}
+      />
     </View>
   );
 };
