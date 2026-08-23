@@ -95,24 +95,7 @@ jest.mock('lucide-react-native', () => {
     CheckCheck: dummy,
     AlertCircle: dummy,
     ChevronRight: dummy,
-    ChevronLeft: dummy,
     Info: dummy,
-  };
-});
-
-// Mock react-native-svg
-jest.mock('react-native-svg', () => {
-  const React = require('react');
-  const { View } = require('react-native');
-  const dummy = ({ children }) => React.createElement(View, null, children);
-  return {
-    __esModule: true,
-    default: dummy,
-    Svg: dummy,
-    Defs: dummy,
-    LinearGradient: dummy,
-    Stop: dummy,
-    Path: dummy,
   };
 });
 

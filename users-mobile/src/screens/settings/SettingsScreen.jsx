@@ -6,12 +6,13 @@ import {
 import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-    ChevronLeft, Shield, Lock, Bell, BellRing, Smartphone,
+    ArrowLeft, ChevronLeft, Shield, Lock, Bell, BellRing, Smartphone,
     Globe, Activity, RefreshCw, Sparkles, LogOut,
     Check, KeyRound, ChevronRight, Eye, ShieldCheck,
     Zap, AlertCircle, Fingerprint, Clock, CheckCircle2,
     Heart, Award, ArrowUpRight
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
 import * as Notifications from 'expo-notifications';
 import { useTranslation } from 'react-i18next';
@@ -111,6 +112,7 @@ const TactileRow = ({ children, onPress, style, disabled = false }) => {
 
 // ── Main Settings Screen Component ────────────────────────────────────────────
 export default function SettingsScreen({ navigation }) {
+    const insets = useSafeAreaInsets();
     const { t } = useTranslation();
     const { signOut } = useAuth();
     const patient = usePatientStore(s => s.patient);
@@ -408,7 +410,7 @@ export default function SettingsScreen({ navigation }) {
                 </View>
 
                 {/* ── Header Bar ── */}
-                <View style={s.header}>
+                <View style={[s.header, { paddingTop: insets.top + 8 }]}>
                     <Pressable
                         onPress={() => {
                             HapticPatterns.selection();
@@ -417,7 +419,7 @@ export default function SettingsScreen({ navigation }) {
                         style={s.backBtn}
                         hitSlop={12}
                     >
-                        <ChevronLeft size={22} color="#0F172A" strokeWidth={2.5} />
+                        <ArrowLeft size={22} color="#0F172A" strokeWidth={2.5} />
                     </Pressable>
                     <View style={s.headerTitleGroup}>
                         <Text style={s.headerTitle}>Settings & Preferences</Text>
@@ -858,45 +860,44 @@ const s = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
         paddingHorizontal: 20,
-        paddingTop: Platform.OS === 'ios' ? 56 : 42,
         paddingBottom: 16,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(241, 245, 249, 0.8)',
+        borderBottomColor: '#F1F5F9',
     },
     backBtn: {
-        width: 38,
-        height: 38,
-        borderRadius: 12,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 3,
-        elevation: 1,
+        borderColor: '#F1F5F9',
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        elevation: 2,
     },
     headerTitleGroup: { flex: 1 },
-    headerTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: -0.3 },
-    headerSub: { fontSize: 11.5, fontWeight: '600', color: '#64748B', marginTop: 1 },
+    headerTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A', letterSpacing: -0.4 },
+    headerSub: { fontSize: 12, fontWeight: '500', color: '#64748B', marginTop: 2 },
 
     scrollContent: { padding: 18, paddingBottom: 44 },
 
     // ── PROFILE HEADER CARD ──
     profileCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 22,
+        borderRadius: 20,
         padding: 16,
         marginBottom: 18,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        shadowColor: '#0F172A',
+        borderColor: '#F1F5F9',
+        shadowColor: '#6366F1',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.04,
-        shadowRadius: 10,
+        shadowRadius: 12,
         elevation: 2,
     },
     profileHeaderRow: {
@@ -987,15 +988,15 @@ const s = StyleSheet.create({
     // ── MACRO FEATURE CARDS ──
     macroCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 22,
+        borderRadius: 20,
         padding: 16,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: 'rgba(226, 232, 240, 0.8)',
-        shadowColor: '#0F172A',
+        borderColor: '#F1F5F9',
+        shadowColor: '#6366F1',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.04,
-        shadowRadius: 10,
+        shadowRadius: 12,
         elevation: 2,
     },
     cardTopBar: {
