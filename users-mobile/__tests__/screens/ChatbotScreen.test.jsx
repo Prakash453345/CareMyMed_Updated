@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, act, fireEvent } from '@testing-library/react-native';
 import ChatbotScreen from '../../src/screens/patient/ChatbotScreen';
+import apiService from '../../src/lib/api';
 
 // Mock expo-av
 jest.mock('expo-av', () => ({
@@ -183,5 +184,44 @@ describe('ChatbotScreen', () => {
     });
     
     expect(toJSON()).toBeTruthy();
+  });
+
+  it('fetches historical session and renders protected attachment images using AuthenticatedImage', async () => {
+    const navigationMock = { goBack: jest.fn(), navigate: jest.fn(), setParams: jest.fn() };
+    const routeMock = { params: { sessionId: 'session-with-attachments' } };
+
+    apiService.chatbot.getSession.mockResolvedValueOnce({
+      data: {
+        title: 'Medication Identification History',
+        messages: [
+          {
+            _id: 'msg-1',
+            text: 'What is this medicine packaging?',
+            role: 'user',
+            timestamp: new Date().toISOString(),
+            image: '/api/chatbot/attachments/att_1787391507500',
+          },
+          {
+            _id: 'msg-2',
+            text: 'This is Bidical 500 (Calcium + Vitamin D3).',
+            role: 'assistant',
+            timestamp: new Date().toISOString(),
+            image: '/uploads/chat_attachments/legacy_bidical.jpg',
+          },
+        ],
+      },
+    });
+
+    const { getByText, UNSAFE_queryAllByType } = render(
+      <ChatbotScreen navigation={navigationMock} route={routeMock} />
+    );
+
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+
+    expect(apiService.chatbot.getSession).toHaveBeenCalledWith('session-with-attachments', expect.anything(), expect.anything());
+    expect(getByText('What is this medicine packaging?')).toBeTruthy();
+    expect(getByText('This is Bidical 500 (Calcium + Vitamin D3).')).toBeTruthy();
   });
 });
