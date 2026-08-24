@@ -281,6 +281,7 @@ export default function LoginScreen({ navigation }) {
 
     const isSubmittingRef = useRef(false);
     const abortRef = useRef(null);
+    const scrollViewRef = useRef(null);
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(16)).current;
@@ -529,8 +530,8 @@ export default function LoginScreen({ navigation }) {
         <TabScreenTransition>
             <KeyboardAvoidingView
                 style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
             {/* Ambient Background Decorations */}
             <View style={StyleSheet.absoluteFill}>
                 <Svg height="100%" width="100%" viewBox="0 0 400 850" preserveAspectRatio="none">
@@ -555,6 +556,7 @@ export default function LoginScreen({ navigation }) {
             </View>
 
             <ScrollView
+                ref={scrollViewRef}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
@@ -613,6 +615,11 @@ export default function LoginScreen({ navigation }) {
                                     autoCapitalize="none"
                                     returnKeyType="next"
                                     autoFocus
+                                    onFocus={() => {
+                                        setTimeout(() => {
+                                            scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+                                        }, 100);
+                                    }}
                                     style={{ marginBottom: 12 }}
                                 />
 
@@ -634,6 +641,11 @@ export default function LoginScreen({ navigation }) {
                                     secureTextEntry={!showPassword}
                                     returnKeyType="done"
                                     onSubmitEditing={handleLogin}
+                                    onFocus={() => {
+                                        setTimeout(() => {
+                                            scrollViewRef.current?.scrollTo({ y: 180, animated: true });
+                                        }, 100);
+                                    }}
                                     style={{ marginBottom: 24 }}
                                     rightAccessory={
                                         <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={12} style={{ paddingLeft: 8 }}>
@@ -676,6 +688,11 @@ export default function LoginScreen({ navigation }) {
                                     maxLength={10}
                                     returnKeyType="done"
                                     onSubmitEditing={handleSendPhoneOtp}
+                                    onFocus={() => {
+                                        setTimeout(() => {
+                                            scrollViewRef.current?.scrollTo({ y: 140, animated: true });
+                                        }, 100);
+                                    }}
                                     leftAccessory={
                                         <Text style={{ fontSize: 15, ...FONT.medium, color: C.mid, marginRight: 8 }}>+91</Text>
                                     }
