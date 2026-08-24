@@ -1647,7 +1647,7 @@ export default function ChatbotScreen({ navigation, route }) {
         if (!activeSessionId) return;
         Vibration.vibrate(50);
         AlertManager.alert(
-            'Delete Conversation 🗑️',
+            'Delete Conversation',
             'Are you sure you want to delete this chat session? This will permanently erase the history and return you to the conversations list.',
             [
                 { text: 'Cancel', style: 'cancel' },

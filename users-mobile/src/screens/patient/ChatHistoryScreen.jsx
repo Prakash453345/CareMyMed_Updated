@@ -208,7 +208,7 @@ export default function ChatHistoryScreen() {
     const handleDeleteSession = (session) => {
         Vibration.vibrate(50);
         AlertManager.alert(
-            'Delete Conversation 🗑️',
+            'Delete Conversation',
             `Are you sure you want to delete "${session.title}"?\nThis cannot be undone.`,
             [
                 { text: 'Cancel', style: 'cancel' },
@@ -223,7 +223,7 @@ export default function ChatHistoryScreen() {
                             console.warn('[ChatHistoryScreen] Session delete failed:', err?.message);
                             const apiErr = handleApiError(err);
                             AlertManager.alert(
-                                'Delete Failed 🚨',
+                                'Delete Failed',
                                 apiErr.message || 'Could not delete conversation. Session restored.',
                                 [{ text: 'OK' }],
                                 { type: 'error' }

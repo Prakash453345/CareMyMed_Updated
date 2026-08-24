@@ -9,12 +9,20 @@ import {
   Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CheckCircle2, AlertTriangle, Info, XCircle, Sparkles, Check, Trash2 } from 'lucide-react-native';
+import { CheckCircle2, AlertTriangle, Info, XCircle, Check, Trash2, LogOut } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useMotion } from '../../theme/MotionProvider';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 44, 340);
+
+function sanitizeText(str) {
+  if (!str || typeof str !== 'string') return '';
+  return str
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{1F1E0}-\u{1F1FF}]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 const THEME = {
   success: {
@@ -42,11 +50,11 @@ const THEME = {
     Icon: AlertTriangle,
   },
   info: {
-    accent: '#7C3AED',
-    gradient: ['#8B5CF6', '#7C3AED'],
-    topBarGradient: ['#A78BFA', '#7C3AED'],
-    haloBg: '#F3E8FF',
-    haloBorder: '#DDD6FE',
+    accent: '#6366F1',
+    gradient: ['#6366F1', '#4F46E5'],
+    topBarGradient: ['#818CF8', '#4F46E5'],
+    haloBg: '#EEF2FF',
+    haloBorder: '#C7D2FE',
     Icon: Info,
   },
 };
@@ -64,8 +72,8 @@ const CustomAlert = forwardRef((_, ref) => {
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
   const show = useCallback((t, msg, btns, options) => {
-    setTitle(t || '');
-    setMessage(msg || '');
+    setTitle(sanitizeText(t));
+    setMessage(sanitizeText(msg));
     const resolvedType = options?.type || inferType(t, btns);
     setType(resolvedType);
     setButtons(btns && btns.length > 0 ? btns : [{ text: 'OK' }]);
@@ -120,8 +128,27 @@ const CustomAlert = forwardRef((_, ref) => {
   if (!visible) return null;
 
   const theme = THEME[type] || THEME.info;
-  const isDestructive = buttons.some(b => b.style === 'destructive') || title.toLowerCase().includes('delete') || title.toLowerCase().includes('remove');
-  const IconComponent = isDestructive ? Trash2 : theme.Icon;
+  const titleLower = (title || '').toLowerCase();
+  const isLogout = titleLower.includes('sign out') || titleLower.includes('log out') || titleLower.includes('logout');
+  const isDestructive = buttons.some(b => b.style === 'destructive') || titleLower.includes('delete') || titleLower.includes('remove');
+  
+  let IconComponent = theme.Icon;
+  let haloBgColor = theme.haloBg;
+  let haloBorderColor = theme.haloBorder;
+  let accentColor = theme.accent;
+
+  if (isLogout) {
+    IconComponent = LogOut;
+    haloBgColor = '#FFF1F2';
+    haloBorderColor = '#FECDD3';
+    accentColor = '#E11D48';
+  } else if (isDestructive) {
+    IconComponent = Trash2;
+    haloBgColor = '#FFF1F2';
+    haloBorderColor = '#FECDD3';
+    accentColor = '#E11D48';
+  }
+
   const shouldStack = buttons.length > 2 || buttons.some(b => (b.text || '').length > 12);
 
   return (
@@ -144,38 +171,11 @@ const CustomAlert = forwardRef((_, ref) => {
             { transform: [{ scale: scaleAnim }] },
           ]}
         >
-          {/* Micro-Decorations (Top-right & bottom-left subtle dotted grid) */}
-          <View style={styles.dotGridTopRight} pointerEvents="none">
-            <View style={styles.dotRow}><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /></View>
-            <View style={styles.dotRow}><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /></View>
-            <View style={styles.dotRow}><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /></View>
-          </View>
-          <View style={styles.dotGridBottomLeft} pointerEvents="none">
-            <View style={styles.dotRow}><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /></View>
-            <View style={styles.dotRow}><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /></View>
-            <View style={styles.dotRow}><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /><View style={styles.dot} /></View>
-          </View>
-
           <View style={styles.contentContainer}>
-            {/* Dual-ring Icon Halo with Floating Sparkle Particles (Pic 2 Aesthetic) */}
+            {/* Dual-ring Icon Halo */}
             <View style={styles.iconWrapper}>
-              {/* Floating Sparkle Particles */}
-              <View style={[styles.sparkleParticle, { top: -4, right: -6 }]}>
-                <Sparkles size={14} color="#F59E0B" fill="#F59E0B" />
-              </View>
-              <View style={[styles.sparkleParticle, { bottom: -2, left: -8 }]}>
-                <Sparkles size={12} color="#10B981" fill="#10B981" />
-              </View>
-              <View style={[styles.sparkleParticle, { top: 4, left: -10 }]}>
-                <Text style={{ fontSize: 10, color: '#6366F1' }}>✦</Text>
-              </View>
-              <View style={[styles.sparkleParticle, { bottom: 6, right: -12 }]}>
-                <Text style={{ fontSize: 10, color: '#34D399' }}>✦</Text>
-              </View>
-
-              {/* Dual-ring Translucent Halo */}
-              <View style={[styles.iconHaloOuter, { backgroundColor: theme.haloBg, borderColor: theme.haloBorder }]}>
-                <View style={[styles.iconHaloInner, { backgroundColor: theme.accent }]}>
+              <View style={[styles.iconHaloOuter, { backgroundColor: haloBgColor, borderColor: haloBorderColor }]}>
+                <View style={[styles.iconHaloInner, { backgroundColor: accentColor }]}>
                   <IconComponent size={24} color="#FFFFFF" strokeWidth={2.8} />
                 </View>
               </View>
@@ -188,7 +188,7 @@ const CustomAlert = forwardRef((_, ref) => {
           <View style={[styles.buttonContainer, shouldStack && styles.buttonContainerStacked]}>
             {buttons.map((btn, idx) => {
               const isPrimary = buttons.length === 1 || (idx === buttons.length - 1 && btn.style !== 'cancel');
-              const isDestructive = btn.style === 'destructive';
+              const isDestructiveBtn = btn.style === 'destructive' || isLogout || isDestructive;
               const isCancel = btn.style === 'cancel';
 
               return (
@@ -198,7 +198,7 @@ const CustomAlert = forwardRef((_, ref) => {
                     styles.button,
                     shouldStack && styles.buttonStacked,
                     isPrimary && styles.buttonPrimary,
-                    isDestructive && styles.buttonDestructive,
+                    isDestructiveBtn && isPrimary && styles.buttonDestructive,
                     isCancel && styles.buttonCancel,
                     pressed && styles.buttonPressed,
                   ]}
@@ -210,7 +210,7 @@ const CustomAlert = forwardRef((_, ref) => {
                 >
                   {isPrimary ? (
                     <LinearGradient
-                      colors={isDestructive ? ['#F43F5E', '#E11D48'] : theme.gradient}
+                      colors={isDestructiveBtn ? ['#F43F5E', '#E11D48'] : theme.gradient}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={styles.primaryGradient}
@@ -223,7 +223,6 @@ const CustomAlert = forwardRef((_, ref) => {
                     <Text
                       style={[
                         styles.buttonText,
-                        isDestructive && styles.buttonTextDestructive,
                         isCancel && styles.buttonTextCancelLabel,
                       ]}
                     >

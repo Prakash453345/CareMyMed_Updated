@@ -290,7 +290,7 @@ export default function SettingsScreen({ navigation }) {
             setNewPassword('');
             setConfirmPassword('');
             AlertManager.alert(
-                'Password Updated 🔒',
+                'Password Updated',
                 'Your password was changed successfully. Please log back in.',
                 [{ text: 'OK', onPress: () => signOut() }]
             );
@@ -340,7 +340,7 @@ export default function SettingsScreen({ navigation }) {
             await HealthSyncService.syncVitals();
             const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             setLastSyncStr(nowStr);
-            AlertManager.alert('Vitals Synced ✨', `Successfully synced latest health records at ${nowStr}.`);
+            AlertManager.alert('Vitals Synced', `Successfully synced latest health records at ${nowStr}.`);
         } catch (err) {
             console.warn('Manual health sync failed:', err.message);
             AlertManager.alert('Sync Unavailable', 'Could not sync health records at this time.');
@@ -359,7 +359,7 @@ export default function SettingsScreen({ navigation }) {
             const res = await apiService.patients.updateMe({ language: langCode });
             if (res.data?.patient) setPatient(res.data.patient);
             const label = LANGUAGES.find(l => l.code === langCode)?.label || langCode;
-            AlertManager.alert('Language Updated 🌐', `App language updated to ${label}.`);
+            AlertManager.alert('Language Updated', `App language updated to ${label}.`);
         } catch (err) {
             console.warn('Language update error:', err.message);
         }
@@ -368,7 +368,7 @@ export default function SettingsScreen({ navigation }) {
     const handleSignOut = () => {
         HapticPatterns.selection();
         AlertManager.alert(
-            'Sign Out 🚪',
+            'Sign Out',
             'Are you sure you want to log out of CareMyMed?',
             [
                 { text: 'Cancel', style: 'cancel' },
