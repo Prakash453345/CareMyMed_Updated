@@ -6,7 +6,7 @@ import AlertManager from '../../utils/AlertManager';
 import { colors, radius, spacing, shadows, layout, motion, anim, useReduceMotion } from '../../theme';
 import { useMotion } from '../../theme/MotionProvider';
 import usePatientStore from '../../store/usePatientStore';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import Svg, { Path, Circle as SvgCircle, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -28,6 +28,7 @@ import AnimatedNumber from '../../components/ui/AnimatedNumber';
 import AnimatedProgressRing from '../../components/ui/AnimatedProgressRing';
 import BreathingOrb from '../../components/ui/BreathingOrb';
 import SkeletonCard from '../../components/ui/SkeletonCard';
+import AnimatedCard from '../../components/ui/AnimatedCard';
 
 const { width } = Dimensions.get('window');
 
@@ -95,7 +96,10 @@ export default function CompanionDashboardScreen() {
     const [expandedBriefing, setExpandedBriefing] = useState(false);
     const [entranceAnimationFinished, setEntranceAnimationFinished] = useState(false);
     
-    const selectedPatientId = usePatientStore(s => s.companionSelectedPatientId);
+    const route = useRoute();
+    const routePatientId = route?.params?.patientId;
+    const storePatientId = usePatientStore(s => s.companionSelectedPatientId);
+    const selectedPatientId = routePatientId || storePatientId;
     const navigation = useNavigation();
     const reduceMotion = useReduceMotion();
 

@@ -188,7 +188,11 @@ export default function CareCircleScreen() {
                             style={styles.menuItem} 
                             onPress={() => {
                                 setShowMenu(false);
-                                navigation.navigate('CompanionTabs');
+                                const targetId = menuTarget?.patient_id?._id || menuTarget?.patient_id?.id || menuTarget?.patient_id;
+                                if (targetId) {
+                                    usePatientStore.getState().setCompanionSelectedPatientId(targetId);
+                                }
+                                navigation.navigate('CompanionTabs', { patientId: targetId });
                             }}
                         >
                             <User size={18} color="#475569" />
