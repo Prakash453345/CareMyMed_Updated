@@ -96,9 +96,10 @@ export default function CompanionDashboardScreen() {
     const [expandedBriefing, setExpandedBriefing] = useState(false);
     
     const route = useRoute();
-    const routePatientId = route?.params?.patientId || route?.params?.params?.patientId;
-    const storePatientId = usePatientStore(s => s.companionSelectedPatientId);
-    const selectedPatientId = routePatientId || storePatientId;
+    const rawRoutePatientId = route?.params?.patientId || route?.params?.params?.patientId;
+    const rawStorePatientId = usePatientStore(s => s.companionSelectedPatientId);
+    const rawPatientId = rawRoutePatientId || rawStorePatientId;
+    const selectedPatientId = typeof rawPatientId === 'object' ? (rawPatientId?._id || rawPatientId?.id) : rawPatientId;
     const navigation = useNavigation();
     const reduceMotion = useReduceMotion();
 

@@ -119,8 +119,19 @@ export default function CompanionHomeScreen() {
 
     const handleSelectPatient = (patient) => {
         try {
-            const targetId = patient?.id || patient?._id || patient?.patient_id;
-            const normalizedName = typeof patient?.name === 'string' ? patient.name.trim() : '';
+            let targetId = null;
+            if (typeof patient === 'string') {
+                targetId = patient;
+            } else if (patient && typeof patient === 'object') {
+                targetId = (typeof patient.id === 'string' ? patient.id : null) ||
+                           (typeof patient._id === 'string' ? patient._id : null) ||
+                           (typeof patient.patient_id === 'string' ? patient.patient_id : null) ||
+                           (patient.patient_id && typeof patient.patient_id === 'object' ? (patient.patient_id._id || patient.patient_id.id) : null) ||
+                           (patient.id && typeof patient.id === 'object' ? (patient.id._id || patient.id.id) : null);
+            }
+            const rawName = patient?.name || patient?.patient_id?.name || '';
+            const normalizedName = typeof rawName === 'string' ? rawName.trim() : '';
+
             if (targetId) {
                 setCompanionSelectedPatientId(targetId);
                 if (normalizedName) {

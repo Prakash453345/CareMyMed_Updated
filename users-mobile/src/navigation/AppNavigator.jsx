@@ -535,10 +535,15 @@ export default function AppNavigator({ fontsLoaded }) {
     // Companions bypass subscription check
     if (profile?.role === 'companion') {
         return (
-            <View style={{ flex: 1 }}>
-                <CompanionMainStack />
-                <CustomAlert ref={alertRef} />
-            </View>
+            <LivingGlassProvider>
+                <BottomSheetProvider>
+                    <View style={{ flex: 1 }}>
+                        <GlobalSyncBanner />
+                        <CompanionMainStack />
+                        <CustomAlert ref={alertRef} />
+                    </View>
+                </BottomSheetProvider>
+            </LivingGlassProvider>
         );
     }
 
