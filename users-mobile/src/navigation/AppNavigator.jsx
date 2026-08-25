@@ -96,6 +96,8 @@ const ResilientCompanionProfileScreen = withRecoverableBoundary(CompanionProfile
 const ResilientCompanionAnalyticsScreen = withRecoverableBoundary(CompanionAnalyticsScreen, { featureName: 'CompanionAnalytics', screenName: 'CompanionAnalyticsScreen' });
 const ResilientCareCircleScreen = withRecoverableBoundary(CareCircleScreen, { featureName: 'CareCircle', screenName: 'CareCircleScreen' });
 const ResilientInterventionCenterScreen = withRecoverableBoundary(InterventionCenterScreen, { featureName: 'InterventionCenter', screenName: 'InterventionCenterScreen' });
+const ResilientCompanionChatListScreen = withRecoverableBoundary(CompanionChatListScreen, { featureName: 'CompanionChatList', screenName: 'CompanionChatListScreen' });
+const ResilientChatHistoryScreen = withRecoverableBoundary(ChatHistoryScreen, { featureName: 'ChatHistory', screenName: 'ChatHistoryScreen' });
 
 export const TAB_BAR_HEIGHT = layout.TAB_BAR_HEIGHT;
 export const TAB_BAR_BOTTOM = layout.TAB_BAR_BOTTOM;
@@ -196,7 +198,7 @@ function CompanionTabNavigator() {
         <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, sceneContainerStyle: { backgroundColor: colors.background } }}>
             <Tab.Screen name="CompanionDashboard" component={ResilientCompanionDashboardScreen} options={{ tabBarIconComponent: LayoutDashboard }} />
             <Tab.Screen name="CompanionAlerts" component={ResilientCompanionAlertsScreen} options={{ tabBarIconComponent: Bell }} />
-            <Tab.Screen name="CompanionChatList" component={CompanionChatListScreen} options={{ tabBarIconComponent: MessageSquare }} />
+            <Tab.Screen name="CompanionChatList" component={ResilientCompanionChatListScreen} options={{ tabBarIconComponent: MessageSquare }} />
             <Tab.Screen name="Profile" component={ResilientCompanionProfileScreen} options={{ tabBarIconComponent: UserCircle }} />
         </Tab.Navigator>
     );
@@ -208,8 +210,8 @@ const CompanionMainStack = () => (
         <Stack.Screen name="CompanionTabs" component={CompanionTabNavigator} />
         <Stack.Screen name="CompanionAnalytics" component={ResilientCompanionAnalyticsScreen} />
         <Stack.Screen name="CareCircle" component={ResilientCareCircleScreen} />
-        <Stack.Screen name="ChatHistory" component={ChatHistoryScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
-        <Stack.Screen name="Chatbot" component={ChatbotScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
+        <Stack.Screen name="ChatHistory" component={ResilientChatHistoryScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
+        <Stack.Screen name="Chatbot" component={ResilientChatbotScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
         <Stack.Screen name="InterventionCenter" component={ResilientInterventionCenterScreen} />
     </Stack.Navigator>
 );
