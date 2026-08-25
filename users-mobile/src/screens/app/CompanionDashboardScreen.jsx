@@ -94,10 +94,9 @@ export default function CompanionDashboardScreen() {
     const pendingInterventionsCount = usePatientStore(s => s.pendingInterventionsCount);
     const setPendingInterventionsCount = usePatientStore(s => s.setPendingInterventionsCount);
     const [expandedBriefing, setExpandedBriefing] = useState(false);
-    const [entranceAnimationFinished, setEntranceAnimationFinished] = useState(false);
     
     const route = useRoute();
-    const routePatientId = route?.params?.patientId;
+    const routePatientId = route?.params?.patientId || route?.params?.params?.patientId;
     const storePatientId = usePatientStore(s => s.companionSelectedPatientId);
     const selectedPatientId = routePatientId || storePatientId;
     const navigation = useNavigation();
@@ -227,7 +226,6 @@ export default function CompanionDashboardScreen() {
             Object.keys(anims).forEach(key => {
                 anims[key].value = 1;
             });
-            setEntranceAnimationFinished(true);
             return;
         }
 
@@ -259,9 +257,7 @@ export default function CompanionDashboardScreen() {
 
         // 6. Timeline list and footer settling
         anims.timeline.value = reanimatedWithDelay(800, reanimatedWithSpring(1, config));
-        anims.refresh.value = reanimatedWithDelay(900, reanimatedWithSpring(1, config, () => {
-            runOnJS(setEntranceAnimationFinished)(true);
-        }));
+        anims.refresh.value = reanimatedWithDelay(900, reanimatedWithSpring(1, config));
     }, [reduceMotion, anims]);
 
     const sectionAnimForKey = (sectionKey) => {

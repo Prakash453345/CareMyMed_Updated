@@ -126,7 +126,10 @@ export default function CompanionHomeScreen() {
                 if (normalizedName) {
                     setCompanionSelectedPatientName(normalizedName);
                 }
-                navigation.navigate('CompanionTabs', { patientId: targetId, patientName: normalizedName });
+                navigation.navigate('CompanionTabs', {
+                    screen: 'CompanionDashboard',
+                    params: { patientId: targetId, patientName: normalizedName }
+                });
             }
         } catch (err) {
             console.warn('Failed to select companion patient:', err);
