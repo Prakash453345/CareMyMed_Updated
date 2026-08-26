@@ -1335,87 +1335,92 @@ export default function ChatbotScreen({ navigation, route }) {
                 // Don't set Content-Type for FormData — XHR sets the boundary automatically
 
                 xhr.onreadystatechange = () => {
-                    // readyState 3 = LOADING (partial data available)
-                    if (xhr.readyState === 3 || xhr.readyState === 4) {
-                        const newText = xhr.responseText.substring(lastIndex);
-                        lastIndex = xhr.responseText.length;
+                    try {
+                        // readyState 3 = LOADING (partial data available)
+                        if (xhr.readyState === 3 || xhr.readyState === 4) {
+                            const rawResponse = xhr.responseText || '';
+                            const newText = rawResponse.substring(lastIndex);
+                            lastIndex = rawResponse.length;
 
-                        // Parse SSE lines from the new chunk
-                        const lines = newText.split('\n');
-                        for (const line of lines) {
-                            if (!line.startsWith('data: ')) continue;
-                            try {
-                                const event = JSON.parse(line.substring(6));
+                            // Parse SSE lines from the new chunk
+                            const lines = newText.split('\n');
+                            for (const line of lines) {
+                                if (!line.startsWith('data: ')) continue;
+                                try {
+                                    const event = JSON.parse(line.substring(6));
 
-                                if (event.type === 'meta' && event.transcribedText) {
-                                    console.log(`[SSE] Heard: "${event.transcribedText}"`);
+                                    if (event.type === 'meta' && event.transcribedText) {
+                                        console.log(`[SSE] Heard: "${event.transcribedText}"`);
+                                    }
+
+                                    if (event.type === 'chunk' && event.text) {
+                                        setIsTyping(false); // Hide typing indicator, show live text
+                                        setMessages(prev =>
+                                            prev.map(m =>
+                                                m.id === botMessageId
+                                                    ? { ...m, text: (m.text || '') + event.text }
+                                                    : m
+                                            )
+                                        );
+                                    }
+
+                                    if (event.type === 'cards' && event.items) {
+                                        setMessages(prev =>
+                                            prev.map(m =>
+                                                m.id === botMessageId
+                                                    ? { ...m, cards: event.items }
+                                                    : m
+                                            )
+                                        );
+                                    }
+
+                                    if (event.type === 'suggestions' && event.items) {
+                                        setFollowUpSuggestions(event.items.slice(0, 3));
+                                    }
+
+                                    if (event.type === 'done') {
+                                        // Stream finished successfully
+                                    }
+
+                                    if (event.type === 'error') {
+                                        setMessages(prev =>
+                                            prev.map(m =>
+                                                m.id === botMessageId
+                                                    ? { ...m, text: `Sorry, I ran into an issue: ${event.message}. Please try again.` }
+                                                    : m
+                                            )
+                                        );
+                                    }
+                                } catch (e) {
+                                    // Partial JSON line, ignore
                                 }
-
-                                if (event.type === 'chunk' && event.text) {
-                                    setIsTyping(false); // Hide typing indicator, show live text
-                                    setMessages(prev =>
-                                        prev.map(m =>
-                                            m.id === botMessageId
-                                                ? { ...m, text: (m.text || '') + event.text }
-                                                : m
-                                        )
-                                    );
-                                }
-
-                                if (event.type === 'cards' && event.items) {
-                                    setMessages(prev =>
-                                        prev.map(m =>
-                                            m.id === botMessageId
-                                                ? { ...m, cards: event.items }
-                                                : m
-                                        )
-                                    );
-                                }
-
-                                if (event.type === 'suggestions' && event.items) {
-                                    setFollowUpSuggestions(event.items.slice(0, 3));
-                                }
-
-                                if (event.type === 'done') {
-                                    // Stream finished successfully
-                                }
-
-                                if (event.type === 'error') {
-                                    setMessages(prev =>
-                                        prev.map(m =>
-                                            m.id === botMessageId
-                                                ? { ...m, text: `Sorry, I ran into an issue: ${event.message}. Please try again.` }
-                                                : m
-                                        )
-                                    );
-                                }
-                            } catch (e) {
-                                // Partial JSON line, ignore
                             }
                         }
-                    }
 
-                    // readyState 4 = DONE
-                    if (xhr.readyState === 4) {
-                        xhrRef.current = null;
-                        setIsStreaming(false);
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            resolve();
-                        } else if (xhr.status === 0) {
-                            if (wasAborted) {
+                        // readyState 4 = DONE
+                        if (xhr.readyState === 4) {
+                            xhrRef.current = null;
+                            setIsStreaming(false);
+                            if (xhr.status >= 200 && xhr.status < 300) {
                                 resolve();
+                            } else if (xhr.status === 0) {
+                                if (wasAborted) {
+                                    resolve();
+                                } else {
+                                    reject(new Error('Cannot connect to chatbot server. Please check your internet connection or try again later.'));
+                                }
                             } else {
-                                reject(new Error('Cannot connect to chatbot server. Please check your internet connection or try again later.'));
-                            }
-                        } else {
-                            // Non-SSE error (auth failure, validation, etc.)
-                            try {
-                                const errData = JSON.parse(xhr.responseText);
-                                reject(new Error(errData.error || 'Request failed'));
-                            } catch {
-                                reject(new Error(`Request failed with status ${xhr.status}`));
+                                // Non-SSE error (auth failure, validation, etc.)
+                                try {
+                                    const errData = JSON.parse(xhr.responseText || '{}');
+                                    reject(new Error(errData.error || 'Request failed'));
+                                } catch {
+                                    reject(new Error(`Request failed with status ${xhr.status}`));
+                                }
                             }
                         }
+                    } catch (readErr) {
+                        console.warn('[ChatbotScreen] XHR read error:', readErr);
                     }
                 };
 
@@ -1671,7 +1676,7 @@ export default function ChatbotScreen({ navigation, route }) {
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: false,
-                quality: 0.8,
+                quality: 0.6,
             });
 
             if (!result.canceled && result.assets && result.assets[0]) {

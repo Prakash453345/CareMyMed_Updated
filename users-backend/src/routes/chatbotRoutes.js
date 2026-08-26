@@ -588,7 +588,7 @@ router.post(
             : '.jpg';
           const attachmentId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
           const filename = `chat_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${fileExt || '.jpg'}`;
-          const uploadsDir = path.join(__dirname, '../uploads/chat_attachments');
+          const uploadsDir = path.resolve(__dirname, '../../uploads/chat_attachments');
           if (!fs.existsSync(uploadsDir)) {
             fs.mkdirSync(uploadsDir, { recursive: true });
           }
@@ -780,12 +780,15 @@ router.get('/attachments/:attachmentId', authenticate, async (req, res) => {
     }
 
     const safeFilename = path.basename(storageFileName);
-    const uploadsDir = path.resolve(__dirname, '../uploads/chat_attachments');
-    const targetPath = path.resolve(uploadsDir, safeFilename);
-
-    // Enforce that target path is strictly inside uploadsDir
-    if (!targetPath.startsWith(uploadsDir)) {
-      return res.status(400).json({ error: 'Invalid file target path.' });
+    const canonicalDir = path.resolve(__dirname, '../../uploads/chat_attachments');
+    const legacyDir = path.resolve(__dirname, '../uploads/chat_attachments');
+    
+    let targetPath = path.resolve(canonicalDir, safeFilename);
+    if (!fs.existsSync(targetPath)) {
+      const legacyPath = path.resolve(legacyDir, safeFilename);
+      if (fs.existsSync(legacyPath)) {
+        targetPath = legacyPath;
+      }
     }
 
     if (!fs.existsSync(targetPath)) {
