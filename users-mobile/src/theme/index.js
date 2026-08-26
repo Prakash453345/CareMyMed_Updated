@@ -13,10 +13,13 @@ export const colors = {
     accent: '#C084FC',
 
     // ─── Surfaces ──────────────────────────────
-    background: '#FAFAF9', // Tested warm/calm canvas background
+    canvas: '#FAFAF9',           // Canonical warm canvas
+    background: '#FAFAF9',       // Backward compatibility
     canvasWarm: '#FAFAF9',
     canvasCool: '#F8FAFC',
-    surface: '#FFFFFF',
+    surface: '#FFFFFF',          // Pure white card and container surface
+    surfaceSecondary: '#F8FAFC', // Secondary/embedded surface (subtle cool tint)
+    surfaceMuted: '#F1F5F9',     // Inactive, disabled, or skeleton fills
     surfaceAlt: '#F5F5F4',
 
     // ─── Semantic Accents ──────────────────────
@@ -27,17 +30,18 @@ export const colors = {
     danger: '#EF4444',
     dangerLight: '#FFF1F2',
 
-    // ─── Text ──────────────────────────────────
-    textPrimary: '#1C1917',
-    textSecondary: '#57534E',
-    textMuted: '#A8A29E',
+    // ─── Text Hierarchy ────────────────────────
+    textPrimary: '#111827',
+    textSecondary: '#64748B',
+    textMuted: '#94A3B8',
+    textInverse: '#FFFFFF',
     textOnPrimary: '#FFFFFF',
     textOnDark: '#F5F5F4',
 
     // ─── Borders ───────────────────────────────
-    border: '#E7E5E4',
-    borderLight: '#F5F5F4',
-    divider: '#F5F5F4',
+    border: '#E2E8F0',
+    borderLight: '#F1F5F9',
+    divider: '#F1F5F9',
 
     // ─── Gradients ─────────────────────────────
     gradientPrimary: ['#6D28D9', '#7C3AED'],
@@ -55,6 +59,14 @@ export const colors = {
     roleManager: '#059669',
     roleOrgAdmin: '#6D28D9',
     roleSuperAdmin: '#7C3AED',
+};
+
+// Structured text hierarchy token namespace
+export const text = {
+    primary: colors.textPrimary,     // #111827
+    secondary: colors.textSecondary, // #64748B
+    muted: colors.textMuted,         // #94A3B8
+    inverse: colors.textInverse,     // #FFFFFF
 };
 
 export const FONT = {
@@ -199,11 +211,11 @@ export const SPACING = {
 };
 
 export const RADIUS = {
-    sm: 8,
-    md: 12,
-    lg: 16,
-    xl: 20,
-    pill: 9999,
+    sm: 8,    // Small badges, inner badges, icon containers
+    md: 12,   // Inputs, controls, action buttons
+    lg: 16,   // Compact / embedded sheets
+    xl: 20,   // Default application card
+    pill: 9999, // Pills, status chips, avatars
 };
 
 export const typography = {
@@ -216,6 +228,7 @@ export const typography = {
 
 export const radius = {
     card: 20,
+    sheet: 16,
     button: 12,
     chip: 9999,
     input: 12,
@@ -224,6 +237,7 @@ export const radius = {
     lg: 16,
     xl: 20,
     full: 9999,
+    pill: 9999,
 };
 
 export const spacing = {
@@ -238,6 +252,45 @@ export const spacing = {
     base: 8,
     screen: 20,
     heroScreen: 24,
+};
+
+// ─── Touch Target Standards (WCAG & Elderly Persona) ──────
+export const touchTarget = {
+    minHeight: 48,
+    minWidth: 48,
+    hitSlop: { top: 12, bottom: 12, left: 12, right: 12 },
+};
+
+// ─── Cross-Platform Elevation Hierarchy ──────
+export const elevation = {
+    card: {
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2, // Android: Soft ambient border
+    },
+    cardElevated: {
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+        elevation: 4, // Android: Lifted active card
+    },
+    floating: {
+        shadowColor: '#7C3AED',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.18,
+        shadowRadius: 14,
+        elevation: 6, // Android: Floating action buttons / active triggers
+    },
+    modal: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.15,
+        shadowRadius: 30,
+        elevation: 12, // Android: Overlays & sheets
+    },
 };
 
 export const shadows = {
@@ -262,31 +315,13 @@ export const shadows = {
         shadowRadius: 20,
         elevation: 8,
     },
-    card: {
-        shadowColor: '#4A5568',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        elevation: 3,
-    },
-    hero: {
-        shadowColor: '#7C3AED',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.22,
-        shadowRadius: 16,
-        elevation: 8,
-    },
-    modal: {
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.15,
-        shadowRadius: 30,
-        elevation: 12,
-    },
+    card: elevation.card,
+    cardElevated: elevation.cardElevated,
+    floating: elevation.floating,
+    hero: elevation.floating,
+    modal: elevation.modal,
 
     // ── Dual-Shadow System ──────────────────────
-    // Use cardSharp on inner View + cardAmbient on outer View
-    // for realistic two-layer depth (definition + ambient glow).
     cardSharp: {
         shadowColor: '#0F172A',
         shadowOffset: { width: 0, height: 1 },
@@ -307,7 +342,7 @@ export const shadows = {
 export const cardStyle = {
     backgroundColor: colors.surface,
     borderRadius: radius.card,
-    ...shadows.card,
+    ...elevation.card,
     padding: spacing.md,
 };
 
@@ -325,4 +360,31 @@ export { motion, anim, useReduceMotion };
 import { MotionProvider, useMotion } from './MotionProvider';
 export { MotionProvider, useMotion };
 
-export default { colors, typography, FONT, METRIC_FONT, TEXT_SIZE, TYPOGRAPHY, TEXT, ICON_SIZE, SPACING, RADIUS, radius, spacing, shadows, layout, motion, anim, useReduceMotion, MotionProvider, useMotion };
+export default {
+    colors,
+    text,
+    typography,
+    FONT,
+    METRIC_FONT,
+    TEXT_SIZE,
+    TYPOGRAPHY,
+    TEXT,
+    ICON_SIZE,
+    ICON_CONFIG,
+    SPACING,
+    RADIUS,
+    radius,
+    spacing,
+    touchTarget,
+    elevation,
+    shadows,
+    cardStyle,
+    headerGradient,
+    layout,
+    motion,
+    anim,
+    useReduceMotion,
+    MotionProvider,
+    useMotion,
+};
+

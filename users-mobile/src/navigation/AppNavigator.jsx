@@ -8,7 +8,7 @@ import * as SplashScreen from 'expo-splash-screen';
 
 import {
     View, Text, StyleSheet, Animated, ActivityIndicator,
-    TouchableOpacity, Pressable, Image, Platform, DeviceEventEmitter
+    TouchableOpacity, Pressable, Image, Platform, DeviceEventEmitter, AppState
 } from "react-native";
 import Constants from 'expo-constants';
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -21,7 +21,7 @@ import {
     sendSeamlessExperienceNotification,
 } from "../utils/notifications";
 import { apiService } from "../lib/api";
-import { colors, layout } from "../theme";
+import { colors, layout, elevation } from "../theme";
 import usePatientStore from '../store/usePatientStore';
 import NetInfo from '@react-native-community/netinfo';
 import OfflineSyncService from '../lib/OfflineSyncService';
@@ -43,6 +43,7 @@ import DeveloperObservabilityScreen from "../screens/settings/DeveloperObservabi
 import PatientDiagnosticsScreen from "../screens/settings/PatientDiagnosticsScreen";
 import SettingsScreen from "../screens/settings/SettingsScreen";
 import CompanionSignupScreen from '../screens/onboarding/CompanionSignupScreen';
+import BrandedSplashScreen from '../components/ui/BrandedSplashScreen';
 
 import CompanionHomeScreen from '../screens/app/CompanionHomeScreen';
 import CompanionDashboardScreen from '../screens/app/CompanionDashboardScreen';
@@ -107,12 +108,12 @@ export const TAB_BAR_CLEARANCE = layout.TAB_BAR_CLEARANCE;
 // BUG 12 FIX: getLastNotificationResponseAsync() is called on every mount.
 // If the app is already running (not in killed state), this returns a stale
 // old notification and causes a spurious navigate() call. We reject any
-// response whose notification was delivered more than 30 seconds ago.
+
 const STALE_NOTIFICATION_MS = 30_000;
 
 function isStaleNotification(response) {
     if (!response) return true;
-    const deliveredAt = response.notification.date * 1000; // Expo gives seconds
+    const deliveredAt = response.notification.date * 1000;
     return Date.now() - deliveredAt > STALE_NOTIFICATION_MS;
 }
 
@@ -145,7 +146,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
                 return (
                     <TouchableOpacity
                         key={route.key} onPress={onPress} style={styles.tabItem}
-                        activeOpacity={0.7} testID={`tab-${route.name}`} accessibilityLabel={route.name}
+                        activeOpacity={0.75} testID={`tab-${route.name}`} accessibilityLabel={route.name}
                     >
                         <TabSlot focused={focused} isHighlighted={isHighlighted} IconConfig={IconComponent} />
                     </TouchableOpacity>
@@ -156,20 +157,29 @@ function CustomTabBar({ state, descriptors, navigation }) {
 }
 
 function TabSlot({ focused, isHighlighted = false, IconConfig }) {
-    const scaleAnim = useRef(new Animated.Value(focused ? 1 : 0.9)).current;
+    const scaleAnim = useRef(new Animated.Value(focused ? 1 : 0.92)).current;
     useEffect(() => {
-        Animated.spring(scaleAnim, { toValue: isHighlighted ? 1.1 : focused ? 1 : 0.9, friction: 6, useNativeDriver: true }).start();
-    }, [focused, isHighlighted]);
+        Animated.spring(scaleAnim, {
+            toValue: isHighlighted ? 1.08 : focused ? 1 : 0.92,
+            friction: 7,
+            tension: 50,
+            useNativeDriver: true,
+        }).start();
+    }, [focused, isHighlighted, scaleAnim]);
 
     return (
         <Animated.View style={[
             styles.tabSlot, 
             focused && styles.tabSlotActive, 
-            isHighlighted && { borderWidth: 2, borderColor: '#7C3AED', shadowColor: '#7C3AED', shadowOpacity: 0.5, shadowRadius: 8, elevation: 6 },
+            isHighlighted && styles.tabSlotHighlighted,
             { transform: [{ scale: scaleAnim }] }
         ]}>
             {IconConfig ? (
-                <IconConfig color={focused || isHighlighted ? "#FFFFFF" : "#A8A29E"} size={20} strokeWidth={focused || isHighlighted ? 2.2 : 2.0} />
+                <IconConfig
+                    color={focused || isHighlighted ? colors.surface : colors.textMuted}
+                    size={20}
+                    strokeWidth={focused || isHighlighted ? 2.2 : 2.0}
+                />
             ) : null}
         </Animated.View>
     );
@@ -181,7 +191,7 @@ function PatientTabNavigator() {
     const fabBottom = dynamicBottom + layout.TAB_BAR_HEIGHT + 16;
     return (
         <View style={{ flex: 1 }}>
-            <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, sceneContainerStyle: { backgroundColor: colors.background } }}>
+            <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, sceneContainerStyle: { backgroundColor: colors.canvas } }}>
                 <Tab.Screen name="PatientHome" component={ResilientHomeScreen} options={{ tabBarIconComponent: LayoutDashboard }} />
                 <Tab.Screen name="MyCaller" component={ResilientMyCallerScreen} options={{ tabBarIconComponent: Users }} />
                 <Tab.Screen name="Medications" component={ResilientMedicationsScreen} options={{ tabBarIconComponent: Pill }} />
@@ -195,7 +205,7 @@ function PatientTabNavigator() {
 
 function CompanionTabNavigator() {
     return (
-        <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, sceneContainerStyle: { backgroundColor: colors.background } }}>
+        <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, sceneContainerStyle: { backgroundColor: colors.canvas } }}>
             <Tab.Screen name="CompanionDashboard" component={ResilientCompanionDashboardScreen} options={{ tabBarIconComponent: LayoutDashboard }} />
             <Tab.Screen name="CompanionAlerts" component={ResilientCompanionAlertsScreen} options={{ tabBarIconComponent: Bell }} />
             <Tab.Screen name="CompanionChatList" component={ResilientCompanionChatListScreen} options={{ tabBarIconComponent: MessageSquare }} />
@@ -205,7 +215,7 @@ function CompanionTabNavigator() {
 }
 
 const CompanionMainStack = () => (
-    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background }, animation: "fade" }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.canvas }, animation: "fade" }}>
         <Stack.Screen name="CompanionHome" component={ResilientCompanionHomeScreen} />
         <Stack.Screen name="CompanionTabs" component={CompanionTabNavigator} />
         <Stack.Screen name="CompanionAnalytics" component={ResilientCompanionAnalyticsScreen} />
@@ -217,7 +227,7 @@ const CompanionMainStack = () => (
 );
 
 const AuthStack = () => (
-    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background }, animation: "fade", animationDuration: 300 }} initialRouteName="Login">
+    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.canvas }, animation: "fade", animationDuration: 300 }} initialRouteName="Login">
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="PatientSignup" component={PatientSignupScreen} />
         <Stack.Screen name="CompanionSignup" component={CompanionSignupScreen} />
@@ -228,76 +238,71 @@ const AuthStack = () => (
 );
 
 const PatientOnboardingStack = () => (
-    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background }, animation: "fade" }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.canvas }, animation: "fade" }}>
         <Stack.Screen name="PatientSignupOnboarding" component={PatientSignupScreen} />
     </Stack.Navigator>
 );
 
 const MainAppStack = () => (
-    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background }, animation: "slide_from_right", animationDuration: 250 }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.canvas }, animation: "slide_from_right", animationDuration: 250 }}>
         <Stack.Screen name="PatientTabs" component={PatientTabNavigator} />
         <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ presentation: "modal" }} />
         <Stack.Screen name="VitalsHistory" component={VitalsHistoryScreen} options={{ animation: "fade_from_bottom" }} />
-        <Stack.Screen name="LocationSearch" component={LocationSearchScreen} options={{ presentation: "modal", animation: "slide_from_bottom" }} />
-        <Stack.Screen name="AddAddress" component={AddAddressScreen} options={{ presentation: "modal" }} />
-        <Stack.Screen name="HealthConnectSetup" component={HealthConnectSetupScreen} options={{ presentation: "modal", animation: "slide_from_bottom" }} />
-        <Stack.Screen name="AdherenceDetails" component={AdherenceScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
-        <Stack.Screen name="ChatHistory" component={ChatHistoryScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
+        <Stack.Screen name="Adherence" component={AdherenceScreen} options={{ animation: "fade_from_bottom" }} />
         <Stack.Screen name="Chatbot" component={ResilientChatbotScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
-        <Stack.Screen name="PrescriptionVerification" component={PrescriptionVerificationScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
-        <Stack.Screen name="CallHistory" component={CallHistoryScreen} />
-        <Stack.Screen name="PremiumShowcase" component={PremiumShowcaseScreen} />
-        <Stack.Screen name="WaitingRoom" component={WaitingScreen} />
-        <Stack.Screen name="MFASetup" component={MFASetupScreen} options={{ presentation: "modal", animation: "slide_from_bottom" }} />
-        <Stack.Screen name="DeveloperObservability" component={DeveloperObservabilityScreen} options={{ presentation: "modal", animation: "slide_from_bottom" }} />
-        <Stack.Screen name="PatientDiagnostics" component={PatientDiagnosticsScreen} options={{ presentation: "modal", animation: "slide_from_bottom" }} />
-        <Stack.Screen name="HealthCopilot" component={HealthCopilotScreen} />
-        <Stack.Screen name="Settings" component={ResilientSettingsScreen} options={{ animation: "slide_from_right" }} />
+        <Stack.Screen name="ChatHistory" component={ResilientChatHistoryScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
+        <Stack.Screen name="CallHistory" component={CallHistoryScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
+        <Stack.Screen name="HealthCopilot" component={HealthCopilotScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
+        <Stack.Screen name="LocationSearch" component={LocationSearchScreen} options={{ presentation: "modal" }} />
+        <Stack.Screen name="AddAddress" component={AddAddressScreen} options={{ presentation: "modal" }} />
+        <Stack.Screen name="HealthConnectSetup" component={HealthConnectSetupScreen} options={{ presentation: "modal" }} />
+        <Stack.Screen name="PrescriptionVerification" component={PrescriptionVerificationScreen} options={{ presentation: "modal" }} />
+        <Stack.Screen name="DeveloperObservability" component={DeveloperObservabilityScreen} />
+        <Stack.Screen name="PatientDiagnostics" component={PatientDiagnosticsScreen} />
+        <Stack.Screen name="Settings" component={ResilientSettingsScreen} />
+        <Stack.Screen name="MFASetup" component={MFASetupScreen} />
     </Stack.Navigator>
 );
 
-export default function AppNavigator({ fontsLoaded }) {
-    const { isBootstrapping, onboardingComplete, subscriptionStatus, user, profile, signOut, isSwitching } = useAuth();
+export default function AppNavigator() {
+    const { user, profile, isBootstrapping, subscriptionStatus, onboardingComplete, isSwitching } = useAuth();
     const patient = usePatientStore(state => state.patient);
-
-    // BUG 6 FIX: hasNotified must reset when the user signs out and back in.
-    const hasNotifiedForUserRef = useRef(null); // stores the userId that was notified
-
-    // Debounced dashboard refresh to prevent rapid duplicate calls when syncing
+    const refreshDashboard = usePatientStore(state => state.refreshDashboard);
+    const hasNotifiedForUserRef = useRef(null);
+    const [showBrandedSplash, setShowBrandedSplash] = useState(true);
     const debounceTimeoutRef = useRef(null);
-    const refreshDashboardDebounced = useCallback((sourceInfo) => {
+
+    const refreshDashboardDebounced = useCallback(() => {
         if (debounceTimeoutRef.current) {
             clearTimeout(debounceTimeoutRef.current);
         }
-        if (__DEV__) {
-            console.log(`[AppNavigator] Queueing debounced dashboard fetch (source: ${sourceInfo?.source || 'unknown'})`);
-        }
-        debounceTimeoutRef.current = setTimeout(async () => {
-            if (__DEV__) {
-                console.log('[AppNavigator] Executing debounced dashboard fetch for widget sync');
+        debounceTimeoutRef.current = setTimeout(() => {
+            if (usePatientStore.getState().patient) {
+                console.log('[AppNavigator] App returned to foreground — refreshing dashboard');
+                refreshDashboard();
             }
-            try {
-                await usePatientStore.getState().fetchDashboard(true);
-            } catch (err) {
-                console.warn('[AppNavigator] Debounced dashboard fetch failed:', err);
-            }
-        }, 800); // 800ms debounce
-    }, []);
+        }, 1000);
+    }, [refreshDashboard]);
 
     useEffect(() => {
-        if (!user || profile?.role === 'companion') return;
-
-        const sub = DeviceEventEmitter.addListener('VITALS_UPDATED', (eventData) => {
-            refreshDashboardDebounced(eventData);
-        });
-
-        return () => {
-            sub.remove();
-            if (debounceTimeoutRef.current) {
-                clearTimeout(debounceTimeoutRef.current);
+        const subscription = AppState.addEventListener('change', nextAppState => {
+            if (nextAppState === 'active') {
+                refreshDashboardDebounced();
             }
-        };
-    }, [user, profile, refreshDashboardDebounced]);
+        });
+        return () => subscription.remove();
+    }, [refreshDashboardDebounced]);
+
+    useEffect(() => {
+        const unsubscribe = NetInfo.addEventListener(state => {
+            if (state.isConnected && state.isInternetReachable !== false) {
+                if (__DEV__) console.log('[OfflineSync] Network restored, flushing queue...');
+                OfflineSyncService.flushQueue();
+            }
+        });
+        NetInfo.fetch().then(state => { if (state.isConnected) OfflineSyncService.flushQueue(); });
+        return () => unsubscribe();
+    }, []);
 
     useEffect(() => {
         const initLanguage = async () => {
@@ -314,34 +319,12 @@ export default function AppNavigator({ fontsLoaded }) {
     }, []);
 
     useEffect(() => {
-        const unsubscribe = NetInfo.addEventListener(state => {
-            if (state.isConnected && state.isInternetReachable !== false) {
-                if (__DEV__) console.log('[OfflineSync] Network restored, flushing queue...');
-                OfflineSyncService.flushQueue();
-            }
-        });
-        NetInfo.fetch().then(state => { if (state.isConnected) OfflineSyncService.flushQueue(); });
-        return () => unsubscribe();
+        SplashScreen.hideAsync().catch(() => { });
     }, []);
-
-    const notificationListener = useRef();
-    const responseListener = useRef();
-
-    // Hide the native splash screen once bootstrapping is done.
-    // This is the ONLY place SplashScreen.hideAsync() should be called
-    // (App.js has a 12s failsafe but this is the primary controller).
-    useEffect(() => {
-        if (!isBootstrapping) {
-            setTimeout(() => {
-                SplashScreen.hideAsync().catch(() => { });
-            }, 100);
-        }
-    }, [isBootstrapping]);
 
     useEffect(() => {
         let isMounted = true;
         const applyCaptureSetting = async () => {
-            // Defer setting the secure capture flag slightly to prevent the window redraw from clashing with settings screen transitions/modal animations
             await new Promise(resolve => setTimeout(resolve, 800));
             if (!isMounted) return;
 
@@ -357,38 +340,17 @@ export default function AppNavigator({ fontsLoaded }) {
         };
 
         applyCaptureSetting();
-
-        return () => {
-            isMounted = false;
-        };
+        return () => { isMounted = false; };
     }, [user, patient?.allow_screenshots]);
+
+    const notificationListener = useRef();
+    const responseListener = useRef();
 
     useEffect(() => {
         notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-            const title = notification.request.content.title;
             const type = notification.request.content.data?.type;
-            console.log(`🔔 Foreground notification received: ${title} (type: ${type})`);
-            
-            try {
-                const patientStore = usePatientStore.getState();
-                switch (type) {
-                    case 'companion_nudge':
-                    case 'medication_reminder':
-                        patientStore.fetchMedications();
-                        patientStore.fetchDashboard(true);
-                        break;
-                    case 'companion_request_bp':
-                    case 'bp_request':
-                    case 'critical_vital_alert':
-                        patientStore.fetchDashboard(true);
-                        break;
-                    default:
-                        patientStore.fetchDashboard(true);
-                        break;
-                }
-            } catch (err) {
-                console.warn('[AppNavigator] Foreground notification dispatch failed:', err.message);
-            }
+            const patientStore = usePatientStore.getState();
+            patientStore.fetchDashboard(true);
         });
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
@@ -396,17 +358,12 @@ export default function AppNavigator({ fontsLoaded }) {
             const content = response.notification.request.content;
 
             if (actionId === 'TAKEN') {
-                console.log('✅ Background Action: MARKED TAKEN');
                 const slotKey = content.data?.slot;
-                if (slotKey) {
-                    usePatientStore.getState().optimisticMarkSlotTaken(slotKey);
-                }
+                if (slotKey) usePatientStore.getState().optimisticMarkSlotTaken(slotKey);
                 return;
             }
 
             if (actionId === 'SNOOZE') {
-                console.log('⏳ Background Action: SNOOZED (+10m)');
-                // BUG 14 FIX: Expo SDK 50+ requires explicit type field on trigger.
                 Notifications.scheduleNotificationAsync({
                     content,
                     trigger: { type: 'timeInterval', seconds: 10 * 60, channelId: 'meds' },
@@ -415,37 +372,22 @@ export default function AppNavigator({ fontsLoaded }) {
             }
 
             const data = content.data;
-            if (data) {
-                console.log('📲 Navigate via NotificationRouter:', data);
-                routeNotification(data);
-            }
+            if (data) routeNotification(data);
         });
 
-        // BUG 12 FIX: reject stale notifications older than STALE_NOTIFICATION_MS.
         Notifications.getLastNotificationResponseAsync().then(response => {
             if (response && !isStaleNotification(response)) {
                 const data = response.notification.request.content.data;
-                if (data) {
-                    console.log('🚀 Launched from notification, routing via Router:', data);
-                    setTimeout(() => routeNotification(data), 500);
-                }
+                if (data) setTimeout(() => routeNotification(data), 500);
             }
         });
 
-        // Handle token rotation (silent refresh by FCM/APNs)
         const tokenListener = Notifications.addPushTokenListener(async (tokenData) => {
-            console.log('🔄 Push token rotated in background:', tokenData.data);
+            const newPushToken = tokenData.data;
+            if (!newPushToken) return;
+
             try {
-                const patientStore = usePatientStore.getState();
-                if (patientStore.patient?._id) {
-                    await apiService.patients.updateMe({
-                        expo_push_token: tokenData.data,
-                        device_platform: Platform.OS,
-                        device_name: Constants.deviceName,
-                        app_version: Constants.expoConfig?.version || '1.0.0'
-                    });
-                    console.log('✅ Rotated token successfully synced to backend');
-                }
+                await apiService.patients.updateMe({ expo_push_token: newPushToken });
             } catch (err) {
                 console.error('❌ Failed to sync rotated token:', err);
             }
@@ -458,11 +400,9 @@ export default function AppNavigator({ fontsLoaded }) {
         };
     }, []);
 
-    // BUG 6 FIX: Track notification setup per userId.
     useEffect(() => {
         const setupNotifications = async () => {
             if (!user || !onboardingComplete) return;
-            // Only register push tokens for patients — companions use a different API
             if (profile?.role === 'companion') return;
             const setupKey = `${user.id}_${profile?.role || 'patient'}`;
             if (hasNotifiedForUserRef.current === setupKey) return;
@@ -471,18 +411,13 @@ export default function AppNavigator({ fontsLoaded }) {
 
             try {
                 const { token, granted, isNewGrant } = await registerForPushNotificationsAsync();
-
                 if (token) {
                     const updates = { expo_push_token: token };
-                    if (isNewGrant) {
-                        updates.push_notifications_enabled = true;
-                    }
+                    if (isNewGrant) updates.push_notifications_enabled = true;
                     await apiService.patients.updateMe(updates);
                 }
-
-                if (isNewGrant) {
-                    sendSeamlessExperienceNotification();
-                } else if (granted) {
+                if (isNewGrant) sendSeamlessExperienceNotification();
+                else if (granted) {
                     const name = profile?.fullName || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there';
                     sendDailyWelcomeNotification(name);
                 }
@@ -494,10 +429,8 @@ export default function AppNavigator({ fontsLoaded }) {
         setupNotifications();
     }, [onboardingComplete, user, profile]);
 
-    // Flush pending notifications once navigator mounts and auth settles
     useEffect(() => {
         if (user) {
-            console.log('[AppNavigator] User authenticated, flushing pending notifications');
             flushPendingNotifications();
         }
     }, [user, onboardingComplete]);
@@ -506,100 +439,130 @@ export default function AppNavigator({ fontsLoaded }) {
         if (ref) AlertManager.setRef(ref);
     }, []);
 
-    // During bootstrapping, render nothing visible — the native splash screen
-    // (configured in app.json) is covering the UI. We still mount CustomAlert
-    // so AlertManager has its ref ready as soon as the app becomes interactive.
-    if (isBootstrapping) return <CustomAlert ref={alertRef} />;
+    const renderContent = () => {
+        if (isBootstrapping) {
+            return <CustomAlert ref={alertRef} />;
+        }
 
-    if (isSwitching) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} style={{ marginBottom: 16 }} />
-                <Text style={styles.loadingText}>Switching workspace...</Text>
+        if (isSwitching) {
+            return (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={colors.primary} style={{ marginBottom: 16 }} />
+                    <Text style={styles.loadingText}>Switching workspace...</Text>
+                    <CustomAlert ref={alertRef} />
+                </View>
+            );
+        }
+
+        if (!user) return (
+            <>
+                <AuthStack />
                 <CustomAlert ref={alertRef} />
-            </View>
+            </>
         );
-    }
+        if (!onboardingComplete && profile?.role !== 'companion') return (
+            <>
+                <PatientOnboardingStack />
+                <CustomAlert ref={alertRef} />
+            </>
+        );
 
-    if (!user) return (
-        <>
-            <AuthStack />
-            <CustomAlert ref={alertRef} />
-        </>
-    );
-    if (!onboardingComplete && profile?.role !== 'companion') return (
-        <>
-            <PatientOnboardingStack />
-            <CustomAlert ref={alertRef} />
-        </>
-    );
+        if (profile?.role === 'companion') {
+            return (
+                <LivingGlassProvider>
+                    <BottomSheetProvider>
+                        <View style={{ flex: 1 }}>
+                            <GlobalSyncBanner />
+                            <CompanionMainStack />
+                            <CustomAlert ref={alertRef} />
+                        </View>
+                    </BottomSheetProvider>
+                </LivingGlassProvider>
+            );
+        }
 
-    // Companions bypass subscription check
-    if (profile?.role === 'companion') {
+        if (subscriptionStatus !== 'active') {
+            return (
+                <>
+                    <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
+                        <Stack.Screen name="Payment" component={PremiumShowcaseScreen} />
+                        <Stack.Screen name="WaitingRoom" component={WaitingScreen} />
+                        <Stack.Screen name="Profile" component={PatientProfileScreen} options={{ presentation: "modal" }} />
+                    </Stack.Navigator>
+                    <CustomAlert ref={alertRef} />
+                </>
+            );
+        }
+
         return (
             <LivingGlassProvider>
                 <BottomSheetProvider>
                     <View style={{ flex: 1 }}>
                         <GlobalSyncBanner />
-                        <CompanionMainStack />
+                        <MainAppStack />
                         <CustomAlert ref={alertRef} />
+                        <AchievementCelebration />
                     </View>
                 </BottomSheetProvider>
             </LivingGlassProvider>
         );
-    }
-
-    if (subscriptionStatus !== 'active') {
-        return (
-            <>
-                <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
-                    <Stack.Screen name="Payment" component={PremiumShowcaseScreen} />
-                    <Stack.Screen name="WaitingRoom" component={WaitingScreen} />
-                    <Stack.Screen
-                        name="Profile"
-                        component={PatientProfileScreen}
-                        options={{ presentation: "modal" }}
-                    />
-                </Stack.Navigator>
-                <CustomAlert ref={alertRef} />
-            </>
-        );
-    }
+    };
 
     return (
-        <LivingGlassProvider>
-            <BottomSheetProvider>
-                <View style={{ flex: 1 }}>
-                    <GlobalSyncBanner />
-                    <MainAppStack />
-                    <CustomAlert ref={alertRef} />
-                    <AchievementCelebration />
-                </View>
-            </BottomSheetProvider>
-        </LivingGlassProvider>
+        <View style={{ flex: 1, backgroundColor: colors.canvas }}>
+            {renderContent()}
+            {showBrandedSplash && (
+                <BrandedSplashScreen
+                    isReady={!isBootstrapping}
+                    isNewUser={!onboardingComplete}
+                    onFinish={() => setShowBrandedSplash(false)}
+                />
+            )}
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     tabBarContainer: {
-        position: "absolute", left: 24, right: 24,
-        height: TAB_BAR_HEIGHT, backgroundColor: "#FFFFFF",
-        borderRadius: 32, flexDirection: "row", alignItems: "center",
-        justifyContent: "space-between", paddingHorizontal: 10,
-        borderWidth: 1, borderColor: "#E2E8F0",
-        shadowColor: "#0F172A", shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.12, shadowRadius: 16, elevation: 12,
+        position: "absolute",
+        left: 24,
+        right: 24,
+        height: TAB_BAR_HEIGHT,
+        backgroundColor: colors.surface,
+        borderRadius: 32,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 10,
+        borderWidth: 1,
+        borderColor: colors.borderLight,
+        ...elevation.modal,
     },
-    tabItem: { width: 44, alignItems: "center", justifyContent: "center", height: "100%" },
-    tabSlot: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+    tabItem: {
+        width: 44,
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100%",
+    },
+    tabSlot: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        alignItems: "center",
+        justifyContent: "center",
+    },
     tabSlotActive: {
-        backgroundColor: "#7C3AED",
-        shadowColor: "#7C3AED", shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.35, shadowRadius: 8, elevation: 8,
+        backgroundColor: colors.primary,
+        ...elevation.cardElevated,
+    },
+    tabSlotHighlighted: {
+        borderWidth: 2,
+        borderColor: colors.primary,
+        ...elevation.floating,
     },
     loadingContainer: {
         flex: 1,
-        backgroundColor: colors.background,
+        backgroundColor: colors.canvas,
         alignItems: "center",
         justifyContent: "center",
     },
