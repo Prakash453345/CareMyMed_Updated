@@ -1,6 +1,6 @@
 ---
 name: caremymed-design-doctrine
-description: Master Product, Visual Grammar, and Motion Doctrine for CareMyMed. Enforces rich organized information density, 100% feature preservation, Swiggy-level compositional cohesion, and tactile motion engineering.
+description: Master Product, Visual Grammar, and Motion Doctrine for CareMyMed. Enforces rich organized information density, 100% feature and behavioral preservation, Swiggy-level contextual composition, and tactile motion engineering.
 ---
 
 # CareMyMed Master Design & Engineering Doctrine
@@ -12,101 +12,115 @@ description: Master Product, Visual Grammar, and Motion Doctrine for CareMyMed. 
 > CareMyMed is a feature-rich, high-trust healthcare companion.
 > **The goal is NEVER minimalism, fewer cards, or deleting features to create whitespace.**
 > The goal is: **Rich Functionality + Organized Information Density + Unified Visual Grammar + Contextual Hierarchy + Tactile Motion.**
+>
+> **Source-of-Truth Separation:**
+> * **The existing screen** is the content source of truth (**WHAT** exists).
+> * **The design system** is the visual source of truth (**HOW** it looks).
+> * **The motion doctrine** is the behavioral source of truth (**HOW** it moves).
 
 ---
 
-## 1. The Inviolable Product & Architectural Guardrails
+## 1. Architectural & Product Guardrails
 
-### Rule 1: Zero Feature Deletion (Preserve 100% of Capabilities)
+### Rule 1: 100% Feature & Behavioral Preservation
 * **Never remove, collapse, or discard existing patient-facing functionality merely to achieve visual simplicity.**
-* Every existing feature—including sparklines, Apple Health-style vitals telemetry, progressive medication cards, supply tracking, multi-accent timeline slots, streak companions, next-action engines, mood logging, sleep estimates, turn-by-turn alerts, celebration states, and bottom sheets—**must be preserved**.
-* When redesigning or refactoring any screen:
-  1. **Inventory** all existing functions, interactive states, and metadata fields.
-  2. **Preserve** every single capability and its store hooks/callbacks.
-  3. **Regroup** them into a clearer, more readable visual hierarchy.
-  4. **Standardize** their visual grammar (tokens, typography, elevation, borders).
-  5. **Apply motion** to reinforce that hierarchy.
+* Every existing capability—including sparklines, Apple Health-style vitals telemetry, progressive multi-accent medication cards, supply refill tracking, streak companions, next-action engines, mood logging, sleep estimates, turn-by-turn alerts, celebration states, and bottom sheets—**must be preserved**.
+* **Preserve Behavior and Contracts:** You must preserve all existing navigation routes, store selectors, API contracts, callbacks, optimistic updates (`optimisticMarkSlotTaken`, etc.), error handling boundaries (`RecoverableBoundary`), analytics/telemetry events, haptic patterns, and offline persistence/sync pipelines unless explicitly directed otherwise.
 
-### Rule 2: The Real Lesson from Reference Apps (e.g. Swiggy)
-* Reference apps like Swiggy, Apple Health, or modern fintech do **not** have fewer features. They have *more* (search, banners, delivery tracking, category rows, restaurant cards, filters, discount badges, personalized recommendations).
-* They feel premium because **many disparate capabilities are governed by one unified visual grammar**.
-* Use reference apps for **compositional consistency, spatial rhythm, and interaction continuity**—never as an excuse to reduce functional density.
+### Rule 2: No Silent Simplification
+* **Do not remove, hide, merge, or collapse a module, metric, action, metadata field, or interaction because it appears visually redundant.**
+* If consolidation seems desirable: **Merge presentation, NEVER capability.** Every underlying data field, tap target, and action must remain accessible and functional.
 
-### Rule 3: Avoid "Card Soup" (Different Things, Same Family)
-* **Not every module needs to be a standard card.** Putting 10 identical white rounded rectangles on a screen destroys visual hierarchy and personality.
-* Distinct functions should have distinct visual treatments (e.g., metric sparkline boxes, inline time-slot rows, full-width glanceable chips, ambient hero surfaces, floating action triggers) while sharing the same underlying DNA:
-  * Same 4-tier radius scale (`20px` card, `16px` sheet/box, `12px/8px` controls/chips, `9999px` pills).
-  * Same typography hierarchy (`PlusJakartaSans` for headings/branding, `Inter` for tabular numbers/vitals).
-  * Same tokenized color semantics (warm `#FAFAF9` canvas, `#FFFFFF` surfaces, `#7C3AED` brand purple).
-  * Same $48\times 48\text{dp}$ touch target floor.
+### Rule 3: Cohesion Does Not Require Uniformity ("Different Things, Same Family")
+* **Not every module needs to be a card.** Putting 10 identical white rounded rectangles on a screen creates "card soup" and destroys visual hierarchy.
+* A hero signature, telemetry sparkline tile, medication row, timeline event, clinical insight, quick action, and floating assistant may each have **different composition and visual emphasis** while sharing the same underlying design DNA.
 
-### Rule 4: Contextual Header ("The Product Moment")
-* The header must not be a static, generic label. It is the active pulse of the app:
+### Rule 4: Context-Aware Product Header ("The Swiggy Moment")
+* The header is not a static label or a cluttered kitchen sink. It is the **context-aware pulse** of the app.
+* It surfaces the most relevant contextual status, pending action, location, or notification state based on the patient's current moment:
   * Patient greeting (*"Good evening, Puneeth 👋"*).
-  * Date and contextual status chip (*"4 medications · 2 vitals due"* or *"● Health is stable"*).
-  * Unread notification badge & profile avatar.
+  * Adaptive contextual indicator (*"4 medications · 2 vitals due"* or *"● Health is stable"*).
+  * Notification badge & profile avatar.
 
 ---
 
-## 2. Visual Grammar & Design Tokens
+## 2. Information Hierarchy & Visual Grammar
 
-Every component in CareMyMed must inherit from `src/theme/`:
+### 2.1 Information Hierarchy Rules
+Visual hierarchy must be determined by **user urgency and decision value**, not by component type:
+1. **Current Context**: Orientation & active state ("Where am I? What's happening now?").
+2. **Urgent Action**: Immediate scheduled doses or critical reminders ("What do I need to do right now?").
+3. **Health State**: Overall biological status & daily score ("How am I?").
+4. **Important Telemetry**: Vitals readings and trend sparklines.
+5. **Progress & Trends**: 35-day streak, adherence consistency, and sleep/activity logs.
+6. **Secondary Insights & Education**: AI coach recommendations, daily clinical tips, and educational guides.
 
-### 2.1 Surfaces & Canvas
-* `canvas`: Strictly `#FAFAF9` (warm canvas separating CareMyMed from sterile medical looks).
-* `surface`: `#FFFFFF` (crisp white primary containers).
-* `surfaceSecondary`: `#F8FAFC` (subtle secondary backgrounds for metric tiles and input wells).
-* `surfaceMuted`: `#F1F5F9` (track backgrounds, dividers, inactive states).
+> Components at the same hierarchy level must not compete visually. Use contrast, scale, and subtle surface shifts to establish clear primary vs secondary relationships.
 
-### 2.2 Typography Tokens (`TYPOGRAPHY`)
-* **Headers & Brand**: `PlusJakartaSans_700Bold`, `PlusJakartaSans_600SemiBold`.
-* **Telemetry & Numeric Values**: `Inter_700Bold`, `Inter_800ExtraBold` (tabular figures for Heart Rate, Blood Pressure, Glucose, Health Score).
-* **Body & Secondary Copy**: `PlusJakartaSans_400Regular`, `PlusJakartaSans_500Medium`.
-* **Text Colors**: `text.primary` (`#111827`), `text.secondary` (`#64748B`), `text.muted` (`#94A3B8`), `text.inverse` (`#FFFFFF`).
-
-### 2.3 Elevation Hierarchy
-* `elevation.card`: Subtle soft card shadow for at-rest containers.
-* `elevation.cardElevated`: Accentuated shadow for active hero cards.
-* `elevation.floating`: Floating action buttons (`ChatFAB`).
-* `elevation.modal`: Bottom sheets, popovers, custom floating tab bar.
+### 2.2 Visual Tokens (`src/theme/`)
+* **Surfaces & Canvas**:
+  * `canvas`: `#FAFAF9` (warm canvas separating CareMyMed from sterile medical looks).
+  * `surface`: `#FFFFFF` (crisp white primary containers).
+  * `surfaceSecondary`: `#F8FAFC` (secondary backgrounds for metric wells and input fields).
+  * `surfaceMuted`: `#F1F5F9` (track backgrounds, dividers, inactive states).
+* **5-Tier Radius Hierarchy**:
+  * `20px` $\rightarrow$ Primary cards / hero surfaces (`radius.card`)
+  * `16px` $\rightarrow$ Secondary surfaces / sheets (`radius.sheet`)
+  * `12px` $\rightarrow$ Controls / compact cards (`radius.input` / `radius.button`)
+  * `8px`  $\rightarrow$ Small controls / icon containers (`radius.sm`)
+  * `9999px` $\rightarrow$ Pills / capsules / avatars (`RADIUS.pill`)
+* **Typography Tokens (`TYPOGRAPHY`)**:
+  * **Headers & Brand**: `PlusJakartaSans_700Bold`, `PlusJakartaSans_600SemiBold`.
+  * **Telemetry & Numeric Values**: `Inter_700Bold`, `Inter_800ExtraBold` (tabular numbers for vitals, health score, doses).
+  * **Body & Labels**: `PlusJakartaSans_400Regular`, `PlusJakartaSans_500Medium`.
+  * **Text Tokens**: `text.primary` (`#111827`), `text.secondary` (`#64748B`), `text.muted` (`#94A3B8`), `text.inverse` (`#FFFFFF`).
+* **Cross-Platform Elevation**:
+  * `elevation.card`: Standard card resting elevation.
+  * `elevation.cardElevated`: Primary hero card elevation.
+  * `elevation.floating`: Floating action buttons (`ChatFAB`).
+  * `elevation.modal`: Bottom sheets, popovers, custom floating tab bar.
 
 ---
 
 ## 3. Motion & Interaction Doctrine
 
-Motion is the kinetic layer that reinforces hierarchy, builds trust, and makes the dense interface feel effortless.
+Motion reinforces existing hierarchy; **it must never manufacture artificial importance**.
 
 ### 3.1 Branded Launch Sequence (4-Beat Orchestration)
 1. **Beat 1 (0–400ms)**: Solid brand purple canvas (`#7C3AED`) full-bleed.
-2. **Beat 2 (400–1100ms)**: Logo mark scales in ($0.88 \rightarrow 1.0$) and fades in ($0 \rightarrow 1.0$) with soft radial halo glow.
-3. **Beat 3 (1100–1900ms)**: Contextual session sync copy (*"Syncing your care plan…"* / *"Setting things up…"*) appears beneath the logo.
-4. **Beat 4 (1900ms $\rightarrow$)**: 200ms ease-out cross-fade directly into mounted app chrome.
-5. **Anti-flicker floor**: Launch sequence must never resolve in under 1.9s on cold boot.
+2. **Beat 2 (400–1100ms)**: Official CareMyMed brand logo (`assets/logo.png`) scales in ($0.85 \rightarrow 1.0$) with soft radial halo glow pulse.
+3. **Beat 3 (500–1200ms)**: Top Context Card (active location / health score status) slides down smoothly; dynamic status ticker begins.
+4. **Beat 4 (1900ms $\rightarrow$)**: 220ms ease-out cross-fade directly into mounted app chrome.
+5. **Anti-Flicker Floor**: Launch sequence must never resolve in under 1.9s on cold boot.
 
 ### 3.2 Instant Chrome, Progressive Content Loading
-* **Frame 1**: App chrome (status bar, orientation header, tab bar, section titles, card structural frames) mounts synchronously with real geometry.
+* **Frame 1**: App chrome (status bar, orientation header, tab bar, section titles, container frames) mounts synchronously.
 * **Content**: Dynamic data loads into **content-shaped in-place skeletons**:
   * `RingSkeleton` for circular health rings.
-  * `MedRowSkeleton` for stacked medication slots (44×44 icon box + text lines + pill count badge).
-  * `VitalsCardSkeleton` for 2-box metric grids with sparkline wells.
+  * `MedRowSkeleton` for stacked medication slots (44×44 icon box + text lines + pill badge).
+  * `VitalsCardSkeleton` for 2-box metric grids with sparklines.
   * `PillCardSkeleton` for chips and badges.
-* **Zero Layout Shift**: Structural boundaries must not jump or resize when data arrives.
-* **No Plausible Mock Telemetry**: Dashboard vitals during empty state must show an honest `—` ("Not recorded yet"), never fake numbers like `72 bpm` or `120/80` that mimic real readings.
+* **No Plausible Mock Telemetry**: During empty state or loading, vitals must show an honest `—` ("Not recorded"), never fake numbers like `72 bpm` or `120/80` that mimic real readings.
 
-### 3.3 Tactile Micro-Interactions & Physics
-* **Card Press**: `scale(0.97)` on `onPressIn`, spring recovery on `onPressOut` (mass: 1, tension: 280, friction: 20).
-* **1-Tap Actions**: Trigger immediate optimistic UI updates + `HapticPatterns.selection()` / `HapticPatterns.allDone()`.
+### 3.3 Interaction Physics Calibration
+* **Large Cards / Surfaces**: `scale(0.98)` on `onPressIn`, spring recovery on `onPressOut`.
+* **Small Controls / Pills / Buttons**: `scale(0.97)` on `onPressIn`, spring recovery on `onPressOut`.
+* **1-Tap Actions**: Immediate optimistic UI updates + `HapticPatterns.selection()` / `HapticPatterns.allDone()`.
 * **Tab Bar**: 150ms sliding pill indicator transitioning between active tabs.
-* **Accessibility**: Every shimmer and continuous animation must check `useReducedMotion` and fall back to static muted fills.
+* **Accessibility**: Every animation and shimmer must check `useReducedMotion` and fall back to static muted fills.
 
 ---
 
-## 4. Screen Execution Checklist
+## 4. Mandatory Screen Redesign Protocol
 
-Before modifying any screen, verify:
-- [ ] **Feature Inventory**: Are all original components, telemetry metrics, and actions accounted for?
-- [ ] **Visual Cohesion**: Does every module consume tokens from `src/theme/` (colors, text, radius, elevation)?
-- [ ] **Organized Density**: Is information rich, compact, and scannable without degenerating into generic "card soup"?
-- [ ] **Honest Telemetry**: Are empty states clearly marked as `—` rather than displaying plausible placeholder numbers?
-- [ ] **Tactile Feedback**: Are all pressable targets $\ge 48\times 48\text{dp}$ with appropriate haptics and spring animations?
-- [ ] **Accessibility**: Does the layout support dynamic text sizes and respect `useReducedMotion`?
+Before making changes to any existing screen, follow this 9-step algorithm:
+
+1. **Inventory Existing Modules**: List every visual component, graph, tile, and card on the screen.
+2. **Inventory Interactions & Navigation**: Map every tap target, modal trigger, swipe gesture, and route.
+3. **Inventory Dynamic Data & State**: Identify all store subscriptions, live telemetry, and edge cases (empty, low-supply, error).
+4. **Map Priority Hierarchy**: Categorize items by user urgency (Current Context $\rightarrow$ Urgent Action $\rightarrow$ Health State $\rightarrow$ Telemetry $\rightarrow$ Progress $\rightarrow$ Insights).
+5. **Recompose with Visual Grammar**: Apply the canonical tokens, spacing rhythm, and surface treatments without deleting modules.
+6. **Preserve All Behaviors & Data**: Ensure store hooks, optimistic updates, and callbacks remain 100% wired.
+7. **Apply Hierarchy-Reinforcing Motion**: Add tactile scale springs, skeleton shimmers, and micro-interactions.
+8. **Side-by-Side Verification**: Compare old vs new capabilities to guarantee zero loss of information density.
+9. **Automated & Manual Tests**: Verify that unit/integration test suites pass with zero regressions.
