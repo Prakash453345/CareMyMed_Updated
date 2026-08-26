@@ -1,925 +1,5211 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    RefreshControl,
-    StatusBar,
-    TouchableOpacity,
-    Image,
-    Platform,
-    Animated,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
-import {
-    Bell,
-    CheckCircle2,
-    Clock,
-    Heart,
-    Activity,
-    Sparkles,
-    Calendar,
-    ChevronRight,
-    Package,
-    AlertCircle,
-    User,
-} from 'lucide-react-native';
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Platform,
+  Pressable,
+  Animated,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  TouchableOpacity,
+  DeviceEventEmitter,
+  InteractionManager,
+  Dimensions,
+  StatusBar,
+  AppState,
+  RefreshControl,
+  Alert,
+  Image,
+} from "react-native";
+import * as Haptics from 'expo-haptics';
+import { getStreakState } from "../../utils/streakHelper";
+import StreakCompanion from "../../components/ui/StreakCompanion";
+import CelebrationOverlay from "../../components/ui/CelebrationOverlay";
+import { LinearGradient } from "expo-linear-gradient";
 
-import { colors, text, layout, TYPOGRAPHY, spacing, radius, RADIUS, elevation, touchTarget, useReduceMotion } from '../../theme';
-import { useAuth } from '../../context/AuthContext';
-import usePatientStore from '../../store/usePatientStore';
-import TabScreenTransition from '../../components/ui/TabScreenTransition';
-import AnimatedCard from '../../components/ui/AnimatedCard';
-import SectionHeader from '../../components/ui/SectionHeader';
-import StatusChip from '../../components/ui/StatusChip';
-import ProgressRing from '../../components/ui/ProgressRing';
-import {
-    RingSkeleton,
-    MedRowSkeleton,
-    VitalsCardSkeleton,
-    ShimmerBlock,
-} from '../../components/ui/skeletons';
-import SupplyUpdateModal from '../../components/ui/SupplyUpdateModal';
-import CelebrationOverlay from '../../components/ui/CelebrationOverlay';
-import StreakCompanion from '../../components/ui/StreakCompanion';
-import { HapticPatterns } from '../../utils/haptics';
+import SupplyUpdateModal from "../../components/ui/SupplyUpdateModal";
+import { useMedicationCompletionAnimation } from "../../hooks/useMedicationCompletionAnimation";
 
-// Daily clinical tips library
-const DAILY_TIPS = [
-    "💧 Stay hydrated! Drinking 8 glasses of water daily helps maintain healthy blood pressure and joint mobility.",
-    "🚶‍♂️ A quick 10-minute walk after meals supports digestion and healthy post-meal glucose levels.",
-    "🧂 Mindful sodium: Reducing extra table salt helps protect your cardiovascular system and kidneys.",
-    "🥗 Colorful nutrition: Adding vibrant greens and vegetables provides essential fiber and vital antioxidants.",
-    "😴 Restful recovery: Aim for 7–8 hours of uninterrupted sleep to support cellular repair and mental clarity.",
-    "🫁 Deep breathing: Taking 5 slow, deep breaths activates the parasympathetic system and calms your heart rate.",
-    "🍎 Healthy snacking: Choose fresh fruits or unsalted nuts for sustained, steady energy throughout the afternoon.",
+const triggerHapticSelection = async () => {
+  try {
+    await Haptics.selectionAsync();
+  } catch (e) {}
+};
+import {
+  Pill,
+  Package,
+  Sparkles,
+  ChevronRight,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  CalendarDays,
+  CheckCircle2,
+  Check,
+  Bell,
+  Heart,
+  Wind,
+  Droplets,
+  MapPin,
+  AlertTriangle,
+  WifiOff,
+  Flame,
+  Zap,
+  Watch,
+  Shield,
+  MessageSquare,
+  Trophy,
+  ChevronDown,
+  AlertCircle,
+} from "lucide-react-native";
+import { handleAxiosError } from "../../lib/axiosInstance";
+import {
+  colors,
+  layout,
+  spacing,
+  radius,
+  shadows,
+  motion,
+  anim,
+  useReduceMotion,
+  FONT,
+  METRIC_FONT,
+  TYPOGRAPHY,
+  TEXT,
+  TEXT_SIZE,
+  ICON_SIZE,
+  SPACING,
+  RADIUS,
+} from "../../theme";
+import { useAuth } from "../../context/AuthContext";
+import TabScreenTransition from "../../components/ui/TabScreenTransition";
+import RecoverableBoundary from "../../components/RecoverableBoundary";
+import { apiService } from "../../lib/api";
+import { useFocusEffect } from "@react-navigation/native";
+import HealthSyncService from "../../services/HealthSyncService";
+import * as sleepEstimation from "../../lib/sleepEstimation";
+import { syncAllSchedules } from "../../utils/notifications";
+import usePatientStore from "../../store/usePatientStore";
+import SmartInput from "../../components/ui/SmartInput";
+import AnimatedCard from "../../components/ui/AnimatedCard";
+import AnimatedCounter from "../../components/ui/AnimatedCounter";
+import AlertManager from "../../utils/AlertManager";
+import { useTranslation } from "react-i18next";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { HapticPatterns } from "../../utils/haptics";
+import SectionContainer from "../../components/ui/SectionContainer";
+import SectionErrorCard from "../../components/ui/SectionErrorCard";
+import { useSectionQuery } from "../../hooks/useSectionQuery";
+import TurnByTurnBanner from "../../components/ui/TurnByTurnBanner";
+import ProgressiveMedCard from "../../components/ui/ProgressiveMedCard";
+import { NextActionEngine } from "../../lib/NextActionEngine";
+import BottomSheetWrapper from "../../components/ui/BottomSheetWrapper";
+import Svg, {
+  Path,
+  Defs,
+  LinearGradient as SvgLinearGradient,
+  Stop,
+  Circle as SvgCircle,
+} from "react-native-svg";
+import LottieView from "lottie-react-native";
+
+const { width: SW } = Dimensions.get("window");
+const AnimatedCircle = Animated.createAnimatedComponent(SvgCircle);
+
+// ── Health tips ────────────────────────────────────────────────────────────
+const HEALTH_TIPS = [
+  "💧 Stay hydrated! Drinking 8 glasses of water daily helps manage blood pressure and keeps your joints lubricated.",
+  "🚶‍♂️ A quick 10-minute walk after meals can significantly lower post-meal blood sugar levels and assist digestion.",
+  "🧂 Watch the salt! Reducing sodium intake by just a little can help keep your heart healthy and lower blood pressure.",
+  "🥗 Fill half your plate with colorful vegetables at lunch and dinner to ensure you get a boost of essential fiber and vitamins.",
+  "😴 Aim for 7-8 hours of quality sleep tonight. Sleep is critical for brain function, cardiovascular health, and cell repair.",
+  "🚶‍♀️ Take 5 slow, deep breaths when feeling stressed. Deep breathing instantly calms the nervous system and lowers heart rate.",
+  "🍎 Swap processed afternoon snacks for a piece of fresh fruit or a handful of unsalted almonds to sustain your energy levels.",
+  "🥛 Bone health matters! Make sure you're getting enough calcium and Vitamin D from dairy, fortified foods, or sunlight.",
+  "🦷 Brush and floss daily. Poor dental health is linked to an increased risk of cardiovascular issues.",
+  "🍵 Green tea is rich in antioxidants that support metabolic health and improve cardiovascular function.",
+  "🧠 Challenge your brain today! Solve a puzzle, read a new article, or practice a language to support cognitive longevity.",
+  "🍳 Start your day with a high-protein breakfast like eggs or yogurt to stay full longer and reduce morning cravings.",
+  "🧍 Posture check! Take a moment to sit up straight and stretch your shoulders to relieve back and neck tension.",
+  "💧 Sip water consistently throughout the day rather than chugging it all at once to maintain steady hydration levels.",
+  "❤️ Stay connected. Call or message a loved one today. Social connection is a powerful driver of overall mental and physical well-being.",
 ];
+const HEALTH_TIPS_COUNT = HEALTH_TIPS.length;
+const getDailyTipIndex = () =>
+  Math.floor(Date.now() / 86400000) % HEALTH_TIPS_COUNT;
 
-export default function PatientHomeScreen({ navigation }) {
-    const { t } = useTranslation();
-    const insets = useSafeAreaInsets();
-    const { reduceMotion } = useReduceMotion();
-    const { user, profile } = useAuth();
+const ACCENT_MAP = {
+  morning: "#F97316",
+  afternoon: "#0EA5E9",
+  evening: "#A855F7",
+  night: "#1E1B4B",
+  as_needed: "#10B981",
+};
 
-    // Patient Store
-    const patient = usePatientStore(s => s.patient);
-    const vitals = usePatientStore(s => s.vitals);
-    const meds = usePatientStore(s => s.dashboardMeds || []);
-    const storeLoading = usePatientStore(s => s.loading);
-    const fetchDashboard = usePatientStore(s => s.fetchDashboard);
-    const optimisticMarkSlotTaken = usePatientStore(s => s.optimisticMarkSlotTaken);
-    const updateMedSupply = usePatientStore(s => s.updateMedSupply);
+// ── Skeleton loader ────────────────────────────────────────────────────────
+const SkeletonItem = ({ width, height, borderRadius = 10, style }) => {
+  const anim = useRef(new Animated.Value(0.35)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, {
+          toValue: 1,
+          duration: 750,
+          useNativeDriver: true,
+        }),
+        Animated.timing(anim, {
+          toValue: 0.35,
+          duration: 750,
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  }, []);
+  return (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          borderRadius,
+          backgroundColor: "#CBD5E1",
+          opacity: anim,
+        },
+        style,
+      ]}
+    />
+  );
+};
 
-    // Screen State
-    const [refreshing, setRefreshing] = useState(false);
-    const [supplyModalMed, setSupplyModalMed] = useState(null);
-    const [showCelebration, setShowCelebration] = useState(false);
-    const [unreadNotifications, setUnreadNotifications] = useState(0);
-
-    // Initial and focus fetch
-    useFocusEffect(
-        useCallback(() => {
-            fetchDashboard(false);
-        }, [fetchDashboard])
-    );
-
-    const onRefresh = useCallback(async () => {
-        setRefreshing(true);
-        try {
-            await fetchDashboard(true);
-        } finally {
-            setRefreshing(false);
-        }
-    }, [fetchDashboard]);
-
-    // Name & Greeting Context
-    const firstName = useMemo(() => {
-        const full = profile?.fullName || user?.user_metadata?.full_name || patient?.full_name || '';
-        return full.split(' ')[0] || 'there';
-    }, [profile, user, patient]);
-
-    const greetingContext = useMemo(() => {
-        const hour = new Date().getHours();
-        if (hour < 12) return { text: 'Good morning', timeSlot: 'morning' };
-        if (hour < 17) return { text: 'Good afternoon', timeSlot: 'afternoon' };
-        return { text: 'Good evening', timeSlot: 'evening' };
-    }, []);
-
-    const formattedDate = useMemo(() => {
-        const options = { weekday: 'short', month: 'short', day: 'numeric' };
-        return new Date().toLocaleDateString('en-US', options);
-    }, []);
-
-    // Health Score & Completion
-    const completionPct = profile?.completion_pct ?? patient?.completion_pct ?? 100;
-    const isLowProfileCompletion = completionPct < 50;
-
-    const healthScore = useMemo(() => {
-        return patient?.patient_health_state?.score ??
-            patient?.health_score?.score ??
-            patient?.healthScoreCache ??
-            85;
-    }, [patient]);
-
-    const healthLabel = useMemo(() => {
-        if (healthScore >= 85) return 'Excellent';
-        if (healthScore >= 70) return 'Good';
-        if (healthScore >= 55) return 'Fair';
-        return 'Needs Attention';
-    }, [healthScore]);
-
-    const healthVariant = useMemo(() => {
-        if (healthScore >= 85) return 'success';
-        if (healthScore >= 70) return 'brand';
-        if (healthScore >= 55) return 'warning';
-        return 'danger';
-    }, [healthScore]);
-
-    // Medication Metrics & Actionable List
-    const { scheduledMeds, takenCount, allMedsTaken } = useMemo(() => {
-        const scheduled = meds.filter(m => m.isActive !== false);
-        const taken = scheduled.filter(m => m.taken).length;
-        return {
-            scheduledMeds: scheduled,
-            takenCount: taken,
-            allMedsTaken: scheduled.length > 0 && taken === scheduled.length,
-        };
-    }, [meds]);
-
-    // Handle marking medication taken with celebration trigger
-    const handleMarkTaken = useCallback((med) => {
-        HapticPatterns.selection();
-        const slotKey = med.scheduledTime || med.type || 'morning';
-        optimisticMarkSlotTaken(slotKey);
-
-        if (scheduledMeds.length > 0 && takenCount + 1 >= scheduledMeds.length) {
-            HapticPatterns.allDone();
-            setShowCelebration(true);
-        }
-    }, [scheduledMeds, takenCount, optimisticMarkSlotTaken]);
-
-    // Daily tip
-    const dailyTip = useMemo(() => {
-        const dayOfYear = Math.floor(Date.now() / 86400000);
-        return DAILY_TIPS[dayOfYear % DAILY_TIPS.length];
-    }, []);
-
-    const isLoading = storeLoading && meds.length === 0;
-
+// ── Sparkline Helper Component (Apple Health style) ─────────────────────────
+const Sparkline = ({ values, color, width = 120, height = 32 }) => {
+  if (!values || values.length < 2) {
     return (
-        <TabScreenTransition>
-            <View style={styles.screenContainer}>
-                <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+        <Path
+          d={`M 0 ${height / 2} L ${width / 3} ${height / 2} L ${width / 2.6} ${height / 2 - 8} L ${width / 2.3} ${height / 2 + 8} L ${width / 2.1} ${height / 2 - 12} L ${width / 1.9} ${height / 2 + 12} L ${width / 1.7} ${height / 2 - 4} L ${width / 1.5} ${height / 2} L ${width} ${height / 2}`}
+          fill="none"
+          stroke={color}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={0.3}
+        />
+      </Svg>
+    );
+  }
 
-                {/* ═════════════════════════════════════════════════════════════════════════ */}
-                {/* ── ZONE 1: ORIENTATION ("WHERE AM I?") ───────────────────────────────── */}
-                {/* ═════════════════════════════════════════════════════════════════════════ */}
-                <View style={[styles.headerBar, { paddingTop: Math.max(insets.top + 8, 20) }]}>
-                    <View style={styles.headerLeft}>
-                        <TouchableOpacity
-                            onPress={() => navigation.navigate('Profile')}
-                            activeOpacity={0.8}
-                            hitSlop={touchTarget.hitSlop}
-                            style={styles.avatarWrapper}
-                        >
-                            {profile?.avatar_url ? (
-                                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
-                            ) : (
-                                <View style={styles.avatarFallback}>
-                                    <User size={20} color={colors.primary} />
-                                </View>
-                            )}
-                        </TouchableOpacity>
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
 
-                        <View style={styles.greetingCol}>
-                            <Text style={styles.greetingText}>
-                                {greetingContext.text}, <Text style={styles.greetingName}>{firstName} 👋</Text>
-                            </Text>
-                            <View style={styles.dateRow}>
-                                <Calendar size={12} color={text.muted} style={{ marginRight: 4 }} />
-                                <Text style={styles.dateText}>{formattedDate}</Text>
-                            </View>
-                        </View>
-                    </View>
+  const points = values.map((val, index) => {
+    const x = (index / (values.length - 1)) * width;
+    const y = height - ((val - min) / range) * (height - 8) - 4; // Padding
+    return `${x},${y}`;
+  });
 
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('Notifications')}
-                        activeOpacity={0.75}
-                        hitSlop={touchTarget.hitSlop}
-                        style={styles.notificationButton}
+  const pathD = `M ${points.join(" L ")}`;
+
+  return (
+    <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+      <Path
+        d={pathD}
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+};
+
+// ── Apple Health Style Vitals Card ──────────────────────────────────────────
+const VitalsCard = ({
+  id,
+  label,
+  value,
+  unit,
+  icon: Icon,
+  color,
+  status = "Stable",
+  historyValues,
+  onPress,
+}) => {
+  const { t } = useTranslation();
+  const isLogged = status === "Recorded";
+
+  const renderValue = () => {
+    if (!isLogged || !value || value === "—") {
+      return (
+        <Text style={[styles.vitalsCardValue, { color: "#CBD5E1" }]}>
+          —
+        </Text>
+      );
+    }
+    const str = String(value);
+    if (str.includes("/")) {
+      const parts = str.split("/");
+      const val1 = Number(parts[0]) || 0;
+      const val2 = Number(parts[1]) || 0;
+      return (
+        <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+          <AnimatedCounter
+            value={val1}
+            decimals={0}
+            style={[styles.vitalsCardValue, { color: "#0F172A" }]}
+          />
+          <Text style={[styles.vitalsCardValue, { color: "#0F172A" }]}>/</Text>
+          <AnimatedCounter
+            value={val2}
+            decimals={0}
+            style={[styles.vitalsCardValue, { color: "#0F172A" }]}
+          />
+        </View>
+      );
+    }
+    const num = Number(str);
+    if (isNaN(num)) {
+      return (
+        <Text style={[styles.vitalsCardValue, { color: "#0F172A" }]}>
+          {str}
+        </Text>
+      );
+    }
+    return (
+      <AnimatedCounter
+        value={num}
+        decimals={0}
+        style={[styles.vitalsCardValue, { color: "#0F172A" }]}
+      />
+    );
+  };
+
+  return (
+    <AnimatedCard
+      pressScale={0.98}
+      hapticType="selection"
+      onPress={onPress}
+      sharedTransitionTag={id ? `vitals_card_${id}` : undefined}
+      style={[styles.vitalsCard, { minHeight: 155, borderWidth: 0 }]}
+    >
+      <View style={styles.vitalsCardTop}>
+        <View
+          style={[
+            styles.vitalsIconBox,
+            { backgroundColor: isLogged ? color + "12" : "#F1F5F9" },
+          ]}
+        >
+          <Icon
+            size={18}
+            color={isLogged ? color : "#94A3B8"}
+            strokeWidth={2.5}
+          />
+        </View>
+        <View
+          style={[
+            styles.vitalsStatusBadge,
+            { backgroundColor: isLogged ? color + "15" : "#F1F5F9" },
+          ]}
+        >
+          <View
+            style={[
+              styles.statusDot,
+              { backgroundColor: isLogged ? color : "#CBD5E1" },
+            ]}
+          />
+          <Text
+            style={[
+              styles.statusLabel,
+              { color: isLogged ? color : "#94A3B8" },
+            ]}
+          >
+            {isLogged
+              ? t("home.logged", { defaultValue: "Logged" })
+              : t("home.pending", { defaultValue: "Pending" })}
+          </Text>
+        </View>
+      </View>
+
+      <Text style={styles.vitalsCardLabel}>{label}</Text>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "baseline",
+          gap: 3,
+          marginTop: 4,
+        }}
+      >
+        {renderValue()}
+        <Text style={styles.vitalsCardUnit}>{unit}</Text>
+      </View>
+
+      <View style={styles.sparklineWrapper}>
+        <Sparkline values={historyValues} color={color} />
+      </View>
+
+      <Text style={styles.vitalsCardFooter}>
+        {isLogged
+          ? t("home.logged_today", { defaultValue: "Logged today" })
+          : t("home.tap_history", { defaultValue: "Tap History" })}
+      </Text>
+    </AnimatedCard>
+  );
+};
+
+// ── Mini medication card ───────────────────────────────────────────────────
+const MedicationCard = ({ med, onPress, onOpenSupplyModal }) => {
+  const { t } = useTranslation();
+  const accentColor = ACCENT_MAP[med.type] || "#8B5CF6";
+  const {
+    cardLiftAnim,
+    cardBgColor,
+    cardBorderColor,
+    iconBgColor,
+    titleColor,
+  } = useMedicationCompletionAnimation(med.taken, accentColor + "18", "#F1F5F9");
+
+  const hasRefillInfo =
+    med.refillInfo &&
+    (typeof med.refillInfo.remainingDoses === "number" ||
+      typeof med.refillInfo.totalDoses === "number");
+  const displayDoses =
+    med.refillInfo?.remainingDoses ?? med.refillInfo?.totalDoses ?? 0;
+  const isLowSupply =
+    hasRefillInfo && displayDoses <= (med.refillInfo.alertThreshold || 5);
+  const displayUnit = med.unit || med.dosage_form || 'Supply';
+
+  return (
+    <Animated.View
+      style={{
+        transform: [{ translateY: cardLiftAnim }],
+      }}
+    >
+      <Animated.View
+        style={[
+          styles.medCard,
+          {
+            backgroundColor: cardBgColor,
+            borderColor: cardBorderColor,
+          },
+        ]}
+      >
+        <Pressable
+          onPress={() => onPress && onPress()}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.medCardContent}>
+            <Animated.View
+              style={[
+                styles.medIconBox,
+                { backgroundColor: iconBgColor, borderColor: cardBorderColor },
+              ]}
+            >
+              {med.taken ? (
+                <CheckCircle2 size={20} color={colors.success} strokeWidth={2.5} />
+              ) : (
+                <Pill size={20} color={accentColor} strokeWidth={2.5} />
+              )}
+            </Animated.View>
+            <View style={{ flex: 1 }}>
+              <Animated.Text
+                style={[styles.medName, { color: titleColor }]}
+              >
+                {med.name}
+              </Animated.Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
+                <Text style={styles.medDose}>
+                  {med.dosage}
+                  {med.instructions ? ` · ${med.instructions}` : ""}
+                </Text>
+                {hasRefillInfo && (
+                  <Pressable
+                    onPress={(e) => {
+                      e?.stopPropagation?.();
+                      onOpenSupplyModal?.(med);
+                    }}
+                    hitSlop={6}
+                    style={({ pressed }) => [
+                      {
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                        paddingHorizontal: 8,
+                        paddingVertical: 2.5,
+                        borderRadius: 8,
+                        backgroundColor: isLowSupply ? "#FEF2F2" : "#F1F5F9",
+                        borderWidth: 1,
+                        borderColor: isLowSupply ? "#FECACA" : "#E2E8F0",
+                        opacity: pressed ? 0.75 : 1,
+                      },
+                    ]}
+                  >
+                    {isLowSupply ? (
+                      <AlertCircle size={10} color="#EF4444" strokeWidth={3} />
+                    ) : (
+                      <Package size={10} color="#64748B" strokeWidth={2.5} />
+                    )}
+                    <Text
+                      style={{
+                        fontSize: 9,
+                        fontWeight: "800",
+                        color: isLowSupply ? "#EF4444" : "#64748B",
+                        letterSpacing: 0.3,
+                        textTransform: "uppercase",
+                      }}
                     >
-                        <Bell size={20} color={text.primary} strokeWidth={2.0} />
-                        {unreadNotifications > 0 && <View style={styles.notificationBadge} />}
-                    </TouchableOpacity>
+                      {displayDoses} {isLowSupply ? "Left (Update)" : "Left"}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            </View>
+            {med.taken && (
+              <View style={styles.takenBadge}>
+                <CheckCircle2 size={10} color={colors.success} />
+                <Text style={styles.takenBadgeText}>
+                  {t("home.done", { defaultValue: "Done" })}
+                </Text>
+              </View>
+            )}
+          </View>
+        </Pressable>
+      </Animated.View>
+    </Animated.View>
+  );
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ══ MAIN SCREEN ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+export default function PatientHomeScreen({ navigation }) {
+  const { t } = useTranslation();
+  const { displayName, profile } = useAuth();
+  const scrollViewRef = useRef(null);
+  const heartRateInputRef = useRef(null);
+  const vitalsSectionY = useRef(0);
+  const vitalsCardRef = useRef(null);
+  const vitalsHeaderRef = useRef(null);
+  const orbRef = useRef(null);
+  const insightCardRef = useRef(null);
+  const aiCoachHeaderRef = useRef(null);
+  const medsCardRef = useRef(null);
+  const todaysPlanHeaderRef = useRef(null);
+
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [supplyModalMed, setSupplyModalMed] = useState(null);
+  const updateMedSupply = usePatientStore((s) => s.updateMedSupply);
+
+  const patient = usePatientStore((s) => s.patient);
+  const vitals = usePatientStore((s) => s.vitals);
+  const vitalsHistory = usePatientStore((s) => s.vitalsHistory);
+  const aiPrediction = usePatientStore((s) => s.aiPrediction);
+  const meds = usePatientStore((s) => s.dashboardMeds);
+  const medicationSchedule = usePatientStore((s) => s.medicationSchedule);
+  const adherenceDetails = usePatientStore((s) => s.adherenceDetails);
+  const healthHistory = usePatientStore((s) => s.healthHistory);
+  const isCached = usePatientStore((s) => s.isCached);
+  const storeLoading = usePatientStore((s) => s.loading);
+  const storeFetchDashboard = usePatientStore((s) => s.fetchDashboard);
+  const storeFetchMedications = usePatientStore((s) => s.fetchMedications);
+  const setPatient = usePatientStore((s) => s.setPatient);
+
+  const nextAction = useMemo(() => {
+    return NextActionEngine.evaluatePriority({
+      patient,
+      meds,
+      vitals,
+      alerts: profile?.alerts || [],
+      completionPct: profile?.completion_pct || 100,
+    });
+  }, [patient, meds, vitals, profile]);
+
+  const activeInsights = useMemo(() => {
+    const list = [];
+    if (!vitals) return list;
+
+    const hr = Number(vitals.heart_rate);
+    const sys = Number(vitals.blood_pressure?.systolic);
+    const dia = Number(vitals.blood_pressure?.diastolic);
+    const spo2 = Number(vitals.oxygen_saturation);
+    const hyd = Number(vitals.hydration);
+    const isSmoker = patient?.smoking_status === "current";
+
+    // 1. Heart Rate
+    if (hr > 100) {
+      list.push({
+        key: "hr_high",
+        title: t("advisor.hr_high_title", {
+          defaultValue: "Elevated Heart Rate",
+        }),
+        desc: t("advisor.hr_high_desc", {
+          hr,
+          defaultValue: `Your heart rate is currently elevated at ${hr} bpm. Try to slow down what you're doing, sit down comfortably, and take slow, deep breaths for 2 minutes.`,
+        }),
+        type: "warning",
+        color: colors.danger,
+        icon: Heart,
+      });
+    } else if (hr > 0 && hr < 55) {
+      list.push({
+        key: "hr_low",
+        title: t("advisor.hr_low_title", { defaultValue: "Low Heart Rate" }),
+        desc: t("advisor.hr_low_desc", {
+          hr,
+          defaultValue: `Your heart rate is slightly low at ${hr} bpm. Ensure you are resting. If you feel dizzy or lightheaded, please sit or lie down and contact your doctor.`,
+        }),
+        type: "warning",
+        color: colors.primary,
+        icon: Heart,
+      });
+    }
+
+    // 2. Oxygen (SpO2)
+    if (spo2 > 0 && spo2 < 95) {
+      list.push({
+        key: "spo2_low",
+        title: t("advisor.spo2_low_title", {
+          defaultValue: "Oxygen Levels Below Optimal",
+        }),
+        desc: isSmoker
+          ? t("advisor.spo2_low_smoker_desc", {
+              spo2,
+              defaultValue: `Your oxygen saturation is low at ${spo2}%. As a smoker, this is a critical reminder to step away from cigarettes immediately. Open windows to improve indoor airflow and step outside for fresh air.`,
+            })
+          : t("advisor.spo2_low_desc", {
+              spo2,
+              defaultValue: `Your oxygen saturation is low at ${spo2}%. Step outside for fresh air, open windows to improve ventilation, and practice deep, steady breathing. Sit upright, and contact your doctor if it continues to drop.`,
+            }),
+        type: "critical",
+        color: colors.danger,
+        icon: Wind,
+      });
+    }
+
+    // 3. Blood Pressure
+    if (sys > 140 || dia > 90) {
+      list.push({
+        key: "bp_high",
+        title: t("advisor.bp_high_title", {
+          defaultValue: "Elevated Blood Pressure",
+        }),
+        desc: t("advisor.bp_high_desc", {
+          sys,
+          dia,
+          defaultValue: `Your blood pressure is elevated at ${sys}/${dia} mmHg. Consider resting in a quiet space, drinking a glass of water, and avoiding high-sodium foods today.`,
+        }),
+        type: "warning",
+        color: colors.danger,
+        icon: Activity,
+      });
+    } else if (sys > 0 && sys < 90) {
+      list.push({
+        key: "bp_low",
+        title: t("advisor.bp_low_title", {
+          defaultValue: "Low Blood Pressure",
+        }),
+        desc: t("advisor.bp_low_desc", {
+          sys,
+          dia,
+          defaultValue: `Your blood pressure is low at ${sys}/${dia} mmHg. Try to sit or lie down, drink a glass of water, and avoid rising too quickly from a seated position.`,
+        }),
+        type: "warning",
+        color: colors.primary,
+        icon: Activity,
+      });
+    }
+
+    // 4. Hydration
+    if (hyd > 0 && hyd < 60) {
+      list.push({
+        key: "hyd_low",
+        title: t("advisor.hyd_low_title", {
+          defaultValue: "Dehydration Warning",
+        }),
+        desc: t("advisor.hyd_low_desc", {
+          hyd,
+          defaultValue: `Your hydration level is low at ${hyd}%. Drink a large glass of water now to help restore your body's optimal fluid balance.`,
+        }),
+        type: "info",
+        color: colors.accent,
+        icon: Droplets,
+      });
+    }
+
+    return list;
+  }, [vitals, patient, t]);
+
+  const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isLogging, setIsLogging] = useState(false);
+  const [showTipSheet, setShowTipSheet] = useState(false);
+  const [formValues, setFormValues] = useState({
+    heart_rate: "",
+    systolic: "",
+    diastolic: "",
+    oxygen_saturation: "",
+    hydration: "",
+  });
+  const [formError, setFormError] = useState(null);
+  const [submitLoading, setSubmitLoading] = useState(false);
+
+  // ── Sprint C Animation Refs ──────────────────────────────────────────────
+  const orbScaleAnim = useRef(new Animated.Value(1)).current;
+  const glowOpacityAnim = useRef(new Animated.Value(0)).current;
+  const prevScoreRef = useRef(null);
+
+  // Mood picker transition
+  const moodFadeAnim = useRef(new Animated.Value(1)).current;
+  const thanksFadeAnim = useRef(new Animated.Value(0)).current;
+
+  // Medications card scaling
+  const medsCardScaleAnim = useRef(new Animated.Value(1)).current;
+  const prevMedsCompletedRef = useRef(null);
+
+  // Dynamic layout measurement for True Shared Morphing Card
+  const [inlineCardAnchorY, setInlineCardAnchorY] = useState(185);
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Calculate dynamic docking target & distance based on status bar / inset layout
+  const dockTargetY = Platform.OS === "ios" ? 56 : (StatusBar.currentHeight ? StatusBar.currentHeight + 12 : 44);
+  const dockDistance = Math.max(10, inlineCardAnchorY - dockTargetY);
+
+  // Native GPU-Accelerated Y Translation (Inline <-> Docked)
+  // At scrollY = 0: translateY = inlineCardAnchorY - dockTargetY (positioned at inline location)
+  // At scrollY = dockDistance: translateY = 0 (docked at top)
+  const cardTranslateY = scrollY.interpolate({
+    inputRange: [0, Math.max(1, dockDistance)],
+    outputRange: [Math.max(0, inlineCardAnchorY - dockTargetY), 0],
+    extrapolate: "clamp",
+  });
+
+  // Internal Content Cross-Morphing (Inline <-> Docked)
+  // Clean cross-fade with 10% safety gap to eliminate double text overlap
+  const eyebrowInlineOpacity = scrollY.interpolate({
+    inputRange: [0, Math.max(1, dockDistance * 0.45)],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+
+  const eyebrowDockedOpacity = scrollY.interpolate({
+    inputRange: [Math.max(1, dockDistance * 0.55), Math.max(1, dockDistance)],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
+
+  // Inline CTA arrow circle fades out cleanly
+  const ctaInlineOpacity = scrollY.interpolate({
+    inputRange: [0, Math.max(1, dockDistance * 0.45)],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+
+  // Docked CTA View pill fades in cleanly
+  const ctaDockedOpacity = scrollY.interpolate({
+    inputRange: [Math.max(1, dockDistance * 0.55), Math.max(1, dockDistance)],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
+
+  // Hero Greeting Section Smooth Progressive Collapse
+  const heroTitleOpacity = scrollY.interpolate({
+    inputRange: [0, Math.max(1, dockDistance * 0.7)],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+
+  const heroTitleTranslateY = scrollY.interpolate({
+    inputRange: [0, Math.max(1, dockDistance * 0.7)],
+    outputRange: [0, -18],
+    extrapolate: "clamp",
+  });
+
+  const heroSubtextOpacity = scrollY.interpolate({
+    inputRange: [0, Math.max(1, dockDistance * 0.8)],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+
+  const heroSubtextTranslateY = scrollY.interpolate({
+    inputRange: [0, Math.max(1, dockDistance * 0.8)],
+    outputRange: [0, -14],
+    extrapolate: "clamp",
+  });
+
+  // Coach card insight cross-fade & slide
+  const coachFadeAnim = useRef(new Animated.Value(1)).current;
+  const coachSlideAnim = useRef(new Animated.Value(0)).current;
+  const [displayInsight, setDisplayInsight] = useState("");
+  const [medsExpanded, setMedsExpanded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Today's Insights Sliding Carousel State & Constants
+  const [activeInsightIndex, setActiveInsightIndex] = useState(0);
+  const insightScrollViewRef = useRef(null);
+  const slideWidth = SW - spacing.heroScreen * 2 - 44; // cardWidth (SW - 48) - card padding (44)
+
+  // Mood states
+  const [moodLogged, setMoodLogged] = useState(false);
+  const [selectedMood, setSelectedMood] = useState(null);
+  const [moodSaving, setMoodSaving] = useState(false);
+  // Ref guards optimistic mood state during save + settle window
+  // Prevents background fetches from resetting moodLogged before the mood propagates through the store
+  const moodSaveSettlingRef = useRef(false);
+
+  // Sleep state
+  const [estimatedSleep, setEstimatedSleep] = useState(null);
+  const [sleepLogging, setSleepLogging] = useState(false);
+
+  const checkDailyMoodStatus = useCallback(() => {
+    if (!patient?.moodHistory) return;
+    const timezone = patient.timezone || "Asia/Kolkata";
+    try {
+      const todayStr = new Date().toLocaleDateString("en-CA", {
+        timeZone: timezone,
+      }); // YYYY-MM-DD
+      const now = new Date();
+      const loggedToday = patient.moodHistory.find((m) => {
+        if (!m.date) return false;
+        // Check 1: Date strings match in patient timezone
+        const dStr = new Date(m.date).toLocaleDateString("en-CA", {
+          timeZone: timezone,
+        });
+        if (dStr === todayStr) return true;
+
+        // Check 2: Time diff is less than 16 hours (guard against clock skew/midnight border)
+        const diffMs = Math.abs(now.getTime() - new Date(m.date).getTime());
+        if (diffMs < 16 * 60 * 60 * 1000) return true;
+
+        return false;
+      });
+      if (loggedToday) {
+        setMoodLogged(true);
+        setSelectedMood(loggedToday.value || loggedToday.mood);
+        thanksFadeAnim.setValue(1);
+        moodFadeAnim.setValue(0);
+      } else {
+        // Don't reset optimistic mood state while a save is in-flight or settling
+        if (!moodSaveSettlingRef.current) {
+          setMoodLogged(false);
+          setSelectedMood(null);
+          moodFadeAnim.setValue(1);
+          thanksFadeAnim.setValue(0);
+        }
+      }
+    } catch (e) {
+      console.warn("Check daily mood error:", e.message);
+    }
+  }, [patient]);
+
+  const saveDailyMood = async (moodValue) => {
+    if (moodSaving) return;
+    setMoodSaving(true);
+    HapticPatterns.log();
+
+    // Guard: protect optimistic state from background fetches until settled
+    moodSaveSettlingRef.current = true;
+
+    // Optimistic state switch FIRST — React immediately renders the thanks view
+    setMoodLogged(true);
+    setSelectedMood(moodValue);
+
+    // Cross-fade: picker fades out + thanks fades in simultaneously (no blank gap)
+    thanksFadeAnim.setValue(0);
+    Animated.parallel([
+      Animated.timing(moodFadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(thanksFadeAnim, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    try {
+      const { data } = await apiService.patients.logMood(moodValue);
+      if (data?.success) {
+        // Update local patient store immediately with the response
+        if (data.patient) {
+          setPatient(data.patient);
+        }
+        // Delayed fetch to sync new live coach card data
+        setTimeout(async () => {
+          await fetchData(true);
+          // Mood has fully propagated through store + cache — safe to let checks run again
+          moodSaveSettlingRef.current = false;
+        }, 1500);
+      } else {
+        moodSaveSettlingRef.current = false;
+        revertMoodCheckin();
+      }
+    } catch (err) {
+      console.warn("Failed to log mood to backend:", err.message);
+      moodSaveSettlingRef.current = false;
+      revertMoodCheckin();
+    } finally {
+      setMoodSaving(false);
+    }
+  };
+
+  const revertMoodCheckin = () => {
+    // Fade out thanks card and restore picker if request failed
+    Animated.timing(thanksFadeAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setMoodLogged(false);
+      setSelectedMood(null);
+      moodFadeAnim.setValue(0);
+      Animated.timing(moodFadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
+  };
+
+  const getSleepPromptKey = () => {
+    const pUid = patient?.id || patient?._id || user?.id;
+    return pUid ? `last_sleep_prompt_date_${pUid}` : "last_sleep_prompt_date";
+  };
+
+  const checkEstimatedSleep = async () => {
+    try {
+      const pUid = patient?.id || patient?._id || user?.id;
+      const result = await sleepEstimation.estimateSleep(pUid);
+      if (result && result.estimate) {
+        setEstimatedSleep({
+          ...result.estimate,
+          confidenceLabel: result.confidenceLabel,
+          displayTitle: result.displayTitle,
+          displaySubtitle: result.displaySubtitle,
+          needsPermission: result.needsPermission,
+        });
+      } else if (result && result.needsPermission) {
+        setEstimatedSleep({
+          needsPermission: result.needsPermission,
+          confidenceLabel: result.confidenceLabel,
+          source: result.source,
+        });
+      } else {
+        setEstimatedSleep(null);
+      }
+    } catch (e) {
+      console.warn("Failed to check estimated sleep:", e.message);
+      setEstimatedSleep(null);
+    }
+  };
+
+  const handleConfirmSleep = async () => {
+    if (!estimatedSleep || estimatedSleep.needsPermission || sleepLogging)
+      return;
+    setSleepLogging(true);
+    try {
+      const apiSource =
+        estimatedSleep.source === "native_health"
+          ? Platform.OS === "android"
+            ? "health_connect"
+            : "healthkit"
+          : "manual";
+      await apiService.patients.logSleep({
+        hours: estimatedSleep.hours,
+        date: new Date(estimatedSleep.lastActiveTime).toISOString(),
+        quality: "good",
+        source: apiSource,
+      });
+      await AsyncStorage.setItem(
+        getSleepPromptKey(),
+        estimatedSleep.dateStr,
+      );
+      setEstimatedSleep(null);
+      AlertManager.alert("Success", "Successfully logged sleep duration!");
+      await fetchData(true);
+    } catch (e) {
+      console.warn("Failed to log estimated sleep:", e.message);
+      AlertManager.alert("Error", "Failed to log sleep. Please try again.");
+    } finally {
+      setSleepLogging(false);
+    }
+  };
+
+  const handleDismissSleep = async () => {
+    if (!estimatedSleep) return;
+    try {
+      const dateStr = estimatedSleep.dateStr || new Date().toDateString();
+      await AsyncStorage.setItem(getSleepPromptKey(), dateStr);
+      setEstimatedSleep(null);
+    } catch (e) {
+      console.warn("Failed to dismiss sleep prompt:", e.message);
+    }
+  };
+
+  const handleEnableDeviceActivity = () => {
+    AlertManager.alert(
+      t("home.usage_permission_title", {
+        defaultValue: "Enable Activity Access",
+      }),
+      t("home.usage_permission_desc", {
+        defaultValue:
+          "We will open your settings. Find 'CareMyMed' in the list and turn on 'Allow usage tracking'.\n\nThis lets us estimate your sleep duration without needing a smartwatch.",
+      }),
+      [
+        {
+          text: t("home.cancel", { defaultValue: "Cancel" }),
+          style: "cancel",
+        },
+        {
+          text: t("home.open_settings", { defaultValue: "Open Settings" }),
+          onPress: async () => {
+            await sleepEstimation.requestUsageStatsPermission();
+          },
+        },
+      ],
+    );
+  };
+
+  const logCustomSleep = async (hours) => {
+    if (!estimatedSleep || sleepLogging) return;
+    setSleepLogging(true);
+    try {
+      const apiSource = "manual";
+      const logDate = estimatedSleep.lastActiveTime
+        ? new Date(estimatedSleep.lastActiveTime).toISOString()
+        : new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const dateStr = estimatedSleep.dateStr || new Date().toDateString();
+
+      await apiService.patients.logSleep({
+        hours: hours,
+        date: logDate,
+        quality: "good",
+        source: apiSource,
+      });
+      await AsyncStorage.setItem(getSleepPromptKey(), dateStr);
+      setEstimatedSleep(null);
+      AlertManager.alert(
+        "Success",
+        `Successfully logged ${hours} hours of sleep!`,
+      );
+      await fetchData(true);
+    } catch (e) {
+      console.warn("Failed to log custom sleep:", e.message);
+      AlertManager.alert("Error", "Failed to log sleep. Please try again.");
+    } finally {
+      setSleepLogging(false);
+    }
+  };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchData(true);
+    setRefreshing(false);
+  }, [fetchData]);
+
+  const [syncStatus, setSyncStatus] = useState({
+    enabled: false,
+    connected: false,
+    lastSync: null,
+    readingsToday: 0,
+    syncing: false,
+  });
+
+  const reduceMotion = useReduceMotion();
+  const staggerAnims = useRef(
+    [...Array(10)].map(() => new Animated.Value(0)),
+  ).current;
+
+  const runAnimations = useCallback(() => {
+    staggerAnims.forEach((a) => a.setValue(0));
+    const animations = staggerAnims.map((a) =>
+      anim.slideUp(a, 1, reduceMotion),
+    );
+    anim.stagger(reduceMotion ? motion.instant : 60, animations).start();
+  }, [staggerAnims, reduceMotion]);
+
+  const skipCacheRef = useRef(false);
+
+  const fetchData = useCallback(
+    async (skipCache = false) => {
+      try {
+        const promises = [
+          storeFetchDashboard(skipCache),
+          apiService.patients
+            .getNotificationsUnreadCount()
+            .then((res) => setUnreadCount(res.data?.count || 0))
+            .catch(() => {}),
+        ];
+        if (skipCache) {
+          promises.push(storeFetchMedications().catch(() => {}));
+        }
+        const [result] = await Promise.all(promises);
+        if (result) {
+          try {
+            const medsToSync = result.meds || [];
+            const medPrefs = result.patient?.medication_call_preferences || {};
+            let daysLeft = null;
+            if (result.patient?.subscription?.expires_at) {
+              daysLeft = Math.ceil(
+                (new Date(result.patient.subscription.expires_at) -
+                  new Date()) /
+                  (1000 * 60 * 60 * 24),
+              );
+            }
+            // Defer notification sync slightly off the main UI loop to prevent JNI lock contention / ANRs
+            setTimeout(() => {
+              syncAllSchedules(medsToSync, medPrefs, daysLeft, !!result.vitals).catch(err => {
+                console.warn("Async syncAllSchedules warning:", err.message);
+              });
+            }, 300);
+          } catch (notifErr) {
+            console.warn("Notification scheduling error:", notifErr.message);
+          }
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [storeFetchDashboard, storeFetchMedications],
+  );
+
+  const handleLogVitals = async () => {
+    setFormError(null);
+    const hr = Number(formValues.heart_rate);
+    const sys = Number(formValues.systolic);
+    const dia = Number(formValues.diastolic);
+    const o2 = Number(formValues.oxygen_saturation);
+    const hyd = Number(formValues.hydration);
+    if (!hr || !sys || !dia || !o2 || !hyd) {
+      setFormError("All fields are required.");
+      return;
+    }
+    try {
+      setSubmitLoading(true);
+      await apiService.patients.logVitals({
+        date: new Date().toISOString(),
+        heart_rate: hr,
+        blood_pressure: { systolic: sys, diastolic: dia },
+        oxygen_saturation: o2,
+        hydration: hyd,
+      });
+      HapticPatterns.log();
+      setIsLogging(false);
+      setFormValues({
+        heart_rate: "",
+        systolic: "",
+        diastolic: "",
+        oxygen_saturation: "",
+        hydration: "",
+      });
+      DeviceEventEmitter.emit("VITALS_UPDATED", { source: "manual" });
+      await fetchData(true);
+    } catch (err) {
+      setFormError(handleAxiosError(err));
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  const hasAnimated = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      const task = InteractionManager.runAfterInteractions(() => {
+        fetchData(skipCacheRef.current).then(() => {
+          skipCacheRef.current = true;
+          if (!hasAnimated.current) {
+            hasAnimated.current = true;
+            runAnimations();
+          }
+        });
+        apiService.patients
+          .getNotificationsUnreadCount()
+          .then((res) => setUnreadCount(res.data?.count || 0))
+          .catch(() => {});
+      });
+      const interval = setInterval(() => fetchData(true), 120000);
+      return () => {
+        task.cancel();
+        clearInterval(interval);
+      };
+    }, [fetchData, runAnimations]),
+  );
+
+  useEffect(() => {
+    const initSync = async () => {
+      await HealthSyncService.initialize();
+      const status = await HealthSyncService.getStatus();
+      setSyncStatus(status);
+    };
+    initSync();
+    const unsub = HealthSyncService.addListener((update) => {
+      setSyncStatus((prev) => ({ ...prev, ...update }));
+      if (update.totalAccepted > 0) fetchData(true);
+    });
+    return () => unsub();
+  }, [fetchData]);
+
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    // Run sleep check on mount
+    checkEstimatedSleep();
+
+    const subscription = AppState.addEventListener(
+      "change",
+      async (nextAppState) => {
+        if (nextAppState === "active") {
+          setNow(new Date());
+          checkEstimatedSleep();
+        }
+      },
+    );
+    return () => subscription.remove();
+  }, []);
+
+  // Sync mood state when patient data changes
+  useEffect(() => {
+    checkDailyMoodStatus();
+  }, [patient, checkDailyMoodStatus]);
+
+  // ── Derived values ─────────────────────────────────────────────────────
+  const takenCount = meds.filter((m) => m.taken).length;
+  const totalMeds = meds.length;
+  const adherencePct =
+    totalMeds > 0 ? Math.round((takenCount / totalMeds) * 100) : 0;
+  const medicationStreak =
+    patient?.patient_health_state?.adherence?.streak ??
+    adherenceDetails?.streak ??
+    0;
+  const dateStr = new Date().toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  const firstName = (patient?.name || displayName)?.split(" ")[0] || "there";
+
+  let daysPremiumRemaining = 0;
+  if (patient?.subscription?.expires_at) {
+    const diff = new Date(patient.subscription.expires_at) - new Date();
+    daysPremiumRemaining = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  }
+
+  const openPremium = () => {
+    const isRenewal = !!patient?.subscription?.expires_at;
+    navigation.navigate("PremiumShowcase", { isRenewal });
+  };
+
+  useEffect(() => {
+    const checkPremiumPopup = async () => {
+      if (daysPremiumRemaining <= 7 && daysPremiumRemaining > 0) {
+        try {
+          const lastPrompt = await AsyncStorage.getItem("last_premium_prompt");
+          const today = new Date().toDateString();
+          if (lastPrompt !== today) {
+            await AsyncStorage.setItem("last_premium_prompt", today);
+            setTimeout(() => openPremium(), 1500);
+          }
+        } catch (e) {
+          console.error("Premium prompt error", e);
+        }
+      }
+    };
+    if (!loading) {
+      checkPremiumPopup();
+    }
+  }, [daysPremiumRemaining, loading]);
+
+  // ── The Morning/Evening Brief (Dynamic Context) ──
+  const getDynamicBrief = () => {
+    const h = now.getHours();
+    const isMorning = h >= 5 && h < 12;
+    const isEvening = h >= 18 && h <= 23;
+
+    const dailyLog = adherenceDetails?.daily_log || [];
+    let yesterdayPct = null;
+    if (dailyLog.length >= 2) {
+      const yLog = dailyLog[dailyLog.length - 2];
+      if (yLog && yLog.total > 0) {
+        yesterdayPct = Math.round((yLog.taken / yLog.total) * 100);
+      }
+    }
+
+    const scheduledToday = totalMeds;
+    const takenToday = takenCount;
+    const incompleteToday = scheduledToday - takenToday;
+
+    if (isMorning) {
+      if (yesterdayPct === 100) {
+        return {
+          greeting: t("home.brief_morning_good", {
+            defaultValue: "Good morning,",
+          }),
+          sub: t("home.brief_morning_perfect", {
+            defaultValue: `Yesterday was perfect. You have ${scheduledToday} medication${scheduledToday !== 1 ? "s" : ""} this morning.`,
+          }),
+        };
+      } else if (yesterdayPct !== null && yesterdayPct < 100) {
+        return {
+          greeting: t("home.brief_morning_fresh", {
+            defaultValue: `Good morning,`,
+          }),
+          sub: t("home.brief_morning_restart", {
+            defaultValue: `Today's a fresh start. ${scheduledToday} medication${scheduledToday !== 1 ? "s" : ""} scheduled this morning.`,
+          }),
+        };
+      } else {
+        return {
+          greeting: t("home.brief_morning_good", {
+            defaultValue: "Good morning,",
+          }),
+          sub: t("home.brief_morning_build", {
+            defaultValue: "Let's build a good day.",
+          }),
+        };
+      }
+    } else if (isEvening) {
+      if (scheduledToday > 0 && incompleteToday === 0) {
+        return {
+          greeting: t("home.brief_evening_winding", {
+            defaultValue: "Winding down,",
+          }),
+          sub: t("home.brief_evening_perfect", {
+            defaultValue: "Everything's logged for today. Rest well.",
+          }),
+        };
+      } else if (scheduledToday > 0 && incompleteToday > 0) {
+        return {
+          greeting: t("home.brief_evening_greeting", {
+            defaultValue: `Evening,`,
+          }),
+          sub: t("home.brief_evening_almost", {
+            defaultValue: `${incompleteToday} more medication${incompleteToday !== 1 ? "s" : ""} before bed — nearly there.`,
+          }),
+        };
+      } else {
+        return {
+          greeting: t("home.brief_evening_good", {
+            defaultValue: "Good evening,",
+          }),
+          sub: t("home.brief_evening_checkin", {
+            defaultValue: "How are you feeling today?",
+          }),
+        };
+      }
+    } else {
+      return {
+        greeting: t("home.brief_afternoon", {
+          defaultValue: `Good afternoon,`,
+        }),
+        sub:
+          scheduledToday > 0
+            ? incompleteToday === 0
+              ? t("home.brief_all_done", {
+                  defaultValue: "All done for today! 🎉",
+                })
+              : t("home.brief_left", {
+                  defaultValue: `${incompleteToday} left today.`,
+                })
+            : t("home.brief_hope_good", {
+                defaultValue: "Hope you're having a good day.",
+              }),
+      };
+    }
+  };
+  const brief = getDynamicBrief();
+
+  const getNextDose = () => {
+    const hour = new Date().getHours();
+    const prefs = patient?.medication_call_preferences || {};
+    const pending = meds.filter((m) => !m.taken);
+    if (pending.length === 0) return null;
+    const slots = ["morning", "afternoon", "evening", "night"];
+    const slotEndHours = { morning: 11, afternoon: 16, evening: 19, night: 24 };
+    const timeLabels = {
+      morning: t("time_slots.morning", { defaultValue: "Morning" }),
+      afternoon: t("time_slots.afternoon", { defaultValue: "Afternoon" }),
+      evening: t("time_slots.evening", { defaultValue: "Evening" }),
+      night: t("time_slots.night", { defaultValue: "Night" }),
+    };
+    for (const s of slots) {
+      const slotPending = pending.filter((m) => m.type === s);
+      if (slotPending.length > 0) {
+        const isOverdue = hour >= (slotEndHours[s] || 24);
+        return {
+          slot: timeLabels[s] || s,
+          time: prefs[s] || "",
+          count: slotPending.length,
+          overdue: isOverdue,
+        };
+      }
+    }
+    return {
+      slot: t("home.later", { defaultValue: "Later" }),
+      time: "",
+      count: pending.length,
+      overdue: false,
+    };
+  };
+  const nextDose = getNextDose();
+
+  const adherenceColor =
+    adherencePct >= 80
+      ? colors.success
+      : adherencePct >= 50
+        ? colors.warning
+        : colors.danger;
+  const hasContextualAlerts = !vitals || meds.some((m) => !m.taken);
+
+  const entranceStyle = (i) => ({
+    opacity: staggerAnims[i],
+    transform: [
+      {
+        translateY: staggerAnims[i].interpolate({
+          inputRange: [0, 1],
+          outputRange: [reduceMotion ? 0 : 20, 0],
+        }),
+      },
+    ],
+  });
+
+  const isNewUser =
+    totalMeds === 0 && vitalsHistory.length === 0 && medicationStreak === 0;
+  const hasVitalsToday = !!(
+    vitals?.heart_rate ||
+    vitals?.blood_pressure?.systolic ||
+    (vitals?.oxygen_saturation != null &&
+      vitals?.oxygen_saturation !== undefined) ||
+    (vitals?.hydration != null && vitals?.hydration !== undefined)
+  );
+
+  // ── Unified Health Score from Backend ──
+  const healthScore =
+    patient?.patient_health_state?.score ??
+    patient?.health_score?.score ??
+    patient?.healthScoreCache ??
+    82;
+  const healthLabel =
+    patient?.patient_health_state?.label ??
+    patient?.health_score?.label ??
+    t("health_profile.status_stable", { defaultValue: "Excellent" });
+  const healthGrade =
+    patient?.patient_health_state?.grade ?? patient?.health_score?.grade ?? "A";
+  const healthColor =
+    patient?.patient_health_state?.color ??
+    patient?.health_score?.color ??
+    "#10B981";
+
+  const hasHistory =
+    healthHistory &&
+    Array.isArray(healthHistory.history) &&
+    healthHistory.history.length >= 2;
+  const scoreDiff = hasHistory
+    ? (healthHistory.deltas?.score_delta_30d ?? 0)
+    : 0;
+  const prevScore = hasHistory ? healthScore - scoreDiff : null;
+  const isLowConfidence =
+    (patient?.patient_health_state?.breakdown?.adherence?.note === "no_data" ||
+      patient?.patient_health_state?.breakdown?.adherence?.pts === 15) &&
+    (patient?.patient_health_state?.breakdown?.vitals?.note === "no_vitals" ||
+      patient?.patient_health_state?.breakdown?.vitals?.pts === 7);
+
+  const targetMilestone = Math.min(
+    100,
+    Math.ceil(healthScore / 5) * 5 + (healthScore % 5 === 0 ? 5 : 0),
+  );
+  const milestoneProgress = healthScore / targetMilestone;
+
+  // Sequenced Score & Progress Animations refs
+  const lastScoreRef = useRef(null);
+  const badgeOpacityAnim = useRef(new Animated.Value(0)).current;
+  const ringProgressAnim = useRef(new Animated.Value(0)).current;
+  const scoreAnim = useRef(new Animated.Value(0)).current;
+  const [animatedScore, setAnimatedScore] = useState(0);
+
+  // Sync scoreAnim listener
+  useEffect(() => {
+    const listenerId = scoreAnim.addListener(({ value }) => {
+      setAnimatedScore(Math.round(value));
+    });
+    return () => {
+      scoreAnim.removeListener(listenerId);
+    };
+  }, [scoreAnim]);
+
+  // Score, Ring and Grade Badge premium sequenced animation
+  useEffect(() => {
+    const startScore = lastScoreRef.current !== null ? lastScoreRef.current : 0;
+    const targetScore = healthScore;
+    lastScoreRef.current = targetScore;
+
+    if (startScore === targetScore) {
+      scoreAnim.setValue(targetScore);
+      ringProgressAnim.setValue(targetScore / 100);
+      badgeOpacityAnim.setValue(1);
+      return;
+    }
+
+    if (reduceMotion) {
+      scoreAnim.setValue(targetScore);
+      ringProgressAnim.setValue(targetScore / 100);
+      badgeOpacityAnim.setValue(1);
+      return;
+    }
+
+    badgeOpacityAnim.setValue(0);
+    Animated.sequence([
+      // 1. Ring fills (using timing/spring, useNativeDriver: false since strokeDashoffset is not supported by native driver)
+      Animated.timing(ringProgressAnim, {
+        toValue: targetScore / 100,
+        duration: motion.slow,
+        useNativeDriver: false,
+      }),
+      // 2. Number counts up
+      Animated.timing(scoreAnim, {
+        toValue: targetScore,
+        duration: motion.normal,
+        useNativeDriver: false,
+      }),
+      // 3. Grade badge fades and scales in
+      Animated.timing(badgeOpacityAnim, {
+        toValue: 1,
+        duration: motion.fast,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [healthScore, reduceMotion]);
+
+  // ── Sprint C Animation Effects ───────────────────────────────────────────
+  // Health Orb Spring & Glow Pulse
+  useEffect(() => {
+    if (prevScoreRef.current !== null && healthScore > prevScoreRef.current) {
+      HapticPatterns.milestone();
+      if (reduceMotion) return;
+      Animated.parallel([
+        Animated.sequence([
+          Animated.spring(orbScaleAnim, {
+            toValue: 1.08,
+            friction: 3,
+            tension: 40,
+            useNativeDriver: true,
+          }),
+          Animated.spring(orbScaleAnim, {
+            toValue: 1,
+            friction: 5,
+            tension: 40,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.sequence([
+          Animated.timing(glowOpacityAnim, {
+            toValue: 0.8,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(glowOpacityAnim, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+    }
+    prevScoreRef.current = healthScore;
+  }, [healthScore, reduceMotion]);
+
+  // Perfect Day Card Scale (Adherence complete)
+  useEffect(() => {
+    const isCompleted = totalMeds > 0 && adherencePct === 100;
+    if (
+      prevMedsCompletedRef.current !== null &&
+      isCompleted &&
+      !prevMedsCompletedRef.current
+    ) {
+      HapticPatterns.allDone();
+      setShowCelebration(false);
+      setTimeout(() => setShowCelebration(true), 10);
+      if (reduceMotion) return;
+      Animated.sequence([
+        Animated.spring(medsCardScaleAnim, {
+          toValue: 1.03,
+          friction: 3,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+        Animated.spring(medsCardScaleAnim, {
+          toValue: 1,
+          friction: 5,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+    prevMedsCompletedRef.current = isCompleted;
+  }, [adherencePct, totalMeds, reduceMotion]);
+
+  // Coach Card Insight text transition
+  const targetInsightText = useMemo(() => {
+    if (patient?.patient_health_state?.coach?.insight) {
+      return patient.patient_health_state.coach.insight;
+    }
+    if (activeInsights.length > 0) {
+      return activeInsights[0].desc;
+    }
+    if (selectedMood === "sad") {
+      return t("home.insight_sad_fallback", {
+        defaultValue: `Sorry you are feeling down today, ${firstName}. Let's focus on small wins: take your medications and drink a warm cup of water.`,
+        name: firstName,
+      });
+    }
+    return t("home.insight_default_fallback", {
+      defaultValue: `All your tracked indicators look outstanding, ${firstName}! Your consistency this week has been excellent. Keep up the good work.`,
+      name: firstName,
+    });
+  }, [
+    patient?.patient_health_state?.coach?.insight,
+    activeInsights,
+    selectedMood,
+    firstName,
+    t,
+  ]);
+
+  // Dynamic Slide Insights for Carousel
+  const slideInsights = useMemo(() => {
+    // Slide 1: Medication Consistency
+    let medInsight = "";
+    const incomplete = totalMeds - takenCount;
+    if (totalMeds === 0) {
+      medInsight = t("home.insight_no_meds", {
+        defaultValue:
+          "No medications scheduled for today. Keep checking your dashboard for updates.",
+      });
+    } else if (incomplete === 0) {
+      medInsight = t("home.insight_all_taken", {
+        defaultValue:
+          "You have taken all medications today! Outstanding consistency.",
+      });
+    } else if (incomplete === 1) {
+      medInsight = t("home.insight_one_left", {
+        defaultValue:
+          "Only one medication remains for today. Let's get it done!",
+      });
+    } else {
+      medInsight = t("home.insight_adherence_fallback", {
+        defaultValue:
+          "Pairing medications with daily routines like meals helps build consistency.",
+      });
+    }
+
+    // Slide 2: Vitals Pulse
+    let vitalsInsight = "";
+    if (activeInsights.length > 0) {
+      vitalsInsight = activeInsights[0].desc;
+    } else {
+      vitalsInsight = t("home.insight_vitals_stable", {
+        defaultValue:
+          "Your vitals (Heart Rate & Blood Pressure) are within normal, stable ranges today.",
+      });
+    }
+
+    // Slide 3: Wellness & Mindset
+    let wellnessInsight = "";
+    if (selectedMood === "sad") {
+      wellnessInsight = t("home.insight_sad_fallback", {
+        defaultValue: `Sorry you are feeling down today, ${firstName}. Let's focus on small wins: take your medications and drink a warm cup of water.`,
+        name: firstName,
+      });
+    } else {
+      wellnessInsight = t("home.insight_default_fallback", {
+        defaultValue: `All your tracked indicators look outstanding, ${firstName}! Your consistency this week has been excellent. Keep up the good work.`,
+        name: firstName,
+      });
+    }
+
+    return [
+      {
+        id: "meds",
+        title: t("home.insight_meds_title", {
+          defaultValue: "Medication Consistency",
+        }),
+        desc: medInsight,
+        icon: Pill,
+        iconColor: "#34D399",
+      },
+      {
+        id: "vitals",
+        title: t("home.insight_vitals_title", { defaultValue: "Vitals Pulse" }),
+        desc: vitalsInsight,
+        icon: Activity,
+        iconColor: "#60A5FA",
+      },
+      {
+        id: "wellness",
+        title: t("home.insight_wellness_title", {
+          defaultValue: "Daily Wellness",
+        }),
+        desc: wellnessInsight,
+        icon: Sparkles,
+        iconColor: "#C084FC",
+      },
+    ];
+  }, [totalMeds, takenCount, activeInsights, selectedMood, firstName, t]);
+
+  useEffect(() => {
+    if (!displayInsight) {
+      setDisplayInsight(targetInsightText);
+      coachFadeAnim.setValue(1);
+      coachSlideAnim.setValue(0);
+      return;
+    }
+    if (displayInsight !== targetInsightText) {
+      Animated.parallel([
+        Animated.timing(coachFadeAnim, {
+          toValue: 0,
+          duration: 120,
+          useNativeDriver: true,
+        }),
+        Animated.timing(coachSlideAnim, {
+          toValue: -8,
+          duration: 120,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setDisplayInsight(targetInsightText);
+        Animated.parallel([
+          Animated.timing(coachFadeAnim, {
+            toValue: 1,
+            duration: 130,
+            useNativeDriver: true,
+          }),
+          Animated.timing(coachSlideAnim, {
+            toValue: 0,
+            duration: 130,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
+    }
+  }, [targetInsightText]);
+
+  const hrHistory = useMemo(() => {
+    return (vitalsHistory || [])
+      .map((v) => Number(v.heart_rate))
+      .filter((v) => !isNaN(v) && v > 0)
+      .slice(-7);
+  }, [vitalsHistory]);
+
+  const bpHistory = useMemo(() => {
+    return (vitalsHistory || [])
+      .map((v) => Number(v.blood_pressure?.systolic ?? v.systolic))
+      .filter((v) => !isNaN(v) && v > 0)
+      .slice(-7);
+  }, [vitalsHistory]);
+
+  const spo2History = useMemo(() => {
+    return (vitalsHistory || [])
+      .map((v) => Number(v.oxygen_saturation))
+      .filter((v) => !isNaN(v) && v > 0)
+      .slice(-7);
+  }, [vitalsHistory]);
+
+  const hydHistory = useMemo(() => {
+    return (vitalsHistory || [])
+      .map((v) => Number(v.hydration))
+      .filter((v) => !isNaN(v) && v > 0)
+      .slice(-7);
+  }, [vitalsHistory]);
+
+  // ── 1. Priority Greeting Selection Engine ──
+  const getAdaptiveGreeting = () => {
+    const incomplete = totalMeds - takenCount;
+
+    // Priority 1: Perfect Day (all meds completed)
+    if (totalMeds > 0 && incomplete === 0) {
+      const h = now.getHours();
+      const isMorning = h >= 5 && h < 12;
+      return isMorning
+        ? `🏆 Perfect morning, ${firstName}!`
+        : `🏆 Perfect day so far, ${firstName}!`;
+    }
+
+    // Priority 2: Active Consistency Streak
+    if (medicationStreak >= 3) {
+      return `🔥 ${medicationStreak} Day Streak, ${firstName}!`;
+    }
+
+    // Priority 3: Score Improvement
+    if (scoreDiff > 0) {
+      return `📈 Health score is up, ${firstName}!`;
+    }
+
+    // Priority 4: Final Medication Remaining
+    if (incomplete === 1) {
+      return `⚡ One medication left, ${firstName}!`;
+    }
+
+    // Priority 5: Standard Context Greeting (time of day)
+    return `${brief.greeting} ${firstName} 👋`;
+  };
+  const adaptiveGreeting = getAdaptiveGreeting();
+
+  // ── 2. Dynamic Rotating Subtitle under greeting ──
+  const getHeaderSubtitle = () => {
+    if (!moodLogged) {
+      return "Today's mood check-in pending";
+    }
+    if (scoreDiff > 0) {
+      return `Your health score is up by +${scoreDiff} this month`;
+    }
+    if (nextDose) {
+      if (nextDose.overdue) {
+        return `Overdue: ${nextDose.slot} medication (${nextDose.time})`;
+      }
+      return `Next medication: ${nextDose.slot} (${nextDose.time})`;
+    }
+    if (takenCount > 0) {
+      return `${takenCount} medication${takenCount > 1 ? "s" : ""} completed today`;
+    }
+    return "Your wellness tracker is active";
+  };
+  const headerSubtitle = getHeaderSubtitle();
+
+  // ── Vitals Form (recovered) ─────────────────────────────────────────────
+  const renderVitalsForm = (isInline) => {
+    return (
+      <View style={{ marginTop: isInline ? 0 : 20 }}>
+        {formError && (
+          <View style={styles.errorBanner}>
+            <AlertTriangle size={15} color="#DC2626" />
+            <Text style={styles.errorText}>{formError}</Text>
+          </View>
+        )}
+        <View style={styles.formRow}>
+          <View style={{ flex: 1 }}>
+            <SmartInput
+              ref={isInline ? heartRateInputRef : undefined}
+              label={t("home.heart_rate_label", {
+                defaultValue: "Heart Rate (bpm)",
+              })}
+              keyboardType="numeric"
+              placeholder="72"
+              value={formValues.heart_rate}
+              onChangeText={(text) =>
+                setFormValues((p) => ({ ...p, heart_rate: text }))
+              }
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <SmartInput
+              label={t("home.o2_label", { defaultValue: "O₂ Saturation (%)" })}
+              keyboardType="numeric"
+              placeholder="98"
+              value={formValues.oxygen_saturation}
+              onChangeText={(text) =>
+                setFormValues((p) => ({ ...p, oxygen_saturation: text }))
+              }
+            />
+          </View>
+        </View>
+        <View style={styles.formRow}>
+          <View style={{ flex: 1 }}>
+            <SmartInput
+              label={t("home.systolic_label", {
+                defaultValue: "Systolic (mmHg)",
+              })}
+              keyboardType="numeric"
+              placeholder="120"
+              value={formValues.systolic}
+              onChangeText={(text) =>
+                setFormValues((p) => ({ ...p, systolic: text }))
+              }
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <SmartInput
+              label={t("home.diastolic_label", {
+                defaultValue: "Diastolic (mmHg)",
+              })}
+              keyboardType="numeric"
+              placeholder="80"
+              value={formValues.diastolic}
+              onChangeText={(text) =>
+                setFormValues((p) => ({ ...p, diastolic: text }))
+              }
+            />
+          </View>
+        </View>
+        <SmartInput
+          label={t("home.hydration_label", { defaultValue: "Hydration (%)" })}
+          keyboardType="numeric"
+          placeholder="65"
+          value={formValues.hydration}
+          onChangeText={(text) =>
+            setFormValues((p) => ({ ...p, hydration: text }))
+          }
+        />
+        <Pressable
+          style={styles.submitBtn}
+          onPress={handleLogVitals}
+          disabled={submitLoading}
+        >
+          <LinearGradient
+            colors={["#A78BFA", "#7C3AED"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+          {submitLoading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.submitBtnText}>
+              {t("home.save_record", { defaultValue: "Save Record" })}
+            </Text>
+          )}
+        </Pressable>
+      </View>
+    );
+  };
+
+  // ── Loading skeleton ─────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        <View style={styles.skeletonHeader}>
+          <View style={{ paddingHorizontal: spacing.heroScreen }}>
+            <SkeletonItem
+              width={180}
+              height={28}
+              borderRadius={10}
+              style={{ marginBottom: 8 }}
+            />
+            <SkeletonItem
+              width={240}
+              height={14}
+              borderRadius={6}
+              style={{ marginBottom: 28 }}
+            />
+          </View>
+        </View>
+        <View style={{ flex: 1, padding: 20, gap: 14 }}>
+          <View style={{ alignItems: "center", marginVertical: 10 }}>
+            <SkeletonItem width={210} height={210} borderRadius={105} />
+          </View>
+          <SkeletonItem width="100%" height={80} borderRadius={24} />
+          <SkeletonItem width="100%" height={60} borderRadius={20} />
+          <SkeletonItem width="100%" height={140} borderRadius={24} />
+          <SkeletonItem width="100%" height={80} borderRadius={24} />
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <TabScreenTransition>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <StatusBar
+            barStyle="dark-content"
+            backgroundColor="transparent"
+            translucent
+          />
+
+          {/* Ambient Background Decorations */}
+          <View style={StyleSheet.absoluteFill}>
+            <Svg
+              height="100%"
+              width="100%"
+              viewBox="0 0 400 850"
+              preserveAspectRatio="none"
+            >
+              <Defs>
+                <SvgLinearGradient
+                  id="topBg"
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="100%"
+                >
+                  <Stop offset="0%" stopColor="#E0F2FE" stopOpacity="0.75" />
+                  <Stop offset="100%" stopColor="#F8FAFC" stopOpacity="0" />
+                </SvgLinearGradient>
+                <SvgLinearGradient
+                  id="bottomBg"
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="100%"
+                >
+                  <Stop offset="0%" stopColor="#FFF1F2" stopOpacity="0.75" />
+                  <Stop offset="100%" stopColor="#F8FAFC" stopOpacity="0" />
+                </SvgLinearGradient>
+              </Defs>
+
+              {/* Top right curvy gradient backdrop */}
+              <Path
+                d="M180 0 C260 120, 320 150, 400 120 L400 0 Z"
+                fill="url(#topBg)"
+              />
+
+              {/* Bottom left curvy gradient backdrop */}
+              <Path
+                d="M0 620 C60 700, 140 720, 220 850 L0 850 Z"
+                fill="url(#bottomBg)"
+              />
+
+              {/* Top-right overlapping wavy contours */}
+              <Path
+                d="M220 0 C280 80, 320 100, 400 70"
+                stroke={colors.primary}
+                strokeWidth="0.8"
+                fill="none"
+                opacity="0.08"
+              />
+              <Path
+                d="M200 0 C265 95, 310 115, 400 90"
+                stroke={colors.primary}
+                strokeWidth="0.8"
+                fill="none"
+                opacity="0.08"
+              />
+              <Path
+                d="M180 0 C250 110, 300 130, 400 110"
+                stroke={colors.primary}
+                strokeWidth="0.8"
+                fill="none"
+                opacity="0.08"
+              />
+              <Path
+                d="M160 0 C235 125, 290 145, 400 130"
+                stroke={colors.primary}
+                strokeWidth="0.8"
+                fill="none"
+                opacity="0.08"
+              />
+              <Path
+                d="M140 0 C220 140, 280 160, 400 150"
+                stroke={colors.borderLight}
+                strokeWidth="0.8"
+                fill="none"
+                opacity="0.12"
+              />
+              <Path
+                d="M120 0 C205 155, 270 175, 400 170"
+                stroke={colors.borderLight}
+                strokeWidth="0.8"
+                fill="none"
+                opacity="0.12"
+              />
+
+              {/* Bottom-left overlapping wavy contours */}
+              <Path
+                d="M0 640 C60 670, 100 710, 160 850"
+                stroke={colors.danger}
+                strokeWidth="0.8"
+                fill="none"
+                opacity="0.08"
+              />
+              <Path
+                d="M0 620 C70 655, 115 700, 185 850"
+                stroke={colors.danger}
+                strokeWidth="0.8"
+                fill="none"
+                opacity="0.08"
+              />
+              <Path
+                d="M0 600 C80 640, 130 690, 210 850"
+                stroke={colors.danger}
+                strokeWidth="0.8"
+                fill="none"
+                opacity="0.08"
+              />
+              <Path
+                d="M0 580 C90 625, 145 680, 235 850"
+                stroke={colors.borderLight}
+                strokeWidth="0.8"
+                fill="none"
+                opacity="0.12"
+              />
+              <Path
+                d="M0 560 C100 610, 160 670, 260 850"
+                stroke={colors.borderLight}
+                strokeWidth="0.8"
+                fill="none"
+                opacity="0.12"
+              />
+
+              {/* Stylized sweeping curve lines */}
+              <Path
+                d="M-20 180 C80 230, 180 150, 280 230 C340 280, 380 250, 420 310"
+                stroke={colors.borderLight}
+                strokeWidth="1.5"
+                fill="none"
+                opacity="0.4"
+              />
+              <Path
+                d="M-40 210 C60 260, 160 180, 260 260 C320 310, 360 280, 400 340"
+                stroke={colors.borderLight}
+                strokeWidth="1"
+                fill="none"
+                opacity="0.25"
+              />
+
+              {/* Concentric abstract rings */}
+              <SvgCircle
+                cx="320"
+                cy="480"
+                r="130"
+                stroke={colors.borderLight}
+                strokeWidth="1"
+                fill="none"
+                opacity="0.2"
+              />
+              <SvgCircle
+                cx="320"
+                cy="480"
+                r="90"
+                stroke={colors.borderLight}
+                strokeWidth="1.2"
+                fill="none"
+                opacity="0.1"
+              />
+            </Svg>
+          </View>
+
+          {/* ── SINGLE CONTINUOUS SHARED MORPHING CARD SURFACE ── */}
+          <Animated.View
+            pointerEvents="box-none"
+            style={[
+              styles.singleSharedCardContainer,
+              {
+                top: dockTargetY,
+                transform: [{ translateY: cardTranslateY }],
+              },
+            ]}
+          >
+            <Pressable
+              style={styles.cardInternalPressable}
+              onPress={() => navigation.navigate(nextAction.targetScreen)}
+            >
+              <View style={styles.cardIconBadge}>
+                {nextAction.iconType === "medication" ? (
+                  <Pill size={16} color="#7C3AED" />
+                ) : nextAction.iconType === "vital" ? (
+                  <Heart size={16} color="#7C3AED" />
+                ) : nextAction.iconType === "alert" ? (
+                  <AlertTriangle size={16} color="#EF4444" />
+                ) : (
+                  <Sparkles size={16} color="#7C3AED" />
+                )}
+              </View>
+
+              <View style={{ flex: 1, paddingRight: 8, justifyContent: "center" }}>
+                <View style={{ height: 16, justifyContent: "center", position: "relative" }}>
+                  <Animated.View
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      top: 0,
+                      opacity: eyebrowInlineOpacity,
+                    }}
+                  >
+                    <View style={styles.eyebrowCapsule}>
+                      <Text style={styles.eyebrowText}>
+                        {(nextAction.bannerTitle || "WHAT'S NEXT?").toUpperCase()}
+                      </Text>
+                    </View>
+                  </Animated.View>
+
+                  <Animated.View
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      top: 0,
+                      opacity: eyebrowDockedOpacity,
+                    }}
+                  >
+                    <Text style={styles.dockedEyebrowText}>NEXT STEP</Text>
+                  </Animated.View>
                 </View>
 
-                {/* Main Scroll Content */}
-                <ScrollView
-                    contentContainerStyle={[
-                        styles.scrollContent,
-                        { paddingBottom: insets.bottom + layout.TAB_BAR_HEIGHT + 32 }
-                    ]}
-                    showsVerticalScrollIndicator={false}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={onRefresh}
-                            tintColor={colors.primary}
-                            colors={[colors.primary]}
-                        />
-                    }
+                <Text
+                  style={styles.cardMainText}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
                 >
-                    {/* ═════════════════════════════════════════════════════════════════════ */}
-                    {/* ── ZONE 2: HEALTH STATE ("HOW AM I?") ───────────────────────────── */}
-                    {/* ═════════════════════════════════════════════════════════════════════ */}
-                    <View style={styles.zoneWrapper}>
-                        {isLoading ? (
-                            <AnimatedCard style={styles.heroCard}>
-                                <View style={styles.heroLoadingRow}>
-                                    <RingSkeleton size={88} strokeWidth={8} />
-                                    <View style={styles.heroLoadingText}>
-                                        <ShimmerBlock width={140} height={20} borderRadius={6} />
-                                        <ShimmerBlock width={190} height={14} borderRadius={4} style={{ marginTop: 8 }} />
-                                    </View>
-                                </View>
-                            </AnimatedCard>
-                        ) : isLowProfileCompletion ? (
-                            /* Elderly-Friendly Setup Journey Card (No Hollow Clinical Rings) */
-                            <AnimatedCard
-                                onPress={() => navigation.navigate('Profile')}
-                                style={styles.heroCard}
-                            >
-                                <View style={styles.setupCardContent}>
-                                    <View style={styles.setupHeader}>
-                                        <View style={styles.setupIconBox}>
-                                            <Sparkles size={22} color={colors.primary} />
-                                        </View>
-                                        <View style={styles.setupTitleCol}>
-                                            <Text style={styles.setupTitle}>Getting Started</Text>
-                                            <Text style={styles.setupSubtitle}>Setting up your care profile: Step 2 of 4</Text>
-                                        </View>
-                                    </View>
+                  {nextAction.actionPayload?.name
+                    ? `Take ${nextAction.actionPayload.name}`
+                    : nextAction.bannerDescription?.split("•")[0]?.trim() ||
+                      nextAction.bannerDescription}
+                </Text>
+              </View>
 
-                                    <View style={styles.setupProgressTrack}>
-                                        <View style={[styles.setupProgressFill, { width: `${Math.max(25, completionPct)}%` }]} />
-                                    </View>
+              <View style={{ width: 56, height: 32, alignItems: "flex-end", justifyContent: "center", position: "relative" }}>
+                <Animated.View
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    opacity: ctaInlineOpacity,
+                  }}
+                >
+                  <View style={styles.arrowCircle}>
+                    <ChevronRight size={15} color="#64748B" />
+                  </View>
+                </Animated.View>
 
-                                    <View style={styles.setupActionRow}>
-                                        <Text style={styles.setupHelpText}>Complete profile for personalized daily insights</Text>
-                                        <View style={styles.setupButton}>
-                                            <Text style={styles.setupButtonText}>Complete Setup</Text>
-                                            <ChevronRight size={14} color="#FFFFFF" />
-                                        </View>
-                                    </View>
-                                </View>
-                            </AnimatedCard>
-                        ) : (
-                            /* Verified Health State Hero Signature */
-                            <AnimatedCard
-                                onPress={() => navigation.navigate('HealthProfile')}
-                                style={styles.heroCard}
-                            >
-                                <View style={styles.heroContentRow}>
-                                    <ProgressRing
-                                        size={88}
-                                        strokeWidth={8}
-                                        progress={healthScore}
-                                        ringColors={[colors.primary, colors.accent]}
-                                    >
-                                        <Text style={styles.heroScoreNumber}>{healthScore}</Text>
-                                    </ProgressRing>
+                <Animated.View
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    opacity: ctaDockedOpacity,
+                  }}
+                >
+                  <View style={styles.dockedCtaBadge}>
+                    <Text style={styles.dockedCtaText}>View</Text>
+                    <ChevronRight size={13} color="#7C3AED" />
+                  </View>
+                </Animated.View>
+              </View>
+            </Pressable>
+          </Animated.View>
 
-                                    <View style={styles.heroDetailsCol}>
-                                        <View style={styles.heroBadgeRow}>
-                                            <StatusChip
-                                                label={healthLabel}
-                                                variant={healthVariant}
-                                                size="sm"
-                                            />
-                                            <Text style={styles.heroEyebrow}>Health Today</Text>
-                                        </View>
+          {/* ── SCROLLABLE CONTAINER ── */}
+          <Animated.ScrollView
+            ref={scrollViewRef}
+            style={{ flex: 1 }}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {
+                paddingTop: Platform.OS === "ios" ? 56 : (StatusBar.currentHeight ? StatusBar.currentHeight + 12 : 44),
+                paddingBottom: 130,
+              },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: true }
+            )}
+            scrollEventThrottle={16}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#7C3AED"
+              />
+            }
+          >
+            {/* ── HEADER ── */}
+            <View style={[styles.header, { paddingTop: 0, paddingBottom: 16 }]}>
+              {/* Top Row: Brand & Header Actions */}
+              <View style={styles.headerTopRow}>
+                <View style={styles.brandBadge}>
+                  <Image
+                    source={require("../../../assets/logo.png")}
+                    style={styles.brandLogo}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.brandText}>CareMyMed</Text>
+                </View>
+                <View style={styles.headerActions}>
+                  <Pressable
+                    style={styles.headerIconBtn}
+                    onPress={() => navigation.navigate("Notifications")}
+                  >
+                    <Bell size={20} color="#475569" strokeWidth={2.5} />
+                    {(unreadCount > 0 || hasContextualAlerts) && (
+                      <View style={styles.bellDot} />
+                    )}
+                  </Pressable>
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    style={styles.avatarBtn}
+                    onPress={() => navigation.navigate("Profile")}
+                  >
+                    <Text style={styles.avatarText}>
+                      {displayName?.charAt(0) || "U"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-                                        <Text style={styles.heroSummaryText}>
-                                            {allMedsTaken
-                                                ? 'All medications logged for today. Stable routine.'
-                                                : scheduledMeds.length > 0
-                                                    ? `${scheduledMeds.length - takenCount} medication${scheduledMeds.length - takenCount !== 1 ? 's' : ''} scheduled today.`
-                                                    : 'Baseline indicators active. No current prescriptions.'}
-                                        </Text>
-                                    </View>
-                                </View>
-                            </AnimatedCard>
-                        )}
+              {/* Spacious Full-Width Hero Greeting */}
+              <Animated.View
+                style={[
+                  styles.heroGreetingBlock,
+                  {
+                    opacity: heroTitleOpacity,
+                    transform: [{ translateY: heroTitleTranslateY }],
+                  },
+                ]}
+              >
+                <Text style={styles.greetingName}>
+                  {adaptiveGreeting}
+                </Text>
+                <Animated.Text
+                  style={[
+                    styles.headerSubtext,
+                    {
+                      opacity: heroSubtextOpacity,
+                      transform: [{ translateY: heroSubtextTranslateY }],
+                    },
+                  ]}
+                >
+                  {headerSubtitle}
+                </Animated.Text>
+              </Animated.View>
+            </View>
+
+            {/* ── Inline Placeholder Anchor for Shared Card Layout & Dynamic Alignment ── */}
+            <View
+              onLayout={(e) => {
+                const y = e.nativeEvent.layout.y;
+                if (y > 0 && Math.abs(y - inlineCardAnchorY) > 2) {
+                  setInlineCardAnchorY(y);
+                }
+              }}
+              style={{ height: 68, marginBottom: 14 }}
+            />
+
+            {/* Pills Row */}
+            <Animated.View
+              style={[
+                entranceStyle(0),
+                {
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 20,
+                },
+              ]}
+            >
+              <View style={styles.datePill}>
+                <CalendarDays size={12} color="#94A3B8" />
+                <Text style={styles.dateText}>{dateStr}</Text>
+              </View>
+              <Pressable
+                onPress={() => navigation.navigate("LocationSearch")}
+                style={[styles.locationPill, { flex: 1 }]}
+              >
+                <View style={styles.locationDot}>
+                  <MapPin size={10} color="#FFF" fill="#FFF" />
+                </View>
+                <Text style={styles.locationText} numberOfLines={1}>
+                  {patient?.city ||
+                    profile?.city ||
+                    t("home.detecting", { defaultValue: "Detecting..." })}
+                </Text>
+                <ChevronRight
+                  size={12}
+                  color="#94A3B8"
+                  style={{ marginLeft: "auto" }}
+                />
+              </Pressable>
+            </Animated.View>
+
+            {daysPremiumRemaining <= 0 && (
+              <Pressable
+                style={styles.premiumBanner}
+                onPress={() => openPremium()}
+              >
+                <View style={styles.premiumBannerLeft}>
+                  <View style={styles.premiumBannerIcon}>
+                    <Sparkles size={18} color="#A855F7" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.premiumBannerTitle}>
+                      Premium Expired
+                    </Text>
+                    <Text style={styles.premiumBannerSub}>
+                      Your AI health insights are paused until renewal.
+                    </Text>
+                  </View>
+                </View>
+                <ChevronRight size={20} color="#CBD5E1" />
+              </Pressable>
+            )}
+
+            {/* Offline Banner */}
+            {isCached && (
+              <View style={styles.offlineBanner}>
+                <WifiOff size={13} color="#92400E" />
+                <Text style={styles.offlineBannerText}>
+                  {t("home.offline_banner", {
+                    defaultValue: "Showing cached data · Pull to refresh",
+                  })}
+                </Text>
+              </View>
+            )}
+
+            {/* Sleep Inactivity/Native Detection Prompt Banner */}
+            {estimatedSleep && (
+              <Animated.View style={[entranceStyle(1), { marginBottom: 20 }]}>
+                {estimatedSleep.needsPermission ? (
+                  <View style={styles.sleepCtaCard}>
+                    <View style={styles.sleepPromptHeader}>
+                      <View style={styles.sleepCtaIconBox}>
+                        <Watch size={18} color="#D97706" />
+                      </View>
+                      <Text style={styles.sleepCtaTitle}>
+                        {t("home.sleep_tracking_title", {
+                          defaultValue: "🌙 Sleep Tracking",
+                        })}
+                      </Text>
                     </View>
 
-                    {/* ═════════════════════════════════════════════════════════════════════ */}
-                    {/* ── ZONE 3: ACTION ("WHAT DO I NEED TO DO?") ──────────────────────── */}
-                    {/* ═════════════════════════════════════════════════════════════════════ */}
-                    <View style={styles.zoneWrapper}>
-                        <SectionHeader
-                            title="Today's Medications"
-                            subtitle={
-                                scheduledMeds.length === 0
-                                    ? 'No medications scheduled today'
-                                    : allMedsTaken
-                                        ? 'All done for today! 🎉'
-                                        : `${takenCount} of ${scheduledMeds.length} taken today`
-                            }
-                            actionText={scheduledMeds.length > 0 ? 'See all' : undefined}
-                            onAction={() => navigation.navigate('Medications')}
-                        />
+                    <Text style={styles.sleepCtaText}>
+                      {estimatedSleep.needsPermission === "manual"
+                        ? "No sleep records detected. Log your hours manually to stay consistent!"
+                        : t("home.sleep_tracking_cta_desc", {
+                            defaultValue:
+                              "Connect Health Connect or enable device activity access for better sleep estimation.",
+                          })}
+                    </Text>
 
-                        {isLoading ? (
-                            <AnimatedCard style={{ padding: spacing.md }}>
-                                <MedRowSkeleton count={2} />
-                            </AnimatedCard>
-                        ) : scheduledMeds.length === 0 ? (
-                            <AnimatedCard style={styles.emptyActionCard}>
-                                <View style={styles.emptyIconCircle}>
-                                    <CheckCircle2 size={24} color={colors.success} />
-                                </View>
-                                <Text style={styles.emptyActionTitle}>No Prescriptions Today</Text>
-                                <Text style={styles.emptyActionSubtitle}>
-                                    You have no active medications requiring logging today.
-                                </Text>
-                            </AnimatedCard>
-                        ) : (
-                            <AnimatedCard style={styles.medsContainerCard}>
-                                {scheduledMeds.map((med, index) => {
-                                    const isLowSupply = med.supply_remaining != null && med.supply_remaining <= 5;
-                                    const isDone = !!med.taken;
-
-                                    return (
-                                        <View key={med._id || index}>
-                                            <View style={styles.medRow}>
-                                                {/* Left Status / Check Toggle */}
-                                                <TouchableOpacity
-                                                    onPress={() => handleMarkTaken(med)}
-                                                    hitSlop={touchTarget.hitSlop}
-                                                    activeOpacity={0.7}
-                                                    style={[
-                                                        styles.medCheckButton,
-                                                        isDone && styles.medCheckButtonDone
-                                                    ]}
-                                                >
-                                                    {isDone ? (
-                                                        <CheckCircle2 size={22} color={colors.success} />
-                                                    ) : (
-                                                        <View style={styles.medUncheckedRing} />
-                                                    )}
-                                                </TouchableOpacity>
-
-                                                {/* Content */}
-                                                <View style={styles.medInfoCol}>
-                                                    <Text
-                                                        style={[
-                                                            styles.medNameText,
-                                                            isDone && styles.medTextCrossed
-                                                        ]}
-                                                        numberOfLines={1}
-                                                    >
-                                                        {med.name || 'Medication'}
-                                                    </Text>
-                                                    <View style={styles.medMetaRow}>
-                                                        <Clock size={11} color={text.muted} style={{ marginRight: 3 }} />
-                                                        <Text style={styles.medMetaText}>
-                                                            {med.scheduledTime || med.type || 'Scheduled'}
-                                                        </Text>
-                                                        {med.dosage ? (
-                                                            <Text style={styles.medMetaText}> • {med.dosage}</Text>
-                                                        ) : null}
-                                                    </View>
-                                                </View>
-
-                                                {/* Supply Pill Badge */}
-                                                {med.supply_remaining != null && (
-                                                    <TouchableOpacity
-                                                        onPress={() => setSupplyModalMed(med)}
-                                                        hitSlop={touchTarget.hitSlop}
-                                                        activeOpacity={0.7}
-                                                        style={[
-                                                            styles.supplyChip,
-                                                            isLowSupply && styles.supplyChipLow
-                                                        ]}
-                                                    >
-                                                        {isLowSupply ? (
-                                                            <AlertCircle size={11} color={colors.danger} style={{ marginRight: 3 }} />
-                                                        ) : (
-                                                            <Package size={11} color={text.secondary} style={{ marginRight: 3 }} />
-                                                        )}
-                                                        <Text style={[styles.supplyText, isLowSupply && styles.supplyTextLow]}>
-                                                            {med.supply_remaining} left
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                )}
-                                            </View>
-
-                                            {index < scheduledMeds.length - 1 && <View style={styles.rowDivider} />}
-                                        </View>
-                                    );
-                                })}
-                            </AnimatedCard>
-                        )}
-                    </View>
-
-                    {/* ═════════════════════════════════════════════════════════════════════ */}
-                    {/* ── ZONE 4: UNDERSTANDING ("WHAT HAVE I LEARNED?") ────────────────── */}
-                    {/* ═════════════════════════════════════════════════════════════════════ */}
-                    
-                    {/* 4.1 Whole-Health Streak Calendar */}
-                    <View style={styles.zoneWrapper}>
-                        <SectionHeader
-                            title="35-Day Health Streak"
-                            subtitle="Daily adherence and telemetry consistency"
-                            actionText="Details"
-                            onAction={() => navigation.navigate('Adherence')}
-                        />
-                        <AnimatedCard style={{ padding: spacing.md }}>
-                            <StreakCompanion compact />
-                        </AnimatedCard>
-                    </View>
-
-                    {/* 4.2 Vitals Telemetry Card (Honest Empty State — Zero Deceptive Placeholders) */}
-                    <View style={styles.zoneWrapper}>
-                        <SectionHeader
-                            title="Latest Vitals"
-                            subtitle="Heart rate and blood pressure"
-                            actionText="History"
-                            onAction={() => navigation.navigate('VitalsHistory')}
-                        />
-
-                        {isLoading ? (
-                            <AnimatedCard style={{ padding: spacing.md }}>
-                                <VitalsCardSkeleton />
-                            </AnimatedCard>
-                        ) : (
-                            <AnimatedCard
-                                onPress={() => navigation.navigate('VitalsHistory')}
-                                style={{ padding: spacing.md }}
-                            >
-                                <View style={styles.vitalsGrid}>
-                                    {/* Heart Rate Box */}
-                                    <View style={styles.vitalBox}>
-                                        <View style={styles.vitalBoxHeader}>
-                                            <Heart size={16} color={colors.danger} />
-                                            <Text style={styles.vitalBoxLabel}>Heart Rate</Text>
-                                        </View>
-                                        <View style={styles.vitalValueRow}>
-                                            <Text style={styles.vitalNumber}>
-                                                {vitals?.heart_rate ? vitals.heart_rate : '—'}
-                                            </Text>
-                                            <Text style={styles.vitalUnit}>
-                                                {vitals?.heart_rate ? 'bpm' : 'Not recorded'}
-                                            </Text>
-                                        </View>
-                                    </View>
-
-                                    {/* Blood Pressure Box */}
-                                    <View style={styles.vitalBox}>
-                                        <View style={styles.vitalBoxHeader}>
-                                            <Activity size={16} color={colors.primary} />
-                                            <Text style={styles.vitalBoxLabel}>Blood Pressure</Text>
-                                        </View>
-                                        <View style={styles.vitalValueRow}>
-                                            <Text style={styles.vitalNumber}>
-                                                {vitals?.blood_pressure?.systolic && vitals?.blood_pressure?.diastolic
-                                                    ? `${vitals.blood_pressure.systolic}/${vitals.blood_pressure.diastolic}`
-                                                    : '—'}
-                                            </Text>
-                                            <Text style={styles.vitalUnit}>
-                                                {vitals?.blood_pressure?.systolic ? 'mmHg' : 'Not recorded'}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                </View>
-                            </AnimatedCard>
-                        )}
-                    </View>
-
-                    {/* 4.3 Daily Clinical Health Tip */}
-                    <View style={styles.zoneWrapper}>
-                        <AnimatedCard
-                            onPress={() => navigation.navigate('HealthCopilot')}
-                            style={styles.tipCard}
+                    <View
+                      style={[styles.sleepPromptActions, { marginBottom: 14 }]}
+                    >
+                      {estimatedSleep.needsPermission === "manual" ? (
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.sleepCtaBtnNo,
+                            { flex: 1, height: 40 },
+                            pressed && { opacity: 0.8 },
+                          ]}
+                          onPress={handleDismissSleep}
                         >
-                            <View style={styles.tipRow}>
-                                <View style={styles.tipIconBox}>
-                                    <Sparkles size={18} color={colors.primary} />
-                                </View>
-                                <View style={styles.tipContentCol}>
-                                    <Text style={styles.tipHeaderTitle}>Daily Health Tip</Text>
-                                    <Text style={styles.tipBodyText}>{dailyTip}</Text>
-                                </View>
-                            </View>
-                        </AnimatedCard>
+                          <Text style={styles.sleepCtaBtnNoText}>Dismiss</Text>
+                        </Pressable>
+                      ) : (
+                        <>
+                          {estimatedSleep.needsPermission === "usage_stats" ? (
+                            <Pressable
+                              style={({ pressed }) => [
+                                styles.sleepCtaBtnYes,
+                                { flex: 1, height: 40 },
+                                pressed && { opacity: 0.8 },
+                              ]}
+                              onPress={handleEnableDeviceActivity}
+                            >
+                              <Text style={styles.sleepCtaBtnYesText}>
+                                {t("home.enable_device_activity", {
+                                  defaultValue: "Enable Device Activity",
+                                })}
+                              </Text>
+                            </Pressable>
+                          ) : (
+                            <Pressable
+                              style={({ pressed }) => [
+                                styles.sleepCtaBtnYes,
+                                { flex: 1, height: 40 },
+                                pressed && { opacity: 0.8 },
+                              ]}
+                              onPress={() =>
+                                navigation.navigate("HealthConnectSetup")
+                              }
+                            >
+                              <Text style={styles.sleepCtaBtnYesText}>
+                                {t("home.connect_health_connect", {
+                                  defaultValue: "Connect Health",
+                                })}
+                              </Text>
+                            </Pressable>
+                          )}
+                          <Pressable
+                            style={({ pressed }) => [
+                              styles.sleepCtaBtnNo,
+                              { height: 40 },
+                              pressed && { opacity: 0.8 },
+                            ]}
+                            onPress={handleDismissSleep}
+                          >
+                            <Text style={styles.sleepCtaBtnNoText}>
+                              {t("home.dismiss", { defaultValue: "Not Now" })}
+                            </Text>
+                          </Pressable>
+                        </>
+                      )}
                     </View>
+
+                    <Text
+                      style={[
+                        styles.sleepCtaText,
+                        { fontSize: 11, marginBottom: 8, opacity: 0.8 },
+                      ]}
+                    >
+                      Or log custom duration:
+                    </Text>
+
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
+                    >
+                      {[5, 6, 7, 8, 9, 10].map((h) => (
+                        <Pressable
+                          key={h}
+                          style={({ pressed }) => [
+                            styles.sleepCtaHourBtn,
+                            pressed && { opacity: 0.7 },
+                            sleepLogging && { opacity: 0.4 },
+                          ]}
+                          onPress={() => logCustomSleep(h)}
+                          disabled={sleepLogging}
+                        >
+                          <Text style={styles.sleepCtaHourBtnText}>{h}h</Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  </View>
+                ) : (
+                  <View style={styles.sleepPromptCard}>
+                    <View style={styles.sleepPromptHeader}>
+                      <View style={styles.sleepIconBox}>
+                        <Watch size={18} color="#7C3AED" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <Text style={styles.sleepPromptTitle}>
+                            {estimatedSleep.displayTitle}
+                          </Text>
+                          <View
+                            style={{
+                              backgroundColor:
+                                estimatedSleep.confidenceLabel === "verified"
+                                  ? "#FAF5FF"
+                                  : "#FFF9E6",
+                              paddingHorizontal: 8,
+                              paddingVertical: 2,
+                              borderRadius: 12,
+                              borderWidth: 1,
+                              borderColor:
+                                estimatedSleep.confidenceLabel === "verified"
+                                  ? "#E9D5FF"
+                                  : "#FDE68A",
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 10,
+                                fontWeight: "700",
+                                color:
+                                  estimatedSleep.confidenceLabel === "verified"
+                                    ? "#7C3AED"
+                                    : "#D97706",
+                                textTransform: "capitalize",
+                              }}
+                            >
+                              {estimatedSleep.confidenceLabel}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            color: "#7C3AED",
+                            marginTop: 2,
+                            fontWeight: "600",
+                          }}
+                        >
+                          {estimatedSleep.displaySubtitle}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.sleepPromptText}>
+                      {estimatedSleep.source === "native_health" ? (
+                        <>
+                          Your watch or phone logged{" "}
+                          <Text style={{ fontWeight: "800", color: "#1E1B4B" }}>
+                            {estimatedSleep.durationText || `${estimatedSleep.hours} hours`}
+                          </Text>{" "}
+                          of sleep last night ({estimatedSleep.startTime} to{" "}
+                          {estimatedSleep.endTime}).
+                        </>
+                      ) : (
+                        <>
+                          Your phone was quiet for{" "}
+                          <Text style={{ fontWeight: "800", color: "#1E1B4B" }}>
+                            {estimatedSleep.durationText || `${estimatedSleep.hours} hours`}
+                          </Text>{" "}
+                          last night ({estimatedSleep.startTime} to{" "}
+                          {estimatedSleep.endTime}).
+                        </>
+                      )}
+                      {"\n\n"}Is this correct?
+                    </Text>
+
+                    <View
+                      style={[styles.sleepPromptActions, { marginBottom: 14 }]}
+                    >
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.sleepPromptBtnYes,
+                          { flex: 1, height: 40 },
+                          pressed && { opacity: 0.8 },
+                          sleepLogging && { opacity: 0.5 },
+                        ]}
+                        onPress={handleConfirmSleep}
+                        disabled={sleepLogging}
+                      >
+                        <Text style={styles.sleepPromptBtnYesText}>
+                          {sleepLogging
+                            ? "Logging..."
+                            : `Yes, log ${estimatedSleep.durationText || estimatedSleep.hours + 'h'}`}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.sleepPromptBtnNo,
+                          { height: 40 },
+                          pressed && { opacity: 0.8 },
+                        ]}
+                        onPress={handleDismissSleep}
+                      >
+                        <Text style={styles.sleepPromptBtnNoText}>Dismiss</Text>
+                      </Pressable>
+                    </View>
+
+                    <Text
+                      style={[
+                        styles.sleepPromptText,
+                        { fontSize: 11, marginBottom: 8, opacity: 0.8 },
+                      ]}
+                    >
+                      Or log custom duration:
+                    </Text>
+
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
+                    >
+                      {[5, 6, 7, 8, 9, 10].map((h) => (
+                        <Pressable
+                          key={h}
+                          style={({ pressed }) => [
+                            styles.sleepHourBtn,
+                            pressed && { opacity: 0.7 },
+                            sleepLogging && { opacity: 0.4 },
+                          ]}
+                          onPress={() => logCustomSleep(h)}
+                          disabled={sleepLogging}
+                        >
+                          <Text style={styles.sleepHourBtnText}>{h}h</Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+              </Animated.View>
+            )}
+
+            {/* Morning Health Brief Banner */}
+            <Animated.View style={[entranceStyle(1)]}>
+              <Pressable
+                style={styles.morningBriefBanner}
+                onPress={() => navigation.navigate("HealthCopilot")}
+              >
+                <LinearGradient
+                  colors={["#FAF5FF", "#F3E8FF"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.morningBriefGradient}
+                >
+                  <View style={styles.morningBriefIconContainer}>
+                    <Sparkles size={16} color="#7C3AED" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.morningBriefTitle}>
+                      ✨ Morning Health Brief
+                    </Text>
+                    <Text style={styles.morningBriefSub}>
+                      Your daily care focus & weekly targets are ready. Tap to
+                      view.
+                    </Text>
+                  </View>
+                  <ChevronRight size={18} color="#7C3AED" />
+                </LinearGradient>
+              </Pressable>
+            </Animated.View>
+
+            {/* ── 1. GLASS HEALTH ORB (Brand Focus, 60% Width) ── */}
+            <RecoverableBoundary
+              featureName="Health Score"
+              screenName="HomeScreen"
+              resetKeys={[patient?._id]}
+            >
+            <View ref={orbRef} collapsable={false}>
+              <Animated.View style={[entranceStyle(1), styles.orbContainer]}>
+              <Animated.View
+                style={[
+                  styles.orbWrapper,
+                  { transform: [{ scale: orbScaleAnim }] },
+                ]}
+              >
+                <Svg
+                  width={210}
+                  height={210}
+                  viewBox="0 0 200 200"
+                  style={styles.orbSvg}
+                >
+                  <Defs>
+                    <SvgLinearGradient
+                      id="orbGlowGrad"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="100%"
+                    >
+                      <Stop
+                        offset="0%"
+                        stopColor="#A78BFA"
+                        stopOpacity={0.15}
+                      />
+                      <Stop
+                        offset="100%"
+                        stopColor="#7C3AED"
+                        stopOpacity={0.03}
+                      />
+                    </SvgLinearGradient>
+                    <SvgLinearGradient
+                      id="progressRingGrad"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="0%"
+                    >
+                      <Stop offset="0%" stopColor="#A78BFA" />
+                      <Stop offset="50%" stopColor="#8B5CF6" />
+                      <Stop offset="100%" stopColor="#7C3AED" />
+                    </SvgLinearGradient>
+                  </Defs>
+                  <SvgCircle
+                    cx="100"
+                    cy="100"
+                    r="86"
+                    fill="url(#orbGlowGrad)"
+                  />
+                  <SvgCircle
+                    cx="100"
+                    cy="100"
+                    r="90"
+                    stroke="#F1F5F9"
+                    strokeWidth="6"
+                    fill="transparent"
+                  />
+                  <AnimatedCircle
+                    cx="100"
+                    cy="100"
+                    r="90"
+                    stroke="url(#progressRingGrad)"
+                    strokeWidth="6"
+                    fill="transparent"
+                    strokeDasharray="565.48"
+                    strokeDashoffset={ringProgressAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [565.48, 0],
+                    })}
+                    strokeLinecap="round"
+                    transform="rotate(-90 100 100)"
+                  />
+                </Svg>
+
+                {/* Active Glow Pulse Overlay */}
+                <Animated.View
+                  style={[
+                    StyleSheet.absoluteFill,
+                    { opacity: glowOpacityAnim, pointerEvents: "none" },
+                  ]}
+                >
+                  <Svg
+                    width={210}
+                    height={210}
+                    viewBox="0 0 200 200"
+                    style={styles.orbSvg}
+                  >
+                    <Defs>
+                      <SvgLinearGradient
+                        id="activeGlowGrad"
+                        x1="0%"
+                        y1="0%"
+                        x2="100%"
+                        y2="100%"
+                      >
+                        <Stop
+                          offset="0%"
+                          stopColor={healthColor}
+                          stopOpacity={0.45}
+                        />
+                        <Stop
+                          offset="100%"
+                          stopColor={healthColor}
+                          stopOpacity={0.05}
+                        />
+                      </SvgLinearGradient>
+                    </Defs>
+                    <SvgCircle
+                      cx="100"
+                      cy="100"
+                      r="95"
+                      fill="url(#activeGlowGrad)"
+                    />
+                  </Svg>
+                </Animated.View>
+
+                <View style={styles.glassOrb}>
+                  <Text style={styles.orbScoreText}>{animatedScore}</Text>
+                  <Text style={[styles.orbLabelText, { color: healthColor }]}>
+                    {healthLabel.toUpperCase()}
+                  </Text>
+
+                  <Animated.View
+                    style={[
+                      styles.orbGradeBadge,
+                      {
+                        opacity: badgeOpacityAnim,
+                        backgroundColor: healthColor + "10",
+                        borderColor: healthColor + "30",
+                        transform: [
+                          {
+                            scale: badgeOpacityAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0.8, 1],
+                            }),
+                          },
+                        ],
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.orbGradeText, { color: healthColor }]}>
+                      {healthGrade}
+                    </Text>
+                  </Animated.View>
+                </View>
+              </Animated.View>
+
+              <Text style={styles.orbNextDose}>
+                {nextDose
+                  ? nextDose.overdue
+                    ? `Overdue: ${nextDose.slot}${nextDose.time ? ` (${nextDose.time})` : ""}`
+                    : `${t("home.next_dose", { slot: nextDose.slot, defaultValue: `Next Dose: ${nextDose.slot}` })}${nextDose.time ? ` (${nextDose.time})` : ""}`
+                  : t("home.all_done_today", {
+                      defaultValue: "All medications completed! 🎉",
+                    })}
+              </Text>
+            </Animated.View>
+            </View>
+            </RecoverableBoundary>
+
+            {/* ── 2. DAILY CHECK-IN (Directly under the Orb) ── */}
+            <Animated.View style={[entranceStyle(2), styles.section]}>
+              <View style={[styles.checkinCard, { minHeight: moodLogged ? 70 : 130, justifyContent: 'center' }]}>
+                {/* 1. Mood Picker (fades out) */}
+                <Animated.View
+                  style={{
+                    opacity: moodFadeAnim,
+                    position: moodLogged ? "absolute" : "relative",
+                    left: moodLogged ? 24 : 0,
+                    right: moodLogged ? 24 : 0,
+                    top: moodLogged ? 24 : 0,
+                  }}
+                  pointerEvents={moodLogged ? "none" : "auto"}
+                >
+                  <Text style={styles.checkinTitle}>
+                    {t("home.how_are_feeling", {
+                      defaultValue: "How are you feeling today?",
+                    })}
+                  </Text>
+                  <View style={styles.moodEmojiRow}>
+                    <Pressable
+                      style={styles.moodEmojiPill}
+                      onPress={() => saveDailyMood("sad")}
+                    >
+                      <LottieView
+                        source={require("../../assets/lottie/sad.json")}
+                        autoPlay
+                        loop
+                        style={styles.moodLottie}
+                      />
+                      <Text style={styles.moodLabel}>Low</Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.moodEmojiPill}
+                      onPress={() => saveDailyMood("okay")}
+                    >
+                      <LottieView
+                        source={require("../../assets/lottie/okay.json")}
+                        autoPlay
+                        loop
+                        style={styles.moodLottie}
+                      />
+                      <Text style={styles.moodLabel}>Okay</Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.moodEmojiPill}
+                      onPress={() => saveDailyMood("good")}
+                    >
+                      <LottieView
+                        source={require("../../assets/lottie/good.json")}
+                        autoPlay
+                        loop
+                        style={styles.moodLottie}
+                      />
+                      <Text style={styles.moodLabel}>Good</Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.moodEmojiPill}
+                      onPress={() => saveDailyMood("great")}
+                    >
+                      <LottieView
+                        source={require("../../assets/lottie/great.json")}
+                        autoPlay
+                        loop
+                        style={styles.moodLottie}
+                      />
+                      <Text style={styles.moodLabel}>Great</Text>
+                    </Pressable>
+                  </View>
+                </Animated.View>
+
+                {/* 2. Thanks View (fades in) */}
+                <Animated.View
+                  style={{
+                    opacity: thanksFadeAnim,
+                    position: moodLogged ? "relative" : "absolute",
+                    left: moodLogged ? 0 : 24,
+                    right: moodLogged ? 0 : 24,
+                    top: moodLogged ? 0 : 24,
+                    width: "100%",
+                  }}
+                  pointerEvents={moodLogged ? "auto" : "none"}
+                >
+                  <View style={styles.checkinCompleteView}>
+                    <Sparkles
+                      size={16}
+                      color="#8B5CF6"
+                      style={{ marginRight: 8 }}
+                    />
+                    <Text style={styles.checkinCompleteText}>
+                      ✨ Thanks for checking in. Today's insight has been
+                      updated.
+                    </Text>
+                    <Text style={styles.selectedMoodBadge}>
+                      {selectedMood === "sad"
+                        ? "😞 Low"
+                        : selectedMood === "okay"
+                          ? "😐 Okay"
+                          : selectedMood === "good"
+                            ? "🙂 Good"
+                            : "😄 Great"}
+                    </Text>
+                  </View>
+                </Animated.View>
+              </View>
+            </Animated.View>
+
+            {/* Removed Health Pulse - combined with Vitals below */}
+
+            {/* ── 4. TODAY'S INSIGHT (AI Coach Guidance sliding carousel) ── */}
+            <View ref={insightCardRef} collapsable={false}>
+              <Animated.View style={[entranceStyle(4), styles.section]}>
+              <View style={styles.insightCard}>
+                <View ref={aiCoachHeaderRef} collapsable={false} style={styles.insightHeaderRow}>
+                  <View style={styles.insightHeaderLeft}>
+                    <View style={styles.insightIconBox}>
+                      <Sparkles size={16} color="#A855F7" />
+                    </View>
+                    <Text
+                      style={[styles.insightTitle, { flex: 1 }]}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {slideInsights[activeInsightIndex]?.title ||
+                        t("common.todays_insight", {
+                          defaultValue: "Today's Insight",
+                        })}
+                    </Text>
+                  </View>
+                  <View style={styles.insightBadge}>
+                    <View style={styles.insightBadgeDot} />
+                    <Text style={styles.insightBadgeText}>
+                      {t("home.live_coach", { defaultValue: "LIVE COACH" })}
+                    </Text>
+                  </View>
+                </View>
+
+                <ScrollView
+                  ref={insightScrollViewRef}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onScroll={(e) => {
+                    const contentOffset = e.nativeEvent.contentOffset.x;
+                    const index = Math.round(contentOffset / slideWidth);
+                    if (
+                      index !== activeInsightIndex &&
+                      index >= 0 &&
+                      index < slideInsights.length
+                    ) {
+                      setActiveInsightIndex(index);
+                    }
+                  }}
+                  scrollEventThrottle={16}
+                  style={{ width: slideWidth }}
+                  contentContainerStyle={{ alignItems: "center" }}
+                >
+                  {slideInsights.map((slide) => {
+                    const SlideIcon = slide.icon;
+                    return (
+                      <View
+                        key={slide.id}
+                        style={{
+                          width: slideWidth,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <View style={{ flex: 1, paddingRight: 10 }}>
+                          <Text style={styles.insightDescText}>
+                            {slide.desc}
+                          </Text>
+                        </View>
+                        <View style={styles.insightIllustration}>
+                          <SlideIcon
+                            size={26}
+                            color={slide.iconColor}
+                            strokeWidth={2}
+                          />
+                        </View>
+                      </View>
+                    );
+                  })}
                 </ScrollView>
 
-                {/* Modals & Overlays */}
-                {supplyModalMed && (
-                    <SupplyUpdateModal
-                        visible={!!supplyModalMed}
-                        medicine={supplyModalMed}
-                        onClose={() => setSupplyModalMed(null)}
-                        onSave={async (medId, newCount) => {
-                            await updateMedSupply(medId, newCount);
-                            setSupplyModalMed(null);
-                        }}
+                <View style={styles.insightDotsRow}>
+                  {slideInsights.map((_, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => {
+                        insightScrollViewRef.current?.scrollTo({
+                          x: index * slideWidth,
+                          animated: true,
+                        });
+                        setActiveInsightIndex(index);
+                      }}
+                      style={[
+                        styles.insightDot,
+                        activeInsightIndex === index && styles.insightDotActive,
+                      ]}
                     />
+                  ))}
+                </View>
+              </View>
+            </Animated.View>
+            </View>
+
+            {/* ── 6. MEDICATIONS ── */}
+            <View ref={medsCardRef} collapsable={false}>
+              <Animated.View style={[entranceStyle(6), styles.section]}>
+              <View ref={todaysPlanHeaderRef} collapsable={false} style={styles.sectionTitleRow}>
+                <Text style={styles.sectionTitle}>
+                  {t("home.todays_plan", { defaultValue: "TODAY'S PLAN" })}
+                </Text>
+                <Pressable
+                  style={styles.viewAllBtn}
+                  onPress={() => navigation.navigate("Medications")}
+                >
+                  <Text style={styles.viewAllText}>
+                    {t("home.view_details", { defaultValue: "View Details" })}
+                  </Text>
+                  <ChevronRight size={13} color="#8B5CF6" />
+                </Pressable>
+              </View>
+
+              {totalMeds > 0 ? (() => {
+                const getMedCardContent = () => {
+                  if (adherencePct === 100) {
+                    return {
+                      title: "Perfect Day!",
+                      subtitle: "All your medications taken\nGreat job staying consistent!",
+                      bannerText: "You're building a healthy habit!",
+                      bannerIcon: TrendingUp,
+                    };
+                  } else if (adherencePct >= 50) {
+                    return {
+                      title: "On Track!",
+                      subtitle: `${takenCount} of ${totalMeds} medications taken\nKeep going to finish today's plan!`,
+                      bannerText: "More than halfway there!",
+                      bannerIcon: TrendingUp,
+                    };
+                  } else {
+                    return {
+                      title: "Starting strong!",
+                      subtitle: `${takenCount} of ${totalMeds} medications taken\nConsistency is key to your health.`,
+                      bannerText: "Log your next dose when taken",
+                      bannerIcon: Pill,
+                    };
+                  }
+                };
+                const cardContent = getMedCardContent();
+                const ringColor = adherencePct === 100 ? "#10B981" : (adherencePct >= 50 ? "#8B5CF6" : "#EF4444");
+                const ringBgColor = adherencePct === 100 ? "#E6F4EA" : (adherencePct >= 50 ? "#F3E8FF" : "#FEE2E2");
+                const statusText = adherencePct === 100 ? "On track" : (adherencePct >= 50 ? "On track" : "Behind");
+                const statusTextColor = adherencePct === 100 ? "#10B981" : (adherencePct >= 50 ? "#8B5CF6" : "#EF4444");
+
+                return (
+                  <Animated.View
+                    style={{ transform: [{ scale: medsCardScaleAnim }] }}
+                  >
+                    <Pressable
+                      style={styles.medSummaryCard}
+                      onPress={() => setMedsExpanded(!medsExpanded)}
+                    >
+                      {/* Top Row: Trophy, Title, Subtitle, Circular Progress Ring */}
+                      <View style={styles.medSummaryTopRow}>
+                        <View style={styles.medSummaryLeftPart}>
+                          <View style={styles.trophyIconCircle}>
+                            <Trophy size={20} color="#10B981" fill="#10B981" />
+                            <View style={{ position: 'absolute', top: 4, right: 4 }}>
+                              <Sparkles size={8} color="#10B981" fill="#10B981" />
+                            </View>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.medSummaryTitleText}>{cardContent.title}</Text>
+                            <Text style={styles.medSummarySubText}>{cardContent.subtitle}</Text>
+                          </View>
+                        </View>
+
+                        {/* Circular Progress Ring */}
+                        <View style={styles.progressRingContainer}>
+                          <Svg width={68} height={68}>
+                            <SvgCircle
+                              cx={34}
+                              cy={34}
+                              r={30.5}
+                              stroke={ringBgColor}
+                              strokeWidth={5}
+                              fill="transparent"
+                            />
+                            <SvgCircle
+                              cx={34}
+                              cy={34}
+                              r={30.5}
+                              stroke={ringColor}
+                              strokeWidth={5}
+                              fill="transparent"
+                              strokeDasharray={191.6}
+                              strokeDashoffset={191.6 - (adherencePct / 100) * 191.6}
+                              strokeLinecap="round"
+                              transform="rotate(-90 34 34)"
+                            />
+                          </Svg>
+                          <View style={styles.progressRingTextContainer}>
+                            <Text style={styles.progressRingPercentText}>{adherencePct}%</Text>
+                            <Text style={[styles.progressRingStatusText, { color: statusTextColor }]}>{statusText}</Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Progress Timeline Row */}
+                      <View style={styles.timelineContainer}>
+                        <View style={styles.timelineWrapper}>
+                          {/* Connecting Track Line */}
+                          <View style={styles.timelineTrackLine} />
+                          {/* Active Progress Line */}
+                          <View 
+                            style={[
+                              styles.timelineActiveLine, 
+                              { 
+                                width: `${totalMeds > 1 ? (Math.max(0, takenCount - 1) / (totalMeds - 1)) * 100 : (takenCount > 0 ? 100 : 0)}%`,
+                                backgroundColor: ringColor 
+                              }
+                            ]} 
+                          />
+                          
+                          {/* Spaced Dot Checkmarks */}
+                          <View style={styles.timelineDotsRow}>
+                            {Array.from({ length: totalMeds }).map((_, index) => {
+                              const isCompleted = index < takenCount;
+                              return (
+                                <View 
+                                  key={index} 
+                                  style={[
+                                    styles.timelineDot, 
+                                    isCompleted 
+                                      ? [styles.timelineDotCompleted, { backgroundColor: ringColor, borderColor: ringColor }] 
+                                      : styles.timelineDotPending
+                                  ]}
+                                >
+                                  {isCompleted && <Check size={10} color="#FFFFFF" strokeWidth={3} />}
+                                </View>
+                              );
+                            })}
+                          </View>
+                        </View>
+
+                        {/* Timeline Labels */}
+                        <View style={styles.timelineLabelsRow}>
+                          <Text style={styles.timelineLabelText}>{takenCount} taken</Text>
+                          <Text style={styles.timelineLabelText}>{totalMeds} scheduled</Text>
+                        </View>
+                      </View>
+
+                      {/* Motivational Habit Banner */}
+                      <View style={[styles.habitBanner, { backgroundColor: ringBgColor, borderColor: ringColor + '20' }]}>
+                        <View style={styles.habitBannerLeft}>
+                          <cardContent.bannerIcon size={16} color={statusTextColor} strokeWidth={2.5} />
+                          <Text style={[styles.habitBannerText, { color: statusTextColor }]}>{cardContent.bannerText}</Text>
+                        </View>
+                        <ChevronRight 
+                          size={16} 
+                          color={statusTextColor} 
+                          style={{
+                            transform: [
+                              { rotate: medsExpanded ? "90deg" : "0deg" },
+                            ],
+                          }}
+                        />
+                      </View>
+                    </Pressable>
+                  </Animated.View>
+                );
+              })() : (
+                <View style={styles.emptyCard}>
+                  <View style={styles.emptyIconBox}>
+                    <Pill size={28} color="#CBD5E1" strokeWidth={1.5} />
+                  </View>
+                  <Text style={styles.emptyTitle}>
+                    {t("common.no_medications_added", {
+                      defaultValue: "No medications added",
+                    })}
+                  </Text>
+                  <Text style={styles.emptySub}>
+                    {t("common.meds_empty_desc", {
+                      defaultValue:
+                        "Your medications will appear here once you add your first one. We'll help you stay on track.",
+                    })}
+                  </Text>
+                </View>
+              )}
+
+              {medsExpanded &&
+                meds.map((med) => (
+                  <MedicationCard
+                    key={med.id}
+                    med={med}
+                    onPress={() => navigation.navigate("Medications")}
+                    onOpenSupplyModal={setSupplyModalMed}
+                  />
+                ))}
+            </Animated.View>
+            </View>
+
+            <SupplyUpdateModal
+              visible={!!supplyModalMed}
+              onClose={() => setSupplyModalMed(null)}
+              med={supplyModalMed}
+              schedule={medicationSchedule}
+              onConfirm={(medItem, qty) => updateMedSupply(medItem, qty)}
+            />
+
+            {/* ── 7. VITALS (Apple Health Style) ── */}
+            <Animated.View
+              style={[entranceStyle(7), styles.section]}
+              onLayout={(e) => {
+                vitalsSectionY.current = e.nativeEvent.layout.y;
+              }}
+            >
+              <View ref={vitalsCardRef} collapsable={false}>
+                <View ref={vitalsHeaderRef} collapsable={false} style={styles.sectionTitleRow}>
+                  <Text style={styles.sectionTitle}>
+                    {t("home.vitals", { defaultValue: "VITALS" })}
+                  </Text>
+                  <Pressable
+                    style={styles.viewAllBtn}
+                    onPress={() => navigation.navigate("VitalsHistory")}
+                  >
+                    <Text style={styles.viewAllText}>
+                      {t("home.history", { defaultValue: "History" })}
+                    </Text>
+                    <ChevronRight size={13} color="#8B5CF6" />
+                  </Pressable>
+                </View>
+
+                {/* Wearable sync card */}
+                <Pressable
+                  style={[
+                    styles.syncCard,
+                    syncStatus.connected && styles.syncCardConnected,
+                  ]}
+                  onPress={() => navigation.navigate("HealthConnectSetup")}
+                >
+                  {syncStatus.connected && (
+                    <LinearGradient
+                      colors={["#ECFDF5", "#F0FDF4"]}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  )}
+                  <View style={styles.syncCardLeft}>
+                    <View
+                      style={[
+                        styles.syncIconBox,
+                        {
+                          backgroundColor: syncStatus.connected
+                            ? "#DCFCE7"
+                            : "#FAF5FF",
+                        },
+                      ]}
+                    >
+                      <Watch
+                        size={20}
+                        color={
+                          syncStatus.connected ? colors.success : "#8B5CF6"
+                        }
+                        strokeWidth={2.5}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                          marginBottom: 2,
+                        }}
+                      >
+                        <Text style={styles.syncTitle}>
+                          {syncStatus.connected
+                            ? t("home.wearable_connected", {
+                                defaultValue: "Wearable Connected",
+                              })
+                            : t("home.connect_wearable", {
+                                defaultValue: "Connect Wearable",
+                              })}
+                        </Text>
+                        {syncStatus.syncing && (
+                          <View style={styles.syncingBadge}>
+                            <Zap size={9} color="#D97706" />
+                            <Text style={styles.syncingText}>
+                              {t("home.syncing", { defaultValue: "Syncing" })}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.syncSub}>
+                        {syncStatus.connected
+                          ? `${syncStatus.readingsToday} ${t("home.readings_today", { defaultValue: "readings today" })}${syncStatus.lastSync ? ` · ${t("home.last", { defaultValue: "Last" })}: ` + new Date(syncStatus.lastSync).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}`
+                          : t("home.auto_track", {
+                              defaultValue:
+                                "Auto-track vitals from your smartwatch",
+                            })}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {syncStatus.connected ? (
+                    <Svg
+                      width={50}
+                      height={20}
+                      viewBox="0 0 50 20"
+                      style={{ marginRight: 8 }}
+                    >
+                      <Path
+                        d="M 0 10 L 15 10 L 18 2 L 22 18 L 25 10 L 50 10"
+                        fill="none"
+                        stroke="#10B981"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </Svg>
+                  ) : (
+                    <ChevronRight size={18} color="#CBD5E1" />
+                  )}
+                </Pressable>
+
+                {/* Vitals Grid Row */}
+                {hasVitalsToday ? (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.vitalsScrollContainer}
+                  >
+                    <VitalsCard
+                      id="heart_rate"
+                      label={t("home.heart_rate", {
+                        defaultValue: "Heart Rate",
+                      })}
+                      value={vitals?.heart_rate || "—"}
+                      unit="bpm"
+                      icon={Heart}
+                      color="#EF4444"
+                      status={vitals?.heart_rate ? "Recorded" : "Not Logged"}
+                      historyValues={hrHistory}
+                      onPress={() => navigation.navigate("VitalsHistory", { activeMetricId: "heart_rate" })}
+                    />
+                    <VitalsCard
+                      id="blood_pressure"
+                      label={t("home.blood_pressure", {
+                        defaultValue: "Blood Pressure",
+                      })}
+                      value={
+                        vitals?.blood_pressure?.systolic
+                          ? `${vitals.blood_pressure.systolic}/${vitals.blood_pressure.diastolic}`
+                          : "—"
+                      }
+                      unit="mmHg"
+                      icon={Activity}
+                      color="#8B5CF6"
+                      status={
+                        vitals?.blood_pressure?.systolic
+                          ? "Recorded"
+                          : "Not Logged"
+                      }
+                      historyValues={bpHistory}
+                      onPress={() => navigation.navigate("VitalsHistory", { activeMetricId: "blood_pressure" })}
+                    />
+                    <VitalsCard
+                      id="oxygen_saturation"
+                      label={t("home.oxygen_saturation", {
+                        defaultValue: "Oxygen Saturation",
+                      })}
+                      value={
+                        vitals?.oxygen_saturation != null
+                          ? `${vitals.oxygen_saturation}`
+                          : "—"
+                      }
+                      unit="%"
+                      icon={Wind}
+                      color="#10B981"
+                      status={
+                        vitals?.oxygen_saturation != null
+                          ? "Recorded"
+                          : "Not Logged"
+                      }
+                      historyValues={spo2History}
+                      onPress={() => navigation.navigate("VitalsHistory", { activeMetricId: "oxygen_saturation" })}
+                    />
+                    <VitalsCard
+                      id="hydration"
+                      label={t("home.hydration", { defaultValue: "Hydration" })}
+                      value={
+                        vitals?.hydration != null ? `${vitals.hydration}` : "—"
+                      }
+                      unit="%"
+                      icon={Droplets}
+                      color="#0EA5E9"
+                      status={
+                        vitals?.hydration != null ? "Recorded" : "Not Logged"
+                      }
+                      historyValues={hydHistory}
+                      onPress={() => navigation.navigate("VitalsHistory", { activeMetricId: "hydration" })}
+                    />
+                  </ScrollView>
+                ) : (
+                  <View style={styles.card}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 12,
+                      }}
+                    >
+                      <Text style={styles.cardTitle}>
+                        {t("common.today_s_check_in", {
+                          defaultValue: "Today's Check-In",
+                        })}
+                      </Text>
+                    </View>
+                    {renderVitalsForm(true)}
+                  </View>
                 )}
 
-                {showCelebration && (
-                    <CelebrationOverlay
-                        visible={showCelebration}
-                        onDismiss={() => setShowCelebration(false)}
-                    />
+                {/* Collapsible log vitals row */}
+                {hasVitalsToday && (
+                  <View style={[styles.card, { marginTop: 14 }]}>
+                    <Pressable
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                      onPress={() => {
+                        setIsLogging(!isLogging);
+                        setFormError(null);
+                      }}
+                    >
+                      <Text style={styles.cardTitle}>
+                        {t("common.log_today_s_vitals", {
+                          defaultValue: "Log Today's Vitals",
+                        })}
+                      </Text>
+                      <View
+                        style={[
+                          styles.toggleBadge,
+                          isLogging && styles.toggleBadgeCancel,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.toggleBadgeText,
+                            isLogging && { color: "#EF4444" },
+                          ]}
+                        >
+                          {isLogging
+                            ? t("common.cancel", { defaultValue: "Cancel" })
+                            : t("home.add_entry", {
+                                defaultValue: "+ Add Entry",
+                              })}
+                        </Text>
+                      </View>
+                    </Pressable>
+                    {isLogging && renderVitalsForm(false)}
+                  </View>
                 )}
-            </View>
-        </TabScreenTransition>
-    );
+              </View>
+            </Animated.View>
+
+            {/* ── 8. HEALTH JOURNEY & NEXT GOAL ── */}
+            <Animated.View style={[entranceStyle(8), styles.section]}>
+              <Pressable
+                onPress={() => navigation.navigate("AdherenceDetails")}
+                style={styles.journeyCard}
+              >
+                <View style={styles.journeyHeader}>
+                  <Text style={styles.journeyTitle}>HEALTH JOURNEY</Text>
+                  {hasHistory ? (
+                    scoreDiff > 0 ? (
+                      <View style={styles.journeyImprovementBadge}>
+                        <TrendingUp size={12} color="#10B981" />
+                        <Text style={styles.journeyImprovementText}>
+                          +{scoreDiff} This Month
+                        </Text>
+                      </View>
+                    ) : scoreDiff < 0 ? (
+                      <View
+                        style={[
+                          styles.journeyImprovementBadge,
+                          { backgroundColor: "#FEF2F2" },
+                        ]}
+                      >
+                        <TrendingDown size={12} color="#EF4444" />
+                        <Text
+                          style={[
+                            styles.journeyImprovementText,
+                            { color: "#EF4444" },
+                          ]}
+                        >
+                          {scoreDiff} This Month
+                        </Text>
+                      </View>
+                    ) : (
+                      <View
+                        style={[
+                          styles.journeyImprovementBadge,
+                          { backgroundColor: "#F1F5F9" },
+                        ]}
+                      >
+                        <TrendingUp size={12} color="#64748B" opacity={0.6} />
+                        <Text
+                          style={[
+                            styles.journeyImprovementText,
+                            { color: "#64748B" },
+                          ]}
+                        >
+                          Stable This Month
+                        </Text>
+                      </View>
+                    )
+                  ) : null}
+                </View>
+
+                <View style={styles.journeyProgressRow}>
+                  <Text style={styles.journeyProgressText}>
+                    {hasHistory ? (
+                      <>
+                        Last Month: {prevScore}{" "}
+                        <Text style={{ color: "#94A3B8" }}>→</Text> Current:{" "}
+                        {healthScore}
+                      </>
+                    ) : (
+                      <>Current Score: {healthScore}</>
+                    )}
+                  </Text>
+                  <View style={styles.journeyConsistencyBadge}>
+                    <Text style={styles.journeyConsistencyBadgeText}>
+                      {hasHistory
+                        ? "Best Consistency Yet"
+                        : "Establishing Baseline"}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={styles.journeyDesc}>
+                  {hasHistory
+                    ? "Better medication adherence and stable vital trends recorded this week."
+                    : "Welcome to CareMyMed! Please log your medications and vitals to begin tracking your health journey trends."}
+                </Text>
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 4,
+                    marginTop: 12,
+                    borderTopWidth: 1,
+                    borderTopColor: "#F1F5F9",
+                    paddingTop: 10,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: "#8B5CF6",
+                      fontWeight: "700",
+                    }}
+                  >
+                    View Adherence Details
+                  </Text>
+                  <ChevronRight size={12} color="#8B5CF6" />
+                </View>
+              </Pressable>
+
+              {isLowConfidence && (
+                <View style={styles.lowConfidenceCard}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <AlertTriangle size={15} color="#B45309" />
+                    <Text style={styles.lowConfidenceTitle}>
+                      Low Confidence Score
+                    </Text>
+                  </View>
+                  <Text style={styles.lowConfidenceDesc}>
+                    This score is estimated from limited health data. Log
+                    medications and vitals regularly for a more accurate
+                    assessment.
+                  </Text>
+                </View>
+              )}
+
+              {/* Relocated Next Goal Card */}
+              <View style={[styles.goalCard, { marginTop: 12 }]}>
+                <View style={styles.goalCardHeader}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <View style={styles.goalIconBox}>
+                      <Trophy size={15} color="#F59E0B" />
+                    </View>
+                    <Text style={styles.goalTitle}>
+                      {t("home.next_goal", { defaultValue: "NEXT GOAL" })}
+                    </Text>
+                  </View>
+                  <Text style={styles.goalProgressValue}>
+                    {healthScore} / {targetMilestone}
+                  </Text>
+                </View>
+
+                <Text style={styles.goalDesc}>
+                  Reach Health Score {targetMilestone}
+                </Text>
+
+                <View style={styles.progressBg}>
+                  <LinearGradient
+                    colors={["#FCD34D", "#F59E0B"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[
+                      styles.progressFill,
+                      { width: `${milestoneProgress * 100}%` },
+                    ]}
+                  />
+                </View>
+              </View>
+            </Animated.View>
+
+            {/* ── 9. QUICK ACTIONS (Visually De-emphasized Utility Chips) ── */}
+            <Animated.View style={[entranceStyle(9), styles.section]}>
+              <Text style={styles.sectionTitle}>
+                {t("common.quick_actions", { defaultValue: "QUICK ACTIONS" })}
+              </Text>
+              <View style={styles.deemphasizedActionsRow}>
+                <Pressable
+                  style={styles.actionChip}
+                  onPress={() => navigation.navigate("AdherenceDetails")}
+                >
+                  <TrendingUp size={13} color="#475569" />
+                  <Text style={styles.actionChipText}>Adherence</Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.actionChip}
+                  onPress={() => navigation.navigate("Notifications")}
+                >
+                  <Bell size={13} color="#475569" />
+                  <Text style={styles.actionChipText}>Reminders</Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.actionChip}
+                  onPress={() => navigation.navigate("Chatbot")}
+                >
+                  <Sparkles size={13} color="#475569" />
+                  <Text style={styles.actionChipText}>Coach</Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.actionChip}
+                  onPress={() => navigation.navigate("Profile")}
+                >
+                  <Shield size={13} color="#475569" />
+                  <Text style={styles.actionChipText}>Profile</Text>
+                </Pressable>
+              </View>
+            </Animated.View>
+
+            {/* ── 10. DAILY HEALTH TIP ── */}
+            <Animated.View style={entranceStyle(9)}>
+              <Pressable onPress={() => setShowTipSheet(true)}>
+                <LinearGradient
+                  colors={["#FAF5FF", "#F3E8FF"]}
+                  style={styles.tipCard}
+                >
+                  <View style={styles.tipHeader}>
+                    <LinearGradient
+                      colors={["#A78BFA", "#8B5CF6"]}
+                      style={styles.tipIconBox}
+                    >
+                      <Sparkles size={14} color="#FFF" />
+                    </LinearGradient>
+                    <Text style={styles.tipLabel}>
+                      {t("home.daily_health_tip", {
+                        defaultValue: "DAILY HEALTH TIP",
+                      })}
+                    </Text>
+                  </View>
+                  <Text style={styles.tipText}>
+                    {t("tips.tip_" + getDailyTipIndex(), {
+                      defaultValue: HEALTH_TIPS[getDailyTipIndex()],
+                    })}
+                  </Text>
+                </LinearGradient>
+              </Pressable>
+            </Animated.View>
+          </Animated.ScrollView>
+
+          {/* Daily Health Tip Bottom Sheet */}
+          <BottomSheetWrapper
+            isOpen={showTipSheet}
+            onClose={() => setShowTipSheet(false)}
+            snapPoints={['50%', '75%']}
+            title="Daily Health Tip"
+          >
+            {(() => {
+              const tipIndex = getDailyTipIndex();
+              const fullTip = HEALTH_TIPS[tipIndex] || "";
+              
+              // Extract emoji and clean text
+              const emojiMatch = fullTip.match(/^[\u{1F300}-\u{1F9FF}\u{2700}-\u{27BF}]/u);
+              const emoji = emojiMatch ? emojiMatch[0] : "💡";
+              const cleanText = fullTip.replace(/^[\u{1F300}-\u{1F9FF}\u{2700}-\u{27BF}]\s*/u, "");
+
+              return (
+                <View style={{ gap: 20, paddingBottom: 20 }}>
+                  {/* Huge visual tip display */}
+                  <View style={{ alignItems: 'center', gap: 12, backgroundColor: '#FAF5FF', padding: 24, borderRadius: 20, borderWidth: 1, borderColor: '#F3E8FF' }}>
+                    <Text style={{ fontSize: 44 }}>{emoji}</Text>
+                    <Text style={{ fontSize: 17, fontWeight: '700', color: '#6B21A8', textAlign: 'center', lineHeight: 24 }}>
+                      {cleanText}
+                    </Text>
+                  </View>
+
+                  {/* Context sections */}
+                  <View style={{ gap: 12 }}>
+                    <View style={{ gap: 4 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.5 }}>Why This Matters</Text>
+                      <Text style={{ fontSize: 15, color: '#334155', lineHeight: 22 }}>
+                        Consistent micro-habits have a compounding effect on your cardiovascular health, cognitive resilience, and blood glucose stability. Integrating this simple practice into your daily schedule makes wellness second-nature.
+                      </Text>
+                    </View>
+
+                    <View style={{ gap: 4, marginTop: 8 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.5 }}>Today's Small Win Action</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9' }}>
+                        <CheckCircle2 size={16} color="#8B5CF6" />
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#475569', flex: 1 }}>
+                          Set a timer or prompt to complete this action within the next 4 hours.
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Got it button */}
+                  <Pressable
+                    onPress={() => setShowTipSheet(false)}
+                    style={{
+                      marginTop: 10,
+                      borderRadius: 16,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <LinearGradient
+                      colors={["#8B5CF6", "#7C3AED"]}
+                      style={{
+                        paddingVertical: 16,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFFFFF' }}>
+                        Got It, Thanks!
+                      </Text>
+                    </LinearGradient>
+                  </Pressable>
+                </View>
+              );
+            })()}
+          </BottomSheetWrapper>
+        </View>
+      </KeyboardAvoidingView>
+    </TabScreenTransition>
+  );
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ══ STYLES ═══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
 const styles = StyleSheet.create({
-    screenContainer: {
-        flex: 1,
-        backgroundColor: colors.canvas, // Canonical warm canvas #FAFAF9
-    },
-    headerBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: spacing.screen,
-        paddingBottom: spacing.md,
-        backgroundColor: colors.canvas,
-    },
-    headerLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    avatarWrapper: {
-        width: 44,
-        height: 44,
-        borderRadius: RADIUS.pill,
-        backgroundColor: colors.surface,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1.5,
-        borderColor: colors.borderLight,
-        marginRight: spacing.md,
-        overflow: 'hidden',
-    },
-    avatarImage: {
-        width: '100%',
-        height: '100%',
-        borderRadius: RADIUS.pill,
-    },
-    avatarFallback: {
-        width: '100%',
-        height: '100%',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: colors.primarySoft,
-    },
-    greetingCol: {
-        justifyContent: 'center',
-    },
-    greetingText: {
-        ...TYPOGRAPHY.body,
-        color: text.secondary,
-    },
-    greetingName: {
-        fontFamily: 'PlusJakartaSans_700Bold',
-        color: text.primary,
-    },
-    dateRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 2,
-    },
-    dateText: {
-        ...TYPOGRAPHY.caption,
-        color: text.muted,
-    },
-    notificationButton: {
-        width: 44,
-        height: 44,
-        borderRadius: RADIUS.pill,
-        backgroundColor: colors.surface,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: colors.borderLight,
-        ...elevation.card,
-    },
-    notificationBadge: {
-        position: 'absolute',
-        top: 10,
-        right: 11,
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: colors.danger,
-    },
-    scrollContent: {
-        paddingHorizontal: spacing.screen,
-        paddingTop: spacing.xs,
-    },
-    zoneWrapper: {
-        marginBottom: spacing.xl,
-    },
+  morningBriefBanner: {
+    borderRadius: radius.lg,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#C7D2FE",
+    marginBottom: 16,
+  },
+  morningBriefGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    gap: 12,
+  },
+  morningBriefIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  morningBriefTitle: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#1E293B",
+  },
+  morningBriefSub: {
+    fontSize: 12,
+    color: "#7C3AED",
+    fontWeight: "600",
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  premiumBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FAF5FF",
+    borderRadius: radius.lg,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#F3E8FF",
+  },
+  premiumBannerLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  premiumBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: "#F3E8FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  premiumBannerTitle: { fontSize: 15, fontWeight: "800", color: "#6B21A8" },
+  premiumBannerSub: {
+    fontSize: 13,
+    color: "#9333EA",
+    fontWeight: "500",
+    marginTop: 2,
+    lineHeight: 18,
+  },
 
-    // Zone 2 Hero Styles
-    heroCard: {
-        padding: spacing.lg,
-        backgroundColor: colors.surface,
-        borderRadius: radius.card,
-        borderWidth: 1,
-        borderColor: colors.borderLight,
-        ...elevation.cardElevated,
-    },
-    heroContentRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    heroScoreNumber: {
-        fontFamily: 'Inter_800ExtraBold',
-        fontSize: 28,
-        color: text.primary,
-        letterSpacing: -0.5,
-    },
-    heroDetailsCol: {
-        flex: 1,
-        marginLeft: spacing.lg,
-        justifyContent: 'center',
-    },
-    heroBadgeRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: spacing.xs + 2,
-    },
-    heroEyebrow: {
-        ...TYPOGRAPHY.chip,
-        color: text.muted,
-        fontSize: 12,
-    },
-    heroSummaryText: {
-        ...TYPOGRAPHY.small,
-        color: text.secondary,
-        lineHeight: 20,
-    },
-    heroLoadingRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    heroLoadingText: {
-        flex: 1,
-        marginLeft: spacing.lg,
-    },
+  // ── Skeleton ──
+  skeletonHeader: {
+    paddingTop: Platform.OS === "ios" ? 60 : 44,
+    paddingBottom: 20,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.heroScreen,
+  },
 
-    // Low Profile Setup Card
-    setupCardContent: {
-        width: '100%',
-    },
-    setupHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: spacing.md,
-    },
-    setupIconBox: {
-        width: 40,
-        height: 40,
-        borderRadius: radius.md,
-        backgroundColor: colors.primarySoft,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: spacing.md,
-    },
-    setupTitleCol: {
-        flex: 1,
-    },
-    setupTitle: {
-        ...TYPOGRAPHY.h3,
-        color: text.primary,
-    },
-    setupSubtitle: {
-        ...TYPOGRAPHY.caption,
-        color: text.secondary,
-        marginTop: 2,
-    },
-    setupProgressTrack: {
-        height: 6,
-        backgroundColor: colors.surfaceMuted,
-        borderRadius: 3,
-        overflow: 'hidden',
-        marginBottom: spacing.md,
-    },
-    setupProgressFill: {
-        height: '100%',
-        backgroundColor: colors.primary,
-        borderRadius: 3,
-    },
-    setupActionRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    setupHelpText: {
-        ...TYPOGRAPHY.caption,
-        color: text.muted,
-        flex: 1,
-        marginRight: spacing.sm,
-    },
-    setupButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: colors.primary,
-        paddingHorizontal: spacing.md,
-        paddingVertical: 8,
-        borderRadius: radius.button,
-    },
-    setupButtonText: {
-        ...TYPOGRAPHY.caption,
-        color: text.inverse,
-        fontFamily: 'PlusJakartaSans_600SemiBold',
-        marginRight: 2,
-    },
+  // ── Header ──
+  header: {
+    paddingTop: Platform.OS === "ios" ? 60 : 56,
+    paddingHorizontal: spacing.heroScreen,
+    paddingBottom: 16,
+    backgroundColor: "transparent",
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+    gap: 16,
+  },
+  brandBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#F3E8FF",
+    paddingHorizontal: 9,
+    paddingVertical: 4.5,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E9D5FF",
+  },
+  brandLogo: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+  },
+  brandText: {
+    fontSize: 12,
+    ...FONT.heavy,
+    color: "#7C3AED",
+    letterSpacing: 0.4,
+  },
+  heroGreetingBlock: {
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  greetingName: {
+    fontSize: 30,
+    ...FONT.heavy,
+    color: "#7C3AED",
+    letterSpacing: -1,
+    lineHeight: 38,
+  },
+  headerSubtext: {
+    fontSize: 14,
+    color: "#64748B",
+    marginTop: 4,
+    ...FONT.medium,
+    lineHeight: 20,
+  },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 7 },
+  headerIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bellDot: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "#EF4444",
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
+  },
+  avatarBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#7C3AED",
+    borderWidth: 2,
+    borderColor: "#E9D5FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: { fontSize: 16, fontWeight: "900", color: "#FFFFFF" },
+  datePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  dateText: { fontSize: 12, color: "#475569", fontWeight: "700" },
+  locationPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  locationDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#7C3AED",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  locationText: { fontSize: 12, color: "#475569", fontWeight: "700", flex: 1 },
 
-    // Zone 3 Medication Action Styles
-    medsContainerCard: {
-        padding: spacing.md,
-    },
-    medRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: spacing.sm,
-    },
-    medCheckButton: {
-        width: 36,
-        height: 36,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: spacing.sm,
-    },
-    medCheckButtonDone: {
-        opacity: 0.85,
-    },
-    medUncheckedRing: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        borderWidth: 2,
-        borderColor: text.muted,
-    },
-    medInfoCol: {
-        flex: 1,
-        marginRight: spacing.sm,
-    },
-    medNameText: {
-        ...TYPOGRAPHY.bodyMedium,
-        color: text.primary,
-    },
-    medTextCrossed: {
-        textDecorationLine: 'line-through',
-        color: text.muted,
-    },
-    medMetaRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 2,
-    },
-    medMetaText: {
-        ...TYPOGRAPHY.caption,
-        color: text.muted,
-    },
-    supplyChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: colors.surfaceSecondary,
-        paddingHorizontal: spacing.sm,
-        paddingVertical: 4,
-        borderRadius: RADIUS.pill,
-        borderWidth: 1,
-        borderColor: colors.borderLight,
-    },
-    supplyChipLow: {
-        backgroundColor: colors.dangerLight,
-        borderColor: 'transparent',
-    },
-    supplyText: {
-        ...TYPOGRAPHY.caption,
-        fontSize: 11,
-        color: text.secondary,
-        fontFamily: 'PlusJakartaSans_600SemiBold',
-    },
-    supplyTextLow: {
-        color: colors.danger,
-    },
-    rowDivider: {
-        height: 1,
-        backgroundColor: colors.divider,
-        marginVertical: 2,
-    },
-    emptyActionCard: {
-        padding: spacing.xl,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    emptyIconCircle: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: colors.successLight,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: spacing.sm,
-    },
-    emptyActionTitle: {
-        ...TYPOGRAPHY.title,
-        color: text.primary,
-        marginBottom: 4,
-    },
-    emptyActionSubtitle: {
-        ...TYPOGRAPHY.small,
-        color: text.muted,
-        textAlign: 'center',
-    },
+  // ── Glass Health Orb ──
+  orbContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 18,
+  },
+  orbWrapper: {
+    width: 210,
+    height: 210,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  orbSvg: {
+    position: "absolute",
+  },
+  glassOrb: {
+    width: 168,
+    height: 168,
+    borderRadius: 84,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.78)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.85)",
+    ...shadows.md,
+    position: "relative",
+  },
+  orbScoreText: {
+    fontSize: 58,
+    fontWeight: "900",
+    color: "#0F172A",
+    letterSpacing: -2,
+  },
+  orbLabelText: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+    marginTop: -4,
+  },
+  orbGradeBadge: {
+    position: "absolute",
+    bottom: 18,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  orbGradeText: {
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  orbNextDose: {
+    fontSize: 13,
+    color: "#64748B",
+    fontWeight: "700",
+    marginTop: 14,
+    textAlign: "center",
+  },
 
-    // Zone 4 Vitals Grid Styles
-    vitalsGrid: {
-        flexDirection: 'row',
-        gap: spacing.md,
-    },
-    vitalBox: {
-        flex: 1,
-        backgroundColor: colors.surfaceSecondary,
-        borderRadius: radius.sheet,
-        padding: spacing.md,
-        borderWidth: 1,
-        borderColor: colors.borderLight,
-    },
-    vitalBoxHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginBottom: spacing.sm,
-    },
-    vitalBoxLabel: {
-        ...TYPOGRAPHY.caption,
-        fontFamily: 'PlusJakartaSans_600SemiBold',
-        color: text.secondary,
-    },
-    vitalValueRow: {
-        flexDirection: 'row',
-        alignItems: 'baseline',
-    },
-    vitalNumber: {
-        fontFamily: 'Inter_700Bold',
-        fontSize: 22,
-        color: text.primary,
-        marginRight: 4,
-    },
-    vitalUnit: {
-        ...TYPOGRAPHY.caption,
-        color: text.muted,
-        fontSize: 11,
-    },
+  // ── Daily Check-In ──
+  checkinCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: radius.lg,
+    padding: 24,
+    ...shadows.md,
+  },
+  checkinTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#1E293B",
+    marginBottom: 14,
+    textAlign: "center",
+  },
+  moodEmojiRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 10,
+  },
+  moodEmojiPill: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 8,
+    width: 60,
+  },
+  moodLottie: {
+    width: 48,
+    height: 48,
+    marginBottom: 8,
+  },
+  moodLabel: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "700",
+  },
+  checkinCompleteView: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  checkinCompleteText: {
+    fontSize: 13,
+    color: "#312E81",
+    fontWeight: "600",
+    flex: 1,
+  },
+  selectedMoodBadge: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#7C3AED",
+    backgroundColor: "#FAF5FF",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
 
-    // Health Tip Card Styles
-    tipCard: {
-        backgroundColor: colors.surface,
-        borderWidth: 1,
-        borderColor: colors.borderLight,
-        padding: spacing.md,
-    },
-    tipRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-    },
-    tipIconBox: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: colors.primarySoft,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: spacing.md,
-    },
-    tipContentCol: {
-        flex: 1,
-    },
-    tipHeaderTitle: {
-        ...TYPOGRAPHY.caption,
-        fontFamily: 'PlusJakartaSans_700Bold',
-        color: colors.primary,
-        marginBottom: 2,
-    },
-    tipBodyText: {
-        ...TYPOGRAPHY.small,
-        color: text.secondary,
-        lineHeight: 20,
-    },
+  // ── Health Pulse Card ──
+  pulseCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: radius.md,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    ...shadows.sm,
+  },
+  pulseHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  pulseTitle: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#94A3B8",
+    letterSpacing: 1.2,
+  },
+  pulseStatusIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginLeft: "auto",
+  },
+  pulseStatusDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+  },
+  pulseStatusLabel: {
+    fontSize: 9,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  pulseDetailsText: {
+    fontSize: 13,
+    color: "#475569",
+    fontWeight: "600",
+    lineHeight: 18,
+  },
+
+  // ── AI Coach (Today's Insight) ──
+  insightCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "rgba(15, 23, 42, 0.04)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 30,
+    elevation: 4,
+  },
+  insightHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  insightHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  insightIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    backgroundColor: "#FAF5FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  insightTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#0F172A",
+    letterSpacing: 1,
+  },
+  insightBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    backgroundColor: "#FAF5FF",
+    borderWidth: 1,
+    borderColor: "#F3E8FF",
+  },
+  insightBadgeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "#7C3AED",
+  },
+  insightBadgeText: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#7C3AED",
+    letterSpacing: 0.5,
+  },
+  insightBody: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  insightDescText: {
+    fontSize: 15,
+    color: "#475569",
+    lineHeight: 22,
+    fontWeight: "500",
+  },
+  insightIllustration: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: "#FAF5FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  insightDotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 18,
+  },
+  insightDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "rgba(124, 58, 237, 0.2)",
+  },
+  insightDotActive: {
+    width: 15,
+    backgroundColor: "#7C3AED",
+  },
+
+  // ── Next Goal Card ──
+  goalCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: radius.lg,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    ...shadows.card,
+  },
+  goalCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  goalIconBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    backgroundColor: "#FEF3C7",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  goalTitle: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#94A3B8",
+    letterSpacing: 1.5,
+  },
+  goalProgressValue: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#475569",
+  },
+  goalDesc: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1E293B",
+    marginBottom: 14,
+  },
+  progressBg: {
+    height: 8,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: 8,
+    borderRadius: 4,
+  },
+
+  // ── Medications Plan ──
+  medSummaryCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    marginBottom: 14,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.03,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  medSummaryTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 18,
+  },
+  medSummaryLeftPart: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    flex: 1,
+    marginRight: 12,
+  },
+  trophyIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#E6F4EA",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  medSummaryTitleText: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginBottom: 4,
+  },
+  medSummarySubText: {
+    fontSize: 13,
+    color: "#475569",
+    lineHeight: 18,
+    fontWeight: "500",
+  },
+  progressRingContainer: {
+    width: 68,
+    height: 68,
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  progressRingTextContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  progressRingPercentText: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  progressRingStatusText: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#10B981",
+    marginTop: -2,
+  },
+  timelineContainer: {
+    marginBottom: 18,
+  },
+  timelineWrapper: {
+    height: 24,
+    justifyContent: "center",
+    position: "relative",
+    marginVertical: 8,
+  },
+  timelineTrackLine: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    height: 4,
+    backgroundColor: "#E2E8F0",
+    borderRadius: 2,
+  },
+  timelineActiveLine: {
+    position: "absolute",
+    left: 12,
+    height: 4,
+    backgroundColor: "#10B981",
+    borderRadius: 2,
+  },
+  timelineDotsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  timelineDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+  },
+  timelineDotCompleted: {
+    backgroundColor: "#10B981",
+    borderColor: "#10B981",
+  },
+  timelineDotPending: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#CBD5E1",
+  },
+  timelineLabelsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 4,
+    marginTop: 4,
+  },
+  timelineLabelText: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "700",
+  },
+  habitBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#F0FDF4",
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#DCFCE7",
+  },
+  habitBannerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  habitBannerText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#15803D",
+  },
+
+  // ── Vitals Section (Apple Health style) ──
+  vitalsGrid: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 14,
+  },
+  vitalsScrollContainer: {
+    flexDirection: "row",
+    gap: 12,
+    paddingBottom: 14,
+  },
+  vitalsCard: {
+    width: 165,
+    backgroundColor: "#FFFFFF",
+    borderRadius: radius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    ...shadows.card,
+  },
+  vitalsCardTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  vitalsIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  vitalsStatusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 14,
+  },
+  statusDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+  },
+  statusLabel: {
+    fontSize: 9,
+    fontWeight: "800",
+    textTransform: "uppercase",
+  },
+  vitalsCardLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#64748B",
+  },
+  vitalsCardValue: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#0F172A",
+    letterSpacing: -0.5,
+  },
+  vitalsCardUnit: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#94A3B8",
+  },
+  sparklineWrapper: {
+    height: 32,
+    width: "100%",
+    marginVertical: 10,
+    justifyContent: "center",
+  },
+  vitalsCardFooter: {
+    fontSize: 10,
+    color: "#94A3B8",
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+  },
+
+  // ── Health Journey ──
+  journeyCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: radius.lg,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    ...shadows.card,
+  },
+  journeyHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  journeyTitle: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#94A3B8",
+    letterSpacing: 1.5,
+  },
+  journeyImprovementBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#ECFDF5",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  journeyImprovementText: {
+    fontSize: 11,
+    color: "#10B981",
+    fontWeight: "800",
+  },
+  journeyProgressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 10,
+  },
+  journeyProgressText: {
+    fontSize: 26,
+    fontWeight: "900",
+    color: "#0F172A",
+    letterSpacing: -1,
+    flexShrink: 1,
+  },
+  journeyConsistencyBadge: {
+    backgroundColor: "#FAF5FF",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    flexShrink: 0,
+  },
+  journeyConsistencyBadgeText: {
+    fontSize: 11,
+    color: "#7C3AED",
+    fontWeight: "800",
+  },
+  journeyDesc: {
+    fontSize: 13,
+    color: "#64748B",
+    lineHeight: 18,
+    fontWeight: "500",
+  },
+
+  // ── De-emphasized Quick Actions (Flat Capsule Chips) ──
+  deemphasizedActionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 4,
+  },
+  actionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.md,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  actionChipText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#475569",
+  },
+
+  // ── tip card ──
+  tipCard: {
+    borderRadius: radius.lg,
+    overflow: "hidden",
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "#E9D5FF",
+  },
+  tipHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  tipIconBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tipLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#7C3AED",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  tipText: {
+    fontSize: 14,
+    color: "#5B21B6",
+    lineHeight: 22,
+    fontWeight: "500",
+  },
+
+  // ── Scroll Content ──
+  scrollContent: {
+    paddingHorizontal: spacing.heroScreen,
+    paddingTop: 16,
+    paddingBottom: layout.TAB_BAR_CLEARANCE,
+  },
+
+  // ── Sections ──
+  section: { marginBottom: 32 },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#94A3B8",
+    letterSpacing: 1.8,
+    textTransform: "uppercase",
+    marginBottom: 12,
+  },
+  sectionTitleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  viewAllBtn: { flexDirection: "row", alignItems: "center", gap: 3 },
+  viewAllText: { fontSize: 13, fontWeight: "700", color: "#8B5CF6" },
+
+  // ── Offline Banner ──
+  offlineBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    backgroundColor: "#FEF3C7",
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+  },
+  offlineBannerText: { fontSize: 12, fontWeight: "700", color: "#92400E" },
+
+  // ── Mini Med cards ──
+  medCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: radius.md,
+    marginBottom: 10,
+    flexDirection: "row",
+    overflow: "hidden",
+    ...shadows.card,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  medCardTaken: { backgroundColor: "#F0FDF4", borderColor: "#DCFCE7" },
+  medCardContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    gap: 14,
+  },
+  medIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  medName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginBottom: 3,
+  },
+  medDose: { fontSize: 12, color: "#64748B", fontWeight: "500" },
+  takenBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#DCFCE7",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  takenBadgeText: { fontSize: 10, fontWeight: "700", color: colors.success },
+
+  // ── Sync Card ──
+  syncCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
+    borderRadius: radius.lg,
+    padding: 16,
+    marginBottom: 14,
+    ...shadows.card,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  syncCardConnected: { borderColor: "#DCFCE7" },
+  syncCardLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 14,
+  },
+  syncIconBox: {
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  syncTitle: { fontSize: 15, fontWeight: "700", color: "#1E293B" },
+  syncSub: { fontSize: 12, color: "#64748B", fontWeight: "500" },
+  syncingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  syncingText: { fontSize: 10, fontWeight: "700", color: "#D97706" },
+
+  // ── Generic Card ──
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: radius.lg,
+    padding: 24,
+    ...shadows.md,
+  },
+  cardTitle: { fontSize: 16, fontWeight: "800", color: "#1E293B" },
+  toggleBadge: {
+    backgroundColor: "rgba(139,92,246,0.1)",
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 10,
+  },
+  toggleBadgeCancel: { backgroundColor: "rgba(239,68,68,0.08)" },
+  toggleBadgeText: { color: "#8B5CF6", fontSize: 13, fontWeight: "700" },
+  formRow: { flexDirection: "row", gap: 12, marginBottom: 4 },
+  submitBtn: {
+    borderRadius: 18,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginTop: 20,
+    overflow: "hidden",
+    ...shadows.md,
+  },
+  submitBtnText: {
+    color: "#FFF",
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
+  },
+  errorText: {
+    flex: 1,
+    color: "#991B1B",
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 18,
+  },
+
+  // ── Empty State ──
+  emptyCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: radius.lg,
+    padding: 28,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    ...shadows.card,
+  },
+  emptyIconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1E293B",
+    marginBottom: 6,
+    textAlign: "center",
+  },
+  emptySub: {
+    fontSize: 13,
+    color: "#64748B",
+    fontWeight: "500",
+    lineHeight: 19,
+    textAlign: "center",
+  },
+
+  // ── FLOATING COACH BUTTON ──
+  floatingCoachBtn: {
+    position: "absolute",
+    right: 20,
+    bottom: 20,
+    borderRadius: 25,
+    ...shadows.md,
+    overflow: "hidden",
+  },
+  floatingCoachGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  floatingCoachText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  // ── Sleep Inactivity Prompt ──
+  sleepPromptCard: {
+    backgroundColor: "#FAF5FF",
+    borderRadius: radius.lg,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: "#E9D5FF",
+    ...shadows.card,
+  },
+  sleepPromptHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 10,
+  },
+  sleepIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: "#F3E8FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sleepPromptTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#1E1B4B",
+  },
+  sleepPromptText: {
+    fontSize: 13,
+    color: "#4C1D95",
+    lineHeight: 18,
+    fontWeight: "500",
+    marginBottom: 14,
+  },
+  sleepPromptActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  sleepPromptBtnYes: {
+    backgroundColor: "#7C3AED",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sleepPromptBtnYesText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  sleepPromptBtnNo: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: "#E9D5FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sleepPromptBtnNoText: {
+    color: "#7C3AED",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  sleepPromptBtnAdjust: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: "#E9D5FF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: "auto",
+  },
+  sleepPromptBtnAdjustText: {
+    color: "#7C3AED",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  lowConfidenceCard: {
+    backgroundColor: "#FFF9E6",
+    borderRadius: radius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    marginTop: 12,
+  },
+  lowConfidenceTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#B45309",
+  },
+  lowConfidenceDesc: {
+    fontSize: 12,
+    color: "#D97706",
+    lineHeight: 18,
+    fontWeight: "500",
+    marginTop: 6,
+  },
+  sleepHourBtn: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E9D5FF",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 54,
+  },
+  sleepHourBtnText: {
+    color: "#7C3AED",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  sleepHourBtnDismiss: {
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sleepHourBtnDismissText: {
+    color: "#64748B",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  // Dedicated Amber CTA styles
+  sleepCtaCard: {
+    backgroundColor: "#FFFBEB",
+    borderRadius: radius.lg,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: "#FDE68A",
+    ...shadows.card,
+  },
+  sleepCtaIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: "#FEF3C7",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sleepCtaTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#78350F",
+  },
+  sleepCtaText: {
+    fontSize: 13,
+    color: "#92400E",
+    lineHeight: 18,
+    fontWeight: "500",
+    marginBottom: 14,
+  },
+  sleepCtaBtnYes: {
+    backgroundColor: "#D97706",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sleepCtaBtnYesText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  sleepCtaBtnNo: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sleepCtaBtnNoText: {
+    color: "#D97706",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  sleepCtaHourBtn: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 54,
+  },
+  sleepCtaHourBtnText: {
+    color: "#D97706",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  // Frosted Sticky Container Header Morphing Bar
+  // Frosted Sticky Container Header Morphing Floating Dock Capsule
+  // ── SINGLE CONTINUOUS SHARED MORPHING CARD SURFACE ──
+  singleSharedCardContainer: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    zIndex: 120,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(124, 58, 237, 0.15)",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  cardInternalPressable: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  cardIconBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#F3E8FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  eyebrowCapsule: {
+    alignSelf: "flex-start",
+    backgroundColor: "#FAF5FF",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 100,
+    borderWidth: 1,
+    borderColor: "#F3E8FF",
+  },
+  eyebrowText: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#7C3AED",
+    letterSpacing: 0.6,
+  },
+  dockedEyebrowText: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#7C3AED",
+    letterSpacing: 0.8,
+  },
+  cardMainText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginTop: 2,
+  },
+  arrowCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dockedCtaBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FAF5FF",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#F3E8FF",
+  },
+  dockedCtaText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#7C3AED",
+  },
 });
