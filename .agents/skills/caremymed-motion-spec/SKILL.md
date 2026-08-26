@@ -31,9 +31,20 @@ description: Master Product, Visual Grammar, and Motion Doctrine for CareMyMed. 
 * **Do not remove, hide, merge, or collapse a module, metric, action, metadata field, or interaction because it appears visually redundant.**
 * If consolidation seems desirable: **Merge presentation, NEVER capability.** Every underlying data field, tap target, and action must remain accessible and functional.
 
-### Rule 3: Cohesion Does Not Require Uniformity ("Different Things, Same Family")
-* **Not every module needs to be a card.** Putting 10 identical white rounded rectangles on a screen creates "card soup" and destroys visual hierarchy.
-* A hero signature, telemetry sparkline tile, medication row, timeline event, clinical insight, quick action, and floating assistant may each have **different composition and visual emphasis** while sharing the same underlying design DNA.
+### Rule 3: Reference Screen Principle (Canonical CareMyMed Visual Grammar)
+* **The Profile screen is the canonical reference for CareMyMed's visual language.** It defines how CareMyMed expresses hierarchy, sections, surfaces, rows, actions, metadata, semantic states, navigation, and brand presence.
+* **Visual Reference $\neq$ Structural/Content Clone:**
+  * Other screens (Home, Medications, Vitals, Companion, Chatbot) must inherit Profile's **visual grammar** without copying its content structure or flattening their own information architecture.
+  * Each screen retains a composition and density optimized for its own medical domain.
+* **What Profile Establishes (The Shared DNA):**
+  * **Section Eyebrow Labels**: Small uppercase purple tracking labels (`CARE RECORD`, `CAREMYMED PLAN`, `PERSONAL INFORMATION`, `ACCOUNT & SECURITY`).
+  * **Strong Page Title**: Crisp, near-black primary header title (`#111827`, `PlusJakartaSans_700Bold`) paired with small contextual metadata.
+  * **Row Anatomy**: Standardized compact row primitive:
+    `[Icon Container] ──> Primary Title + Supporting Description ──> Trailing State / Badge / Action / Chevron`
+  * **Surface/Border Discipline**: Crisp white surfaces (`#FFFFFF`) on a warm canvas (`#FAFAF9`), framed by subtle 1px borders (`#E2E8F0` / `colors.borderLight`) rather than giant muddy drop shadows.
+  * **Restrained Semantic Colors**: Purple (`#7C3AED` / `#6366F1`) used as a **surgical brand accent**, not sprayed everywhere. Emerald for taken/normal, amber for pending/attention, rose for critical alerts.
+  * **Spacing Rhythm**: Consistent vertical rhythm: eyebrow label $\rightarrow$ content surface block $\rightarrow$ inner rows.
+  * **Shell Consistency**: Floating CareMyMed assistant (`ChatFAB`) + persistent custom floating tab bar (`CustomTabBar`).
 
 ### Rule 4: Context-Aware Product Header ("The Swiggy Moment")
 * The header is not a static label or a cluttered kitchen sink. It is the **context-aware pulse** of the app.
@@ -44,9 +55,9 @@ description: Master Product, Visual Grammar, and Motion Doctrine for CareMyMed. 
 
 ---
 
-## 2. Information Hierarchy & Visual Grammar
+## 2. Information Hierarchy & Screen Blueprints
 
-### 2.1 Information Hierarchy Rules
+### 2.1 Universal Hierarchy Rules
 Visual hierarchy must be determined by **user urgency and decision value**, not by component type:
 1. **Current Context**: Orientation & active state ("Where am I? What's happening now?").
 2. **Urgent Action**: Immediate scheduled doses or critical reminders ("What do I need to do right now?").
@@ -55,9 +66,34 @@ Visual hierarchy must be determined by **user urgency and decision value**, not 
 5. **Progress & Trends**: 35-day streak, adherence consistency, and sleep/activity logs.
 6. **Secondary Insights & Education**: AI coach recommendations, daily clinical tips, and educational guides.
 
-> Components at the same hierarchy level must not compete visually. Use contrast, scale, and subtle surface shifts to establish clear primary vs secondary relationships.
+### 2.2 Screen Blueprint Grammar (Same Grammar, Domain-Specific Structure)
 
-### 2.2 Visual Tokens (`src/theme/`)
+#### HomeScreen Blueprint
+* `CARE TODAY` $\rightarrow$ Good evening, Puneeth 👋 | Wed, Aug 26 | `[ 4 medications today · 2 vitals pending ]`
+* `HEALTH SNAPSHOT` $\rightarrow$ Health score circular progress ring + Medication/Vitals/Mood/Sleep sub-breakdown
+* `TODAY'S MEDICATIONS` $\rightarrow$ Time-slotted dose rows (`Icon -> Name + Dosage + Time -> Checkbox / Taken`), supply refill alerts
+* `HEALTH SIGNALS` $\rightarrow$ Dual-box biometric telemetry tiles (Heart Rate, Blood Pressure, SpO2) with sparklines
+* `YOUR JOURNEY` $\rightarrow$ 35-Day Whole-Health Grid Board streak calendar & weekly adherence breakdown
+* `CARE INSIGHT` $\rightarrow$ AI clinical recommendation carousel & doctor mascot speech bubble
+* `QUICK ACTIONS` $\rightarrow$ Log Vitals, Check Interactions, Connect Telehealth, Emergency Call
+
+#### MedicationsScreen Blueprint
+* `MEDICATIONS` $\rightarrow$ Today's Active Schedule (`morning`, `afternoon`, `evening`, `night`, `as_needed`)
+* `UPCOMING & PRN` $\rightarrow$ As-needed medications & upcoming schedules
+* `SUPPLY & REFILLS` $\rightarrow$ Pill inventory counts, remaining doses, pharmacy one-tap reorder
+* `ADHERENCE TRENDS` $\rightarrow$ Weekly/Monthly consistency charts & completion streaks
+* `HISTORY` $\rightarrow$ Past log timeline & adherence recap modal
+
+#### VitalsHistoryScreen Blueprint
+* `HEALTH DATA` $\rightarrow$ Latest biometric status & sync indicators
+* `TELEMETRY TRENDS` $\rightarrow$ Multi-metric sparklines & historical charts (HR, BP, SpO2, Glucose, Weight)
+* `RECENT READINGS` $\rightarrow$ Detailed reading log list with timestamps & clinical ranges
+* `CLINICAL INSIGHTS` $\rightarrow$ AI trend forecasts & risk indicators
+
+---
+
+## 3. Visual Tokens (`src/theme/`)
+
 * **Surfaces & Canvas**:
   * `canvas`: `#FAFAF9` (warm canvas separating CareMyMed from sterile medical looks).
   * `surface`: `#FFFFFF` (crisp white primary containers).
@@ -70,6 +106,7 @@ Visual hierarchy must be determined by **user urgency and decision value**, not 
   * `8px`  $\rightarrow$ Small controls / icon containers (`radius.sm`)
   * `9999px` $\rightarrow$ Pills / capsules / avatars (`RADIUS.pill`)
 * **Typography Tokens (`TYPOGRAPHY`)**:
+  * **Section Eyebrows**: `PlusJakartaSans_700Bold`, 11–12px, uppercase, letter-spacing +0.8, color `#7C3AED` or `#64748B`.
   * **Headers & Brand**: `PlusJakartaSans_700Bold`, `PlusJakartaSans_600SemiBold`.
   * **Telemetry & Numeric Values**: `Inter_700Bold`, `Inter_800ExtraBold` (tabular numbers for vitals, health score, doses).
   * **Body & Labels**: `PlusJakartaSans_400Regular`, `PlusJakartaSans_500Medium`.
@@ -82,18 +119,18 @@ Visual hierarchy must be determined by **user urgency and decision value**, not 
 
 ---
 
-## 3. Motion & Interaction Doctrine
+## 4. Motion & Interaction Doctrine
 
 Motion reinforces existing hierarchy; **it must never manufacture artificial importance**.
 
-### 3.1 Branded Launch Sequence (4-Beat Orchestration)
+### 4.1 Branded Launch Sequence (4-Beat Orchestration)
 1. **Beat 1 (0–400ms)**: Solid brand purple canvas (`#7C3AED`) full-bleed.
 2. **Beat 2 (400–1100ms)**: Official CareMyMed brand logo (`assets/logo.png`) scales in ($0.85 \rightarrow 1.0$) with soft radial halo glow pulse.
 3. **Beat 3 (500–1200ms)**: Top Context Card (active location / health score status) slides down smoothly; dynamic status ticker begins.
 4. **Beat 4 (1900ms $\rightarrow$)**: 220ms ease-out cross-fade directly into mounted app chrome.
 5. **Anti-Flicker Floor**: Launch sequence must never resolve in under 1.9s on cold boot.
 
-### 3.2 Instant Chrome, Progressive Content Loading
+### 4.2 Instant Chrome, Progressive Content Loading
 * **Frame 1**: App chrome (status bar, orientation header, tab bar, section titles, container frames) mounts synchronously.
 * **Content**: Dynamic data loads into **content-shaped in-place skeletons**:
   * `RingSkeleton` for circular health rings.
@@ -102,7 +139,7 @@ Motion reinforces existing hierarchy; **it must never manufacture artificial imp
   * `PillCardSkeleton` for chips and badges.
 * **No Plausible Mock Telemetry**: During empty state or loading, vitals must show an honest `—` ("Not recorded"), never fake numbers like `72 bpm` or `120/80` that mimic real readings.
 
-### 3.3 Interaction Physics Calibration
+### 4.3 Interaction Physics Calibration
 * **Large Cards / Surfaces**: `scale(0.98)` on `onPressIn`, spring recovery on `onPressOut`.
 * **Small Controls / Pills / Buttons**: `scale(0.97)` on `onPressIn`, spring recovery on `onPressOut`.
 * **1-Tap Actions**: Immediate optimistic UI updates + `HapticPatterns.selection()` / `HapticPatterns.allDone()`.
@@ -111,7 +148,7 @@ Motion reinforces existing hierarchy; **it must never manufacture artificial imp
 
 ---
 
-## 4. Mandatory Screen Redesign Protocol
+## 5. Mandatory Screen Redesign Protocol
 
 Before making changes to any existing screen, follow this 9-step algorithm:
 
@@ -119,7 +156,7 @@ Before making changes to any existing screen, follow this 9-step algorithm:
 2. **Inventory Interactions & Navigation**: Map every tap target, modal trigger, swipe gesture, and route.
 3. **Inventory Dynamic Data & State**: Identify all store subscriptions, live telemetry, and edge cases (empty, low-supply, error).
 4. **Map Priority Hierarchy**: Categorize items by user urgency (Current Context $\rightarrow$ Urgent Action $\rightarrow$ Health State $\rightarrow$ Telemetry $\rightarrow$ Progress $\rightarrow$ Insights).
-5. **Recompose with Visual Grammar**: Apply the canonical tokens, spacing rhythm, and surface treatments without deleting modules.
+5. **Recompose with Visual Grammar**: Apply the canonical tokens, Profile-style eyebrow sectioning, row anatomy, and surface treatments without deleting modules.
 6. **Preserve All Behaviors & Data**: Ensure store hooks, optimistic updates, and callbacks remain 100% wired.
 7. **Apply Hierarchy-Reinforcing Motion**: Add tactile scale springs, skeleton shimmers, and micro-interactions.
 8. **Side-by-Side Verification**: Compare old vs new capabilities to guarantee zero loss of information density.
