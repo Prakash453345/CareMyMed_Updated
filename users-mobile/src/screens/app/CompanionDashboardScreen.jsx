@@ -767,60 +767,61 @@ export default function CompanionDashboardScreen() {
 
                 {/* 8. 🧠 Health Intelligence Center CTA Card */}
                 {visibleSections.includes('intelligence_center') && (
-                    <AnimatedCard 
-                        onPress={() => navigation.navigate('CompanionAnalytics')}
-                        style={sectionAnimForKey('intelligence_center')}
-                    >
-                        <View style={styles.ctaCardHeader}>
-                            <View style={[styles.iconBox, { backgroundColor: '#F5F3FF' }]}>
-                                <BrainCircuit color="#7C3AED" size={20} />
+                    <ReanimatedAnimated.View style={sectionAnimForKey('intelligence_center')}>
+                        <AnimatedCard 
+                            onPress={() => navigation.navigate('CompanionAnalytics')}
+                        >
+                            <View style={styles.ctaCardHeader}>
+                                <View style={[styles.iconBox, { backgroundColor: '#F5F3FF' }]}>
+                                    <BrainCircuit color="#7C3AED" size={20} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.ctaTitle}>Health Intelligence Center</Text>
+                                    <Text style={styles.ctaSubtitle}>Forecasts • Trends • AI Insights</Text>
+                                </View>
+                                <ChevronRight color={colors.primary} size={20} />
                             </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.ctaTitle}>Health Intelligence Center</Text>
-                                <Text style={styles.ctaSubtitle}>Forecasts • Trends • AI Insights</Text>
-                            </View>
-                            <ChevronRight color={colors.primary} size={20} />
-                        </View>
 
-                        {/* Preview Chips */}
-                        <View style={styles.ctaChipsRow}>
-                            <View style={[
-                                styles.ctaChip,
-                                riskLevel === 'high' ? styles.chipHigh :
-                                riskLevel === 'medium' ? styles.chipMedium :
-                                riskLevel === 'low' ? styles.chipLow : styles.chipUnknown
-                            ]}>
-                                <Text style={[
-                                    styles.ctaChipText,
-                                    { color: riskLevel === 'high' ? colors.danger :
-                                             riskLevel === 'medium' ? colors.warning :
-                                             riskLevel === 'low' ? colors.success : '#64748B' }
+                            {/* Preview Chips */}
+                            <View style={styles.ctaChipsRow}>
+                                <View style={[
+                                    styles.ctaChip,
+                                    riskLevel === 'high' ? styles.chipHigh :
+                                    riskLevel === 'medium' ? styles.chipMedium :
+                                    riskLevel === 'low' ? styles.chipLow : styles.chipUnknown
                                 ]}>
-                                    Risk: {riskLevel === 'high' ? 'High' : riskLevel === 'medium' ? 'Medium' : riskLevel === 'low' ? 'Low' : 'Unknown'}
-                                </Text>
-                            </View>
+                                    <Text style={[
+                                        styles.ctaChipText,
+                                        { color: riskLevel === 'high' ? colors.danger :
+                                                 riskLevel === 'medium' ? colors.warning :
+                                                 riskLevel === 'low' ? colors.success : '#64748B' }
+                                    ]}>
+                                        Risk: {riskLevel === 'high' ? 'High' : riskLevel === 'medium' ? 'Medium' : riskLevel === 'low' ? 'Low' : 'Unknown'}
+                                    </Text>
+                                </View>
 
-                            <View style={[styles.ctaChip, { backgroundColor: '#E0F2FE' }]}>
-                                <Text style={[styles.ctaChipText, { color: colors.primary }]}>
-                                    Forecast: {trendDirection === 'improving' ? 'Improving' : trendDirection === 'worsening' ? 'Declining' : 'Stable'}
-                                </Text>
-                            </View>
+                                <View style={[styles.ctaChip, { backgroundColor: '#E0F2FE' }]}>
+                                    <Text style={[styles.ctaChipText, { color: colors.primary }]}>
+                                        Forecast: {trendDirection === 'improving' ? 'Improving' : trendDirection === 'worsening' ? 'Declining' : 'Stable'}
+                                    </Text>
+                                </View>
 
-                            <View style={[styles.ctaChip, { backgroundColor: '#F1F5F9', flexDirection: 'row', alignItems: 'center' }]}>
-                                <Text style={[styles.ctaChipText, { color: '#475569' }]}>Confidence: </Text>
-                                <AnimatedNumber 
-                                    value={confidenceScore} 
-                                    suffix="%" 
-                                    style={{ fontSize: 11, ...FONT.bold, color: '#475569' }} 
-                                />
+                                <View style={[styles.ctaChip, { backgroundColor: '#F1F5F9', flexDirection: 'row', alignItems: 'center' }]}>
+                                    <Text style={[styles.ctaChipText, { color: '#475569' }]}>Confidence: </Text>
+                                    <AnimatedNumber 
+                                        value={confidenceScore} 
+                                        suffix="%" 
+                                        style={{ fontSize: 11, ...FONT.bold, color: '#475569' }} 
+                                    />
+                                </View>
                             </View>
-                        </View>
 
                             <View style={styles.ctaViewDetailsRow}>
                                 <Text style={styles.ctaViewDetailsText}>View Details</Text>
                                 <ChevronRight size={14} color={colors.primary} />
                             </View>
-                    </AnimatedCard>
+                        </AnimatedCard>
+                    </ReanimatedAnimated.View>
                 )}
                 {/* 3. AI Companion Briefing (Mascot Overlapping Speech Bubble) */}
                 {visibleSections.includes('briefing') && (
@@ -923,34 +924,35 @@ export default function CompanionDashboardScreen() {
 
                 {/* 5. ⚡ Proactive Intervention Center CTA Card */}
                 {visibleSections.includes('intervention_center') && (
-                    <AnimatedCard 
-                        onPress={() => navigation.navigate('InterventionCenter')}
-                        style={[{ marginTop: 12 }, sectionAnimForKey('intervention_center')]}
-                    >
-                        <View style={styles.ctaCardHeader}>
-                            <View style={[styles.iconBox, { backgroundColor: '#ECFDF5' }]}>
-                                <ClipboardCheck color="#059669" size={20} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.ctaTitle}>Proactive Intervention Center</Text>
-                                <Text style={styles.ctaSubtitle}>
-                                    {pendingInterventionsCount > 0 
-                                        ? `${pendingInterventionsCount} care intervention${pendingInterventionsCount > 1 ? 's' : ''} recommended`
-                                        : 'No immediate actions needed today'}
-                                </Text>
-                            </View>
-                            {pendingInterventionsCount > 0 && (
-                                <View style={styles.activeBadgeContainer}>
-                                    <Text style={styles.activeBadgeText}>{pendingInterventionsCount}</Text>
+                    <ReanimatedAnimated.View style={[{ marginTop: 12 }, sectionAnimForKey('intervention_center')]}>
+                        <AnimatedCard 
+                            onPress={() => navigation.navigate('InterventionCenter')}
+                        >
+                            <View style={styles.ctaCardHeader}>
+                                <View style={[styles.iconBox, { backgroundColor: '#ECFDF5' }]}>
+                                    <ClipboardCheck color="#059669" size={20} />
                                 </View>
-                            )}
-                            <ChevronRight color={colors.primary} size={20} />
-                        </View>
-                        <View style={styles.ctaViewDetailsRow}>
-                            <Text style={styles.ctaViewDetailsText}>Open Action Center</Text>
-                            <ChevronRight size={14} color={colors.primary} />
-                        </View>
-                    </AnimatedCard>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.ctaTitle}>Proactive Intervention Center</Text>
+                                    <Text style={styles.ctaSubtitle}>
+                                        {pendingInterventionsCount > 0 
+                                            ? `${pendingInterventionsCount} care intervention${pendingInterventionsCount > 1 ? 's' : ''} recommended`
+                                            : 'No immediate actions needed today'}
+                                    </Text>
+                                </View>
+                                {pendingInterventionsCount > 0 && (
+                                    <View style={styles.activeBadgeContainer}>
+                                        <Text style={styles.activeBadgeText}>{pendingInterventionsCount}</Text>
+                                    </View>
+                                )}
+                                <ChevronRight color={colors.primary} size={20} />
+                            </View>
+                            <View style={styles.ctaViewDetailsRow}>
+                                <Text style={styles.ctaViewDetailsText}>Open Action Center</Text>
+                                <ChevronRight size={14} color={colors.primary} />
+                            </View>
+                        </AnimatedCard>
+                    </ReanimatedAnimated.View>
                 )}
 
                 {/* 6. Daily Medication Timeline Checklist */}

@@ -11,16 +11,19 @@ export default function AnimatedCounter({
     style,
     ...props
 }) {
-    const [displayValue, setDisplayValue] = useState(fromValue !== undefined ? fromValue : value);
-    const animValue = useRef(new Animated.Value(fromValue !== undefined ? fromValue : value)).current;
+    const safeValue = typeof value === 'number' && Number.isFinite(value) ? value : (Number(value) || 0);
+    const safeFrom = fromValue !== undefined && Number.isFinite(Number(fromValue)) ? Number(fromValue) : safeValue;
+    const [displayValue, setDisplayValue] = useState(safeFrom);
+    const animValue = useRef(new Animated.Value(safeFrom)).current;
 
     useEffect(() => {
-        animValue.setValue(fromValue !== undefined ? fromValue : displayValue);
+        animValue.setValue(safeFrom);
         const id = animValue.addListener(({ value: val }) => {
-            setDisplayValue(val);
+            const numVal = Number.isFinite(val) ? val : safeValue;
+            setDisplayValue(numVal);
         });
         Animated.spring(animValue, {
-            toValue: value,
+            toValue: safeValue,
             speed: 12,
             bounciness: 4,
             useNativeDriver: false,
@@ -29,9 +32,10 @@ export default function AnimatedCounter({
         return () => {
             animValue.removeListener(id);
         };
-    }, [value, fromValue, animValue]);
+    }, [safeValue, safeFrom, animValue]);
 
-    const rounded = displayValue.toFixed(decimals);
+    const numToFormat = Number.isFinite(displayValue) ? displayValue : 0;
+    const rounded = numToFormat.toFixed(decimals);
     let formatted = rounded;
     if (useGrouping) {
         const parts = rounded.split('.');
