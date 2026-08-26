@@ -159,7 +159,7 @@ export default function CompanionHomeScreen() {
         <View style={styles.container}>
             {/* Premium Linear Gradient Background */}
             <LinearGradient
-                colors={['#F8FAFC', '#EEF2FF']}
+                colors={['#FAFAF9', '#F5F5F4']}
                 style={StyleSheet.absoluteFill}
             />
             <View style={[styles.header, { paddingTop: Math.max(50, insets.top + 16) }]}>
@@ -555,7 +555,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
         padding: 16,
-        borderRadius: 24,
+        borderRadius: radius.xl,
         borderWidth: 1,
         borderColor: '#F1F5F9',
         shadowColor: '#0F172A',

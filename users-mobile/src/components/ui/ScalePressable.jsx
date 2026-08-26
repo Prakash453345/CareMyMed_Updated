@@ -18,7 +18,7 @@ export default function ScalePressable({
     const { reduceMotion } = useMotion();
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
-    const resolvedScale = pressScale ?? reanimatedMotion.scales?.pressed ?? 0.96;
+    const resolvedScale = pressScale ?? reanimatedMotion.scales?.pressed ?? 0.98;
 
     const handlePressIn = () => {
         if (reduceMotion) return;

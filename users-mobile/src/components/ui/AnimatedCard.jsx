@@ -2,15 +2,17 @@ import React, { useRef } from 'react';
 import { StyleSheet, Pressable, View, Animated } from 'react-native';
 import { useMotion } from '../../theme/MotionProvider';
 import { HapticPatterns } from '../../utils/haptics';
+import { colors, radius, shadows } from '../../theme';
 
 export default function AnimatedCard({
     children,
     onPress,
-    pressScale = 1.01,
+    pressScale = 0.98,
     hapticType = 'selection', // 'selection' | 'log' | 'none'
     glowColor = '#C084FC',
     enableGlow = false,
     style,
+    innerStyle,
     ...props
 }) {
     const { reduceMotion } = useMotion();
@@ -59,6 +61,7 @@ export default function AnimatedCard({
                     styles.innerCard,
                     { transform: [{ scale: scaleAnim }] },
                     enableGlow && { borderColor: glowColor, borderWidth: 1.5 },
+                    innerStyle,
                 ]}
             >
                 {children}
@@ -69,11 +72,19 @@ export default function AnimatedCard({
 
 const styles = StyleSheet.create({
     outerCard: {
-        borderRadius: 24,
+        borderRadius: radius.xl, // Standard 20px
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 10,
         elevation: 2,
     },
     innerCard: {
-        borderRadius: 24,
-        backgroundColor: '#FFFFFF',
+        borderRadius: radius.xl,
+        backgroundColor: colors.surface,
+        overflow: 'hidden',
     },
 });

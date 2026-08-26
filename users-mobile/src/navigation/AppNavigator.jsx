@@ -169,7 +169,7 @@ function TabSlot({ focused, isHighlighted = false, IconConfig }) {
             { transform: [{ scale: scaleAnim }] }
         ]}>
             {IconConfig ? (
-                <IconConfig color={focused || isHighlighted ? "#FFFFFF" : "#94A3B8"} size={20} strokeWidth={focused || isHighlighted ? 2.5 : 2} />
+                <IconConfig color={focused || isHighlighted ? "#FFFFFF" : "#A8A29E"} size={20} strokeWidth={focused || isHighlighted ? 2.2 : 2.0} />
             ) : null}
         </Animated.View>
     );

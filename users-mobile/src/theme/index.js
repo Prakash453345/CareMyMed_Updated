@@ -13,29 +13,31 @@ export const colors = {
     accent: '#C084FC',
 
     // ─── Surfaces ──────────────────────────────
-    background: '#F8FAFC',
+    background: '#FAFAF9', // Tested warm/calm canvas background
+    canvasWarm: '#FAFAF9',
+    canvasCool: '#F8FAFC',
     surface: '#FFFFFF',
-    surfaceAlt: '#EDF2F7',
+    surfaceAlt: '#F5F5F4',
 
-    // ─── Semantic ──────────────────────────────
-    success: '#22C55E',
-    successLight: '#DCFCE7',
+    // ─── Semantic Accents ──────────────────────
+    success: '#10B981',
+    successLight: '#ECFDF5',
     warning: '#F59E0B',
     warningLight: '#FEF3C7',
     danger: '#EF4444',
-    dangerLight: '#FEE2E2',
+    dangerLight: '#FFF1F2',
 
     // ─── Text ──────────────────────────────────
-    textPrimary: '#1A202C',
-    textSecondary: '#4A5568',
-    textMuted: '#94A3B8',
+    textPrimary: '#1C1917',
+    textSecondary: '#57534E',
+    textMuted: '#A8A29E',
     textOnPrimary: '#FFFFFF',
-    textOnDark: '#F1F5F9',
+    textOnDark: '#F5F5F4',
 
     // ─── Borders ───────────────────────────────
-    border: '#BDD4EE',
-    borderLight: '#E2E8F0',
-    divider: '#E2E8F0',
+    border: '#E7E5E4',
+    borderLight: '#F5F5F4',
+    divider: '#F5F5F4',
 
     // ─── Gradients ─────────────────────────────
     gradientPrimary: ['#6D28D9', '#7C3AED'],
@@ -43,7 +45,7 @@ export const colors = {
     gradientSoft: ['#C084FC', '#F3E8FF'],
 
     // ─── Status Indicators ─────────────────────
-    calledToday: '#22C55E',
+    calledToday: '#10B981',
     notCalled3Days: '#F59E0B',
     notCalled7Days: '#EF4444',
 
@@ -180,12 +182,19 @@ export const ICON_SIZE = {
     xl: 32,
 };
 
+export const ICON_CONFIG = {
+    defaultStrokeWidth: 2.0,
+    sizes: ICON_SIZE,
+};
+
 export const SPACING = {
     xs: 4,
     sm: 8,
-    md: 16,
-    lg: 24,
-    xl: 32,
+    md: 12,
+    lg: 16,
+    xl: 24,
+    xxl: 32,
+    xxxl: 40,
     screen: 20,
 };
 
@@ -194,7 +203,7 @@ export const RADIUS = {
     md: 12,
     lg: 16,
     xl: 20,
-    pill: 999,
+    pill: 9999,
 };
 
 export const typography = {
@@ -206,26 +215,26 @@ export const typography = {
 };
 
 export const radius = {
-    card: 12,
-    button: 8,
-    chip: 999,
-    input: 10,
+    card: 20,
+    button: 12,
+    chip: 9999,
+    input: 12,
     sm: 8,
     md: 12,
     lg: 16,
     xl: 20,
-    full: 999,
+    full: 9999,
 };
 
 export const spacing = {
     xxs: 2,
     xs: 4,
     sm: 8,
-    md: 16,
-    lg: 24,
-    xl: 32,
-    xxl: 48,
-    xxxl: 64,
+    md: 12,
+    lg: 16,
+    xl: 24,
+    xxl: 32,
+    xxxl: 40,
     base: 8,
     screen: 20,
     heroScreen: 24,

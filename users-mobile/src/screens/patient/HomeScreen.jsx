@@ -1879,8 +1879,8 @@ export default function PatientHomeScreen({ navigation }) {
   // ── Loading skeleton ─────────────────────────────────────────────────────
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
-        <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
         <View style={styles.skeletonHeader}>
           <View style={{ paddingHorizontal: spacing.heroScreen }}>
             <SkeletonItem
@@ -1916,7 +1916,7 @@ export default function PatientHomeScreen({ navigation }) {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
           <StatusBar
             barStyle="dark-content"
             backgroundColor="transparent"
