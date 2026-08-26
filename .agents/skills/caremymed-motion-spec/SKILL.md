@@ -106,7 +106,7 @@ Visual hierarchy must be determined by **user urgency and decision value**, not 
   * `8px`  $\rightarrow$ Small controls / icon containers (`radius.sm`)
   * `9999px` $\rightarrow$ Pills / capsules / avatars (`RADIUS.pill`)
 * **Typography Tokens (`TYPOGRAPHY`)**:
-  * **Section Eyebrows**: `PlusJakartaSans_700Bold`, 11–12px, uppercase, letter-spacing +0.8, color `#7C3AED` or `#64748B`.
+  * **Section Eyebrows**: `PlusJakartaSans_700Bold`, 11–12px, uppercase, letter-spacing +0.8, color `#7C3AED` (canonical primary default; reserve `#64748B` strictly for secondary sub-labels).
   * **Headers & Brand**: `PlusJakartaSans_700Bold`, `PlusJakartaSans_600SemiBold`.
   * **Telemetry & Numeric Values**: `Inter_700Bold`, `Inter_800ExtraBold` (tabular numbers for vitals, health score, doses).
   * **Body & Labels**: `PlusJakartaSans_400Regular`, `PlusJakartaSans_500Medium`.
@@ -126,7 +126,7 @@ Motion reinforces existing hierarchy; **it must never manufacture artificial imp
 ### 4.1 Branded Launch Sequence (4-Beat Orchestration)
 1. **Beat 1 (0–400ms)**: Solid brand purple canvas (`#7C3AED`) full-bleed.
 2. **Beat 2 (400–1100ms)**: Official CareMyMed brand logo (`assets/logo.png`) scales in ($0.85 \rightarrow 1.0$) with soft radial halo glow pulse.
-3. **Beat 3 (500–1200ms)**: Top Context Card (active location / health score status) slides down smoothly; dynamic status ticker begins.
+3. **Beat 3 (500–1200ms)**: Integrated context ticker (*"Syncing your care plan..."* + *"4 medications today · 2 vitals pending"*) renders directly on the purple canvas with zero premature card UI.
 4. **Beat 4 (1900ms $\rightarrow$)**: 220ms ease-out cross-fade directly into mounted app chrome.
 5. **Anti-Flicker Floor**: Launch sequence must never resolve in under 1.9s on cold boot.
 

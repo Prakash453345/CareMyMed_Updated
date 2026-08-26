@@ -22,8 +22,9 @@ export default function BrandedSplashScreen({ isReady, onFinish }) {
     const insets = useSafeAreaInsets();
     const { profile, user } = useAuth();
     const patient = usePatientStore(s => s.patient);
+    const meds = usePatientStore(s => s.dashboardMeds) || [];
 
-    // Derived Context Information (Swiggy-style top context beat)
+    // Derived Context Information (Swiggy-style branded context beat)
     const locationOrOrg = patient?.city ||
         profile?.city ||
         patient?.organization_id?.name ||
@@ -35,9 +36,16 @@ export default function BrandedSplashScreen({ isReady, onFinish }) {
         patient?.healthScoreCache ??
         null;
 
-    const healthStatusSubtitle = healthScore
-        ? `Health Score: ${healthScore} • Monitoring Active`
-        : 'Care Plan Synchronized • Daily Routine Active';
+    const pendingMedsCount = Array.isArray(meds) ? meds.filter(m => !m.taken).length : 0;
+
+    let healthStatusSubtitle = 'Care Plan Synchronized • Daily Routine Active';
+    if (pendingMedsCount > 0 && healthScore) {
+        healthStatusSubtitle = `${pendingMedsCount} medications today • Health Score: ${healthScore}`;
+    } else if (healthScore) {
+        healthStatusSubtitle = `Health Score: ${healthScore} • Monitoring Active`;
+    } else if (pendingMedsCount > 0) {
+        healthStatusSubtitle = `${pendingMedsCount} medications scheduled for today`;
+    }
 
     // Animation Drivers
     const containerOpacity = useRef(new Animated.Value(1)).current;
