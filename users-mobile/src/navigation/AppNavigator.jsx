@@ -32,6 +32,7 @@ import AchievementCelebration from '../components/adherence/AchievementCelebrati
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import i18n from '../i18n';
 import { useGuide } from '../context/GuideContext';
+import BrandedSplashScreen from '../components/ui/BrandedSplashScreen';
 
 import PatientSignupScreen from "../screens/onboarding/PatientSignupScreen";
 import LoginScreen from "../screens/onboarding/LoginScreen";
@@ -506,77 +507,90 @@ export default function AppNavigator({ fontsLoaded }) {
         if (ref) AlertManager.setRef(ref);
     }, []);
 
-    // During bootstrapping, render nothing visible — the native splash screen
-    // (configured in app.json) is covering the UI. We still mount CustomAlert
-    // so AlertManager has its ref ready as soon as the app becomes interactive.
-    if (isBootstrapping) return <CustomAlert ref={alertRef} />;
+    const [showSplash, setShowSplash] = useState(true);
 
-    if (isSwitching) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} style={{ marginBottom: 16 }} />
-                <Text style={styles.loadingText}>Switching workspace...</Text>
+    const renderContent = () => {
+        if (isBootstrapping) return <CustomAlert ref={alertRef} />;
+
+        if (isSwitching) {
+            return (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={colors.primary} style={{ marginBottom: 16 }} />
+                    <Text style={styles.loadingText}>Switching workspace...</Text>
+                    <CustomAlert ref={alertRef} />
+                </View>
+            );
+        }
+
+        if (!user) return (
+            <>
+                <AuthStack />
                 <CustomAlert ref={alertRef} />
-            </View>
+            </>
         );
-    }
+        if (!onboardingComplete && profile?.role !== 'companion') return (
+            <>
+                <PatientOnboardingStack />
+                <CustomAlert ref={alertRef} />
+            </>
+        );
 
-    if (!user) return (
-        <>
-            <AuthStack />
-            <CustomAlert ref={alertRef} />
-        </>
-    );
-    if (!onboardingComplete && profile?.role !== 'companion') return (
-        <>
-            <PatientOnboardingStack />
-            <CustomAlert ref={alertRef} />
-        </>
-    );
+        // Companions bypass subscription check
+        if (profile?.role === 'companion') {
+            return (
+                <LivingGlassProvider>
+                    <BottomSheetProvider>
+                        <View style={{ flex: 1 }}>
+                            <GlobalSyncBanner />
+                            <CompanionMainStack />
+                            <CustomAlert ref={alertRef} />
+                        </View>
+                    </BottomSheetProvider>
+                </LivingGlassProvider>
+            );
+        }
 
-    // Companions bypass subscription check
-    if (profile?.role === 'companion') {
+        if (subscriptionStatus !== 'active') {
+            return (
+                <>
+                    <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
+                        <Stack.Screen name="Payment" component={PremiumShowcaseScreen} />
+                        <Stack.Screen name="WaitingRoom" component={WaitingScreen} />
+                        <Stack.Screen
+                            name="Profile"
+                            component={PatientProfileScreen}
+                            options={{ presentation: "modal" }}
+                        />
+                    </Stack.Navigator>
+                    <CustomAlert ref={alertRef} />
+                </>
+            );
+        }
+
         return (
             <LivingGlassProvider>
                 <BottomSheetProvider>
                     <View style={{ flex: 1 }}>
                         <GlobalSyncBanner />
-                        <CompanionMainStack />
+                        <MainAppStack />
                         <CustomAlert ref={alertRef} />
+                        <AchievementCelebration />
                     </View>
                 </BottomSheetProvider>
             </LivingGlassProvider>
         );
-    }
-
-    if (subscriptionStatus !== 'active') {
-        return (
-            <>
-                <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
-                    <Stack.Screen name="Payment" component={PremiumShowcaseScreen} />
-                    <Stack.Screen name="WaitingRoom" component={WaitingScreen} />
-                    <Stack.Screen
-                        name="Profile"
-                        component={PatientProfileScreen}
-                        options={{ presentation: "modal" }}
-                    />
-                </Stack.Navigator>
-                <CustomAlert ref={alertRef} />
-            </>
-        );
-    }
+    };
 
     return (
-        <LivingGlassProvider>
-            <BottomSheetProvider>
-                <View style={{ flex: 1 }}>
-                    <GlobalSyncBanner />
-                    <MainAppStack />
-                    <CustomAlert ref={alertRef} />
-                    <AchievementCelebration />
-                </View>
-            </BottomSheetProvider>
-        </LivingGlassProvider>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+            {renderContent()}
+            {showSplash && (
+                <BrandedSplashScreen
+                    isReady={!isBootstrapping}
+                    onFinish={() => setShowSplash(false)}
+                />
+            )}
+        </View>
     );
 }
 
