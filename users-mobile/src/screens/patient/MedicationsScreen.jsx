@@ -2178,6 +2178,7 @@ export default function MedicationsScreen({ navigation, route }) {
 
               {/* ── TIME SECTIONS ── */}
               <Animated.View style={anim(2)}>
+                <Text style={styles.sectionEyebrow}>TODAY'S SCHEDULE</Text>
                 <View ref={slotsRef} collapsable={false}>
                   {SLOT_ORDER.map((slot) => {
                     const meds = schedule[slot] || [];
@@ -3948,6 +3949,14 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     letterSpacing: 1.5,
     textTransform: "uppercase",
+  },
+  sectionEyebrow: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#7C3AED",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    marginBottom: 12,
   },
 
   // ── Slot section ──

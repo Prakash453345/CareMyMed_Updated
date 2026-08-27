@@ -2647,7 +2647,8 @@ export default function PatientHomeScreen({ navigation }) {
               </Pressable>
             </Animated.View>
 
-            {/* ── 1. GLASS HEALTH ORB (Brand Focus, 60% Width) ── */}
+            {/* ── 1. HEALTH SNAPSHOT (Hero Ambient Composition) ── */}
+            <Text style={styles.sectionTitle}>HEALTH SNAPSHOT</Text>
             <RecoverableBoundary
               featureName="Health Score"
               screenName="HomeScreen"
@@ -2924,9 +2925,10 @@ export default function PatientHomeScreen({ navigation }) {
 
             {/* Removed Health Pulse - combined with Vitals below */}
 
-            {/* ── 4. TODAY'S INSIGHT (AI Coach Guidance sliding carousel) ── */}
+            {/* ── 4. CARE INSIGHT (AI Live Coach Guidance Carousel) ── */}
             <View ref={insightCardRef} collapsable={false}>
               <Animated.View style={[entranceStyle(4), styles.section]}>
+              <Text style={styles.sectionTitle}>CARE INSIGHT</Text>
               <View style={styles.insightCard}>
                 <View ref={aiCoachHeaderRef} collapsable={false} style={styles.insightHeaderRow}>
                   <View style={styles.insightHeaderLeft}>
@@ -3028,7 +3030,7 @@ export default function PatientHomeScreen({ navigation }) {
               <Animated.View style={[entranceStyle(6), styles.section]}>
               <View ref={todaysPlanHeaderRef} collapsable={false} style={styles.sectionTitleRow}>
                 <Text style={styles.sectionTitle}>
-                  {t("home.todays_plan", { defaultValue: "TODAY'S PLAN" })}
+                  {t("home.todays_plan", { defaultValue: "TODAY'S MEDICATIONS" })}
                 </Text>
                 <Pressable
                   style={styles.viewAllBtn}
@@ -3238,7 +3240,7 @@ export default function PatientHomeScreen({ navigation }) {
               <View ref={vitalsCardRef} collapsable={false}>
                 <View ref={vitalsHeaderRef} collapsable={false} style={styles.sectionTitleRow}>
                   <Text style={styles.sectionTitle}>
-                    {t("home.vitals", { defaultValue: "VITALS" })}
+                    {t("home.vitals", { defaultValue: "HEALTH SIGNALS" })}
                   </Text>
                   <Pressable
                     style={styles.viewAllBtn}
@@ -3486,14 +3488,29 @@ export default function PatientHomeScreen({ navigation }) {
               </View>
             </Animated.View>
 
-            {/* ── 8. HEALTH JOURNEY & NEXT GOAL ── */}
+            {/* ── 8. YOUR JOURNEY & NEXT GOAL ── */}
             <Animated.View style={[entranceStyle(8), styles.section]}>
+              <Text style={styles.sectionTitle}>YOUR JOURNEY</Text>
               <Pressable
                 onPress={() => navigation.navigate("AdherenceDetails")}
                 style={styles.journeyCard}
               >
                 <View style={styles.journeyHeader}>
-                  <Text style={styles.journeyTitle}>HEALTH JOURNEY</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+                    <StreakCompanion
+                      streak={medicationStreak}
+                      dailyLog={adherenceDetails?.daily_log || []}
+                      size={40}
+                      animate={true}
+                      showEffects={true}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.journeyTitle}>HEALTH JOURNEY</Text>
+                      <Text style={{ fontSize: 12, fontWeight: "800", color: "#7C3AED", marginTop: 2 }}>
+                        {medicationStreak > 0 ? `${medicationStreak} Day Streak 🔥` : "Building Streak 🌱"}
+                      </Text>
+                    </View>
+                  </View>
                   {hasHistory ? (
                     scoreDiff > 0 ? (
                       <View style={styles.journeyImprovementBadge}>
@@ -3653,12 +3670,31 @@ export default function PatientHomeScreen({ navigation }) {
               </View>
             </Animated.View>
 
-            {/* ── 9. QUICK ACTIONS (Visually De-emphasized Utility Chips) ── */}
+            {/* ── 9. QUICK ACTIONS (Compact Control Chips) ── */}
             <Animated.View style={[entranceStyle(9), styles.section]}>
               <Text style={styles.sectionTitle}>
                 {t("common.quick_actions", { defaultValue: "QUICK ACTIONS" })}
               </Text>
               <View style={styles.deemphasizedActionsRow}>
+                <Pressable
+                  style={[styles.actionChip, { backgroundColor: "#F3E8FF", borderColor: "#E9D5FF" }]}
+                  onPress={() => {
+                    setIsLogging(true);
+                    if (vitalsCardRef.current && scrollViewRef.current) {
+                      vitalsCardRef.current.measureLayout(
+                        scrollViewRef.current,
+                        (x, y) => {
+                          scrollViewRef.current?.scrollTo({ y: Math.max(0, y - 20), animated: true });
+                        },
+                        () => {}
+                      );
+                    }
+                  }}
+                >
+                  <Activity size={13} color="#7C3AED" />
+                  <Text style={[styles.actionChipText, { color: "#7C3AED", fontWeight: "800" }]}>Log Vitals</Text>
+                </Pressable>
+
                 <Pressable
                   style={styles.actionChip}
                   onPress={() => navigation.navigate("AdherenceDetails")}
@@ -4697,8 +4733,8 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#94A3B8",
-    letterSpacing: 1.8,
+    color: "#7C3AED",
+    letterSpacing: 1.2,
     textTransform: "uppercase",
     marginBottom: 12,
   },

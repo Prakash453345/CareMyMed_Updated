@@ -662,7 +662,10 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                     <Pressable onPress={() => navigation.goBack()} style={styles.headerBackBtn}>
                         <ChevronLeft size={22} color="#1E293B" strokeWidth={2.5} />
                     </Pressable>
-                    <Text style={styles.headerTitle}>Vitals History</Text>
+                    <View style={{ flex: 1, alignItems: 'center' }}>
+                        <Text style={styles.headerEyebrow}>HEALTH TELEMETRY</Text>
+                        <Text style={styles.headerTitle}>Vitals History</Text>
+                    </View>
                     <View style={{ width: 44 }} />
                 </View>
                 <Animated.View style={[styles.headerBorderLine, { opacity: headerOpacity }]} />
@@ -722,6 +725,7 @@ export default function VitalsHistoryScreen({ navigation, route }) {
 
         return (
             <Animated.View style={[{ opacity: getCombinedOpacity(staggerAnims[0]) }]}>
+                <Text style={styles.sectionEyebrow}>CURRENT BIOMETRIC STATE</Text>
                 <AnimatedCard 
                     pressScale={0.98} 
                     hapticType="selection"
@@ -909,6 +913,7 @@ export default function VitalsHistoryScreen({ navigation, route }) {
 
         return (
             <Animated.View style={[{ opacity: getCombinedOpacity(staggerAnims[1]) }, styles.statsCardContainer]}>
+                <Text style={styles.sectionEyebrow}>METRIC SUMMARY</Text>
                 <View style={styles.statsUnifiedCard}>
                     <View style={styles.statColumn}>
                         <View style={styles.statHeader}>
@@ -1010,12 +1015,11 @@ export default function VitalsHistoryScreen({ navigation, route }) {
         }
 
         return (
-            <Animated.View style={[
-                styles.chartCard,
-                { opacity: getCombinedOpacity(staggerAnims[2]) }
-            ]}>
-                <View style={[styles.cardTopAccent, { backgroundColor: def.accent }]} />
-                <View style={styles.chartTitleRow}>
+            <Animated.View style={{ opacity: getCombinedOpacity(staggerAnims[2]), marginBottom: 20 }}>
+                <Text style={styles.sectionEyebrow}>TELEMETRY TRENDS</Text>
+                <View style={styles.chartCard}>
+                    <View style={[styles.cardTopAccent, { backgroundColor: def.accent }]} />
+                    <View style={styles.chartTitleRow}>
                     <View style={{ flex: 1 }}>
                         <Text style={styles.chartTitle}>{def.title} Trend</Text>
                         <Text style={styles.chartSubtitle}>
@@ -1113,6 +1117,7 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                     <TrendIcon size={14} color={trendColor} style={{ marginRight: 6 }} />
                     <Text style={[styles.trendSummaryText, { color: trendColor }]}>{trendSummary}</Text>
                 </Reanimated.View>
+                </View>
             </Animated.View>
         );
     };
@@ -1224,8 +1229,10 @@ export default function VitalsHistoryScreen({ navigation, route }) {
         const isAdherenceHigh = adherenceDetails?.rate >= 80 || adherenceDetails?.streak >= 3;
 
         return (
-            <Animated.View style={[{ opacity: getCombinedOpacity(staggerAnims[3]) }, styles.coachCard]}>
-                <View style={styles.coachHeader}>
+            <Animated.View style={{ opacity: getCombinedOpacity(staggerAnims[3]), marginBottom: 20 }}>
+                <Text style={styles.sectionEyebrow}>CLINICAL INSIGHTS</Text>
+                <View style={styles.coachCard}>
+                    <View style={styles.coachHeader}>
                     <View style={styles.coachTitleGroup}>
                         <View style={styles.coachIconBubble}>
                             <Sparkles size={16} color="#6366F1" fill="#6366F1" />
@@ -1248,6 +1255,7 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                         </Text>
                     </View>
                 </View>
+                </View>
             </Animated.View>
         );
     };
@@ -1257,7 +1265,7 @@ export default function VitalsHistoryScreen({ navigation, route }) {
         if (!vitals.length) return null;
         return (
             <Animated.View style={[{ opacity: getCombinedOpacity(staggerAnims[4]) }, { marginTop: 12 }]}>
-                <Text style={styles.historyTitle}>History Logs</Text>
+                <Text style={styles.sectionEyebrow}>RECENT READINGS</Text>
                 <View style={styles.timelineContainer}>
                     <View style={styles.timelineLine} />
                     {vitals.map((log, idx) => {
@@ -1460,7 +1468,9 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                             )}
 
                             {/* 5. Collapsible Log Form Drawer */}
-                            <Animated.View style={[styles.chartCard, { marginTop: 12 }]}>
+                            <Animated.View style={{ marginTop: 12 }}>
+                                <Text style={styles.sectionEyebrow}>LOG NEW READING</Text>
+                                <View style={styles.chartCard}>
                                 <View style={[styles.cardTopAccent, { backgroundColor: '#6366F1' }]} />
                                 <Pressable 
                                     style={styles.logToggleRow} 
@@ -1520,6 +1530,7 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                                         </Pressable>
                                     </View>
                                 )}
+                                </View>
                             </Animated.View>
                         </>
                     </Animated.ScrollView>
@@ -1609,8 +1620,19 @@ const styles = StyleSheet.create({
     },
     headerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 },
     headerBackBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.7)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+    headerEyebrow: { fontSize: 10, fontWeight: '800', color: '#7C3AED', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 },
     headerTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A', letterSpacing: -0.3 },
     headerBorderLine: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, backgroundColor: '#E2E8F0' },
+
+    sectionEyebrow: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#7C3AED',
+        letterSpacing: 1.2,
+        textTransform: 'uppercase',
+        marginBottom: 10,
+        marginLeft: 2,
+    },
 
     /* Metric Selector Tabs */
     metricSelectorContainer: { marginBottom: 16, zIndex: 10 },
