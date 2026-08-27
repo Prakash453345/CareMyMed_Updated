@@ -451,6 +451,18 @@ router.post(
         }
 
         const userCaption = extractedQuery;
+        // Validate user-supplied caption length
+        if (userCaption && typeof userCaption === 'string' && userCaption.length > 1000) {
+          return res
+            .status(400)
+            .json(
+              buildErrorResponse(
+                'validation',
+                'User query exceeds the limit of 1000 characters.'
+              )
+            );
+        }
+
         const structuredContext = [
           `[USER ATTACHED IMAGE]`,
           `${visionContextText}`,
@@ -472,14 +484,15 @@ router.post(
           );
       }
 
-      // Query length check (anti-abuse)
-      if (extractedQuery.length > 1000) {
+      // Query length check (anti-abuse: 1000 chars for text only, up to 25000 for image OCR context)
+      const maxAllowedLength = imageFile ? 25000 : 1000;
+      if (extractedQuery.length > maxAllowedLength) {
         return res
           .status(400)
           .json(
             buildErrorResponse(
               'validation',
-              'Query exceeds the limit of 1000 characters.'
+              `Query exceeds the limit of ${maxAllowedLength} characters.`
             )
           );
       }

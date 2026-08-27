@@ -13,7 +13,7 @@ import {
 import Constants from 'expo-constants';
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { LayoutDashboard, Users, Pill, ShieldPlus, UserCircle, Bell, MessageSquare } from "lucide-react-native";
+import { LayoutDashboard, Users, Pill, ShieldPlus, CircleUser, Bell, MessageSquare } from "lucide-react-native";
 import { useAuth } from "../context/AuthContext";
 import {
     sendDailyWelcomeNotification,
@@ -187,7 +187,7 @@ function PatientTabNavigator() {
                 <Tab.Screen name="MyCaller" component={ResilientMyCallerScreen} options={{ tabBarIconComponent: Users }} />
                 <Tab.Screen name="Medications" component={ResilientMedicationsScreen} options={{ tabBarIconComponent: Pill }} />
                 <Tab.Screen name="HealthProfile" component={ResilientHealthProfileScreen} options={{ tabBarIconComponent: ShieldPlus }} />
-                <Tab.Screen name="Profile" component={ResilientProfileScreen} options={{ tabBarIconComponent: UserCircle }} />
+                <Tab.Screen name="Profile" component={ResilientProfileScreen} options={{ tabBarIconComponent: CircleUser }} />
             </Tab.Navigator>
             <ChatFAB onPress={() => navigate('ChatHistory')} bottomOffset={fabBottom} />
         </View>
@@ -200,7 +200,7 @@ function CompanionTabNavigator() {
             <Tab.Screen name="CompanionDashboard" component={ResilientCompanionDashboardScreen} options={{ tabBarIconComponent: LayoutDashboard }} />
             <Tab.Screen name="CompanionAlerts" component={ResilientCompanionAlertsScreen} options={{ tabBarIconComponent: Bell }} />
             <Tab.Screen name="CompanionChatList" component={ResilientCompanionChatListScreen} options={{ tabBarIconComponent: MessageSquare }} />
-            <Tab.Screen name="Profile" component={ResilientCompanionProfileScreen} options={{ tabBarIconComponent: UserCircle }} />
+            <Tab.Screen name="Profile" component={ResilientCompanionProfileScreen} options={{ tabBarIconComponent: CircleUser }} />
         </Tab.Navigator>
     );
 }

@@ -5,9 +5,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-    ArrowLeft, Bell, CheckCircle2, ChevronRight, Activity, Clock,
-    Pill, MessageSquare, AlertTriangle, Phone, ExternalLink,
-    ShieldCheck, AlertCircle, Sparkles
+    ArrowLeft, Bell, CircleCheckBig, ChevronRight, Activity, Clock,
+    Pill, MessageSquare, TriangleAlert, Phone, ExternalLink,
+    ShieldCheck, CircleAlert, Sparkles
 } from 'lucide-react-native';
 import { colors, radius, spacing, typography, shadows, layout } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
@@ -280,7 +280,7 @@ export default function InterventionCenterScreen({ navigation }) {
             case 'checkin_call':
                 return <Phone size={18} color={colors.success} />;
             case 'escalation_contact':
-                return <AlertTriangle size={18} color={colors.danger} />;
+                return <TriangleAlert size={18} color={colors.danger} />;
             default:
                 return <Bell size={18} color={colors.primary} />;
         }
@@ -362,7 +362,7 @@ export default function InterventionCenterScreen({ navigation }) {
             <View style={styles.heroContainerAttention}>
                 <View style={styles.heroHeaderRow}>
                     <View style={styles.heroIconBoxAttention}>
-                        <AlertCircle size={22} color={colors.primary} />
+                        <CircleAlert size={22} color={colors.primary} />
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={styles.heroTitleAttention}>Command Center Attention</Text>
@@ -492,7 +492,7 @@ export default function InterventionCenterScreen({ navigation }) {
             <View style={styles.historyRowItem} key={item._id || index}>
                 <View style={styles.historyLineCol}>
                     <View style={styles.historyNodeCircle}>
-                        <CheckCircle2 size={14} color="#FFF" />
+                        <CircleCheckBig size={14} color="#FFF" />
                     </View>
                     {!isLast && <View style={styles.historyVerticalLine} />}
                 </View>
@@ -514,9 +514,9 @@ export default function InterventionCenterScreen({ navigation }) {
                     <View style={styles.toastInner}>
                         <View style={{ marginRight: 12 }}>
                             {toast.type === 'success' ? (
-                                <CheckCircle2 size={20} color={colors.success} />
+                                <CircleCheckBig size={20} color={colors.success} />
                             ) : (
-                                <AlertCircle size={20} color={colors.danger} />
+                                <CircleAlert size={20} color={colors.danger} />
                             )}
                         </View>
                         <View style={{ flex: 1 }}>

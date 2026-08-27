@@ -112,12 +112,12 @@ export default function LiquidConfirmButton({
 
     const containerBgColor = sweepAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: ['#7C3AED', '#FFFFFF'],
+        outputRange: ['#7C3AED', '#10B981'],
     });
 
     const containerBorderColor = sweepAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: ['transparent', '#DCFCE7'],
+        outputRange: ['transparent', '#10B981'],
     });
 
     const liquidWidth = sweepAnim.interpolate({
@@ -127,12 +127,12 @@ export default function LiquidConfirmButton({
 
     const liquidBgColor = sweepAnim.interpolate({
         inputRange: [0, 0.5, 1],
-        outputRange: ['#6D28D9', '#059669', '#DCFCE7'],
+        outputRange: ['#6D28D9', '#059669', '#10B981'],
     });
 
     const textColor = sweepAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: ['#FFFFFF', '#10B981'],
+        outputRange: ['#FFFFFF', '#FFFFFF'],
     });
 
     const checkScale = checkAnim.interpolate({
@@ -183,7 +183,7 @@ export default function LiquidConfirmButton({
                                     marginRight: 4,
                                 }}
                             >
-                                <Check size={15} color="#10B981" strokeWidth={3} />
+                                <Check size={15} color="#FFFFFF" strokeWidth={3} />
                             </Animated.View>
                         )}
 

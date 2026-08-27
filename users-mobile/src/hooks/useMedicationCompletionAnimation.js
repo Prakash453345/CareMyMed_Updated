@@ -44,7 +44,7 @@ export function useMedicationCompletionAnimation(isTaken, defaultIconBg = '#F1F5
 
   const cardBgColor = animProgress.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#FFFFFF', '#FFFFFF'],
+    outputRange: ['#FFFFFF', '#F0FDF4'],
   });
 
   const cardBorderColor = animProgress.interpolate({

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, TextInput, ActivityIndicator } from 'react-native';
 import { apiService } from '../../lib/api';
 import { colors, spacing, radius, shadows, layout } from '../../theme';
-import { ShieldCheck, UserPlus, ChevronRight, LogOut, Heart, Lock, ArrowRight, Sliders } from 'lucide-react-native';
+import { ShieldCheck, UserPlus, ChevronRight, LogOut, Heart, Lock, ArrowRight, SlidersHorizontal } from 'lucide-react-native';
 import AlertManager from '../../utils/AlertManager';
 import usePatientStore from '../../store/usePatientStore';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -266,7 +266,7 @@ export default function CompanionHomeScreen() {
                         style={({ pressed }) => [styles.manageBtn, pressed && { opacity: 0.7 }]}
                         onPress={() => navigation.navigate('CareCircle')}
                     >
-                        <Sliders size={14} color="#6366F1" />
+                        <SlidersHorizontal size={14} color="#6366F1" />
                         <Text style={styles.manageBtnText}>Manage</Text>
                     </Pressable>
                 </View>

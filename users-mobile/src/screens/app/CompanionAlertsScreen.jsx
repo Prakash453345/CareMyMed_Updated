@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Linking, Image, Animated, StatusBar, Platform } from 'react-native';
 import { apiService } from '../../lib/api';
 import { colors, radius, spacing, shadows, layout } from '../../theme';
-import { Bell, CheckCircle2, ShieldCheck, ShieldAlert, Phone, Clock, ChevronRight, Activity, Check, Shield, MessageSquare, ArrowLeft, AlertCircle, FileText } from 'lucide-react-native';
+import { Bell, CircleCheckBig, ShieldCheck, ShieldAlert, Phone, Clock, ChevronRight, Activity, Check, Shield, MessageSquare, ArrowLeft, CircleAlert, FileText } from 'lucide-react-native';
 import usePatientStore from '../../store/usePatientStore';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AlertManager from '../../utils/AlertManager';
@@ -509,7 +509,7 @@ export default function CompanionAlertsScreen() {
                                             <View style={[styles.alertIconOuterRing, { backgroundColor: styleCfg.bgOuter }]}>
                                                 <View style={[styles.alertIconInnerRing, { backgroundColor: styleCfg.bgInner }]}>
                                                     {isWarning ? (
-                                                        <AlertCircle color={styleCfg.accent} size={22} />
+                                                        <CircleAlert color={styleCfg.accent} size={22} />
                                                     ) : (
                                                         <ShieldAlert color={styleCfg.accent} size={22} />
                                                     )}
@@ -542,7 +542,7 @@ export default function CompanionAlertsScreen() {
                                             <Text style={styles.callNowBtnText}>Call Now</Text>
                                         </Pressable>
                                         <Pressable style={({ pressed }) => [styles.dismissBtn, pressed && { opacity: 0.7 }]} onPress={() => acknowledgeAlert(a._id)}>
-                                            <CheckCircle2 color={isWarning ? '#EF4444' : '#475569'} size={16} />
+                                            <CircleCheckBig color={isWarning ? '#EF4444' : '#475569'} size={16} />
                                             <Text style={[styles.dismissBtnText, isWarning ? { color: '#EF4444' } : null]}>Dismiss</Text>
                                         </Pressable>
                                     </View>

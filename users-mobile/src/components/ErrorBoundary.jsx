@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
-import { RefreshCw, AlertTriangle } from 'lucide-react-native';
+import { RefreshCw, TriangleAlert } from 'lucide-react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import RecoveryManager, { ErrorSeverity } from '../services/RecoveryManager';
 
@@ -46,7 +46,7 @@ export default class ErrorBoundary extends React.Component {
             return (
                 <View style={styles.container}>
                     <View style={styles.iconWrap}>
-                        <AlertTriangle size={48} color="#EF4444" />
+                        <TriangleAlert size={48} color="#EF4444" />
                     </View>
                     <Text style={styles.title}>Something went wrong</Text>
                     <Text style={styles.subtitle}>
@@ -85,7 +85,7 @@ export class ContainerErrorBoundary extends React.Component {
         if (this.state.hasError) {
             return (
                 <View style={[styles.containerCompact, this.props.style]}>
-                    <AlertTriangle size={28} color="#EF4444" style={{ marginBottom: 8 }} />
+                    <TriangleAlert size={28} color="#EF4444" style={{ marginBottom: 8 }} />
                     <Text style={styles.titleCompact}>
                         {this.props.title || 'Section Encountered an Issue'}
                     </Text>

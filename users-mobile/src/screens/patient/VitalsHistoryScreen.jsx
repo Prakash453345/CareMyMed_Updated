@@ -4,18 +4,18 @@ import {
     ActivityIndicator, KeyboardAvoidingView, Dimensions, Animated,
     useWindowDimensions, Modal, DeviceEventEmitter, StatusBar
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LineChart } from 'react-native-chart-kit';
 import NetInfo from '@react-native-community/netinfo';
 import CustomCalendarPicker from '../../components/ui/CustomCalendarPicker';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import {
     ChevronLeft, ChevronRight, Heart, Activity, Wind, Droplets,
-    AlertTriangle, WifiOff, RefreshCw, Calendar, Clock, Sparkles,
-    Maximize2, X, Plus, Zap, Watch, CheckCircle2, AlertCircle,
+    TriangleAlert, WifiOff, RefreshCw, Calendar, Clock, Sparkles,
+    Maximize2, X, Plus, Zap, Watch, CircleCheckBig, CircleAlert,
     TrendingUp, TrendingDown, Minus, BarChart3, PlusCircle,
-    ChevronDown, ChevronUp
+    ChevronDown, ChevronUp, ArrowUpRight, ShieldCheck
 } from 'lucide-react-native';
 import Svg, { Line, Path, Circle } from 'react-native-svg';
 import axios from 'axios';
@@ -162,7 +162,7 @@ const makeChartConfig = (accentColor) => ({
     decimalPlaces: 0,
     strokeWidth: 3,
     color: (opacity = 1) => {
-        const boosted = Math.max(opacity, 0.6);
+        const boosted = Math.max(opacity, 0.7);
         if (accentColor && accentColor.startsWith('#')) {
             const r = parseInt(accentColor.slice(1, 3), 16);
             const g = parseInt(accentColor.slice(3, 5), 16);
@@ -172,10 +172,11 @@ const makeChartConfig = (accentColor) => ({
         return accentColor ? accentColor.replace(')', `, ${boosted})`).replace('rgb', 'rgba') : `rgba(0,0,0,${boosted})`;
     },
     labelColor: () => '#64748B',
-    propsForDots: { r: '5', strokeWidth: '2.5', stroke: '#FFFFFF' },
+    propsForDots: { r: '5.5', strokeWidth: '2.5', stroke: '#FFFFFF' },
     propsForBackgroundLines: { stroke: '#F1F5F9', strokeDasharray: '' },
     style: { borderRadius: 16 },
-    paddingRight: 40,
+    paddingRight: 32,
+    paddingTop: 16,
 });
 
 const CHART_DEFS = [
@@ -184,7 +185,8 @@ const CHART_DEFS = [
         icon: Heart, accent: '#EF4444', bgTint: '#FFF5F5',
         extract: (v) => v.heart_rate || 0,
         normalRange: [60, 100],
-        insight: (val) => val < 60 ? 'A little lower than usual. Nothing urgent — just worth keeping an eye on.' : val > 100 ? 'A bit higher than your usual range. Worth noting for your next appointment.' : 'Your heart rate looks steady today.',
+        insight: (val) => val < 60 ? 'A little lower than usual. Nothing urgent — just worth keeping an eye on.' : val > 100 ? 'A bit higher than your usual range. Worth noting for your next appointment.' : 'Your heart rate looks steady and within the healthy target zone.',
+        recommendation: 'Regular aerobic activity and steady hydration support consistent cardiac health.',
     },
     {
         id: 'blood_pressure', title: 'BP Systolic', unit: 'mmHg', yLabel: 'mmHg',
@@ -193,54 +195,57 @@ const CHART_DEFS = [
         extractAlt: (v) => v.blood_pressure?.diastolic || 0,
         legend: ['Systolic', 'Diastolic'],
         normalRange: [90, 130],
-        insight: (val) => val > 130 ? 'That reading is a little higher than usual. Worth mentioning at your next appointment.' : 'Your blood pressure looks healthy.',
+        insight: (val) => val > 130 ? 'That reading is slightly higher than optimal. Worth reviewing with your care team.' : val < 90 ? 'Systolic reading is on the lower side. Ensure adequate fluid intake.' : 'Your blood pressure is within normal clinical limits.',
+        recommendation: 'Low-sodium meals and daily medication timing maintain optimal vascular pressure.',
     },
     {
         id: 'oxygen_saturation', title: 'SpO₂', unit: '%', yLabel: 'SpO₂',
         icon: Wind, accent: '#06B6D4', bgTint: '#ECFEFF',
         extract: (v) => v.oxygen_saturation || 0,
         normalRange: [95, 100],
-        insight: (val) => val < 95 ? 'A touch below the typical range. Some slow deep breaths might help.' : 'Your oxygen levels look great.',
+        insight: (val) => val < 95 ? 'A touch below typical range. Some slow, deep breaths in a seated position can help.' : 'Your blood oxygen saturation is optimal.',
+        recommendation: 'Deep breathing exercises and well-ventilated rooms keep oxygenation steady.',
     },
     {
         id: 'hydration', title: 'Hydration', unit: '%', yLabel: '%',
         icon: Droplets, accent: '#0EA5E9', bgTint: '#F0F9FF',
         extract: (v) => v.hydration || 0,
         normalRange: [60, 100],
-        insight: (val) => val < 60 ? 'A little on the low side. A glass of water when you can.' : 'Hydration is looking good today.',
+        insight: (val) => val < 60 ? 'A little on the low side. Drink a glass of water when convenient.' : 'Hydration levels are well balanced today.',
+        recommendation: 'Aim for 6-8 glasses of water daily spread evenly across morning and afternoon.',
     },
 ];
 
 const getClinicalStatus = (metricId, value, diastolicVal) => {
     if (value === null || value === undefined || value === 0) {
-        return { label: 'No data', color: '#94A3B8', icon: AlertCircle, dot: '#94A3B8' };
+        return { label: 'No data', color: '#94A3B8', icon: CircleAlert, dot: '#94A3B8' };
     }
     
     if (metricId === 'heart_rate') {
-        if (value < 60) return { label: 'Low', color: '#3B82F6', icon: AlertCircle, dot: '#3B82F6' };
-        if (value > 100) return { label: 'Elevated', color: '#EF4444', icon: AlertTriangle, dot: '#EF4444' };
-        return { label: 'Normal', color: '#10B981', icon: CheckCircle2, dot: '#10B981' };
+        if (value < 60) return { label: 'Low', color: '#3B82F6', icon: CircleAlert, dot: '#3B82F6' };
+        if (value > 100) return { label: 'Elevated', color: '#EF4444', icon: TriangleAlert, dot: '#EF4444' };
+        return { label: 'Normal', color: '#10B981', icon: CircleCheckBig, dot: '#10B981' };
     }
     
     if (metricId === 'blood_pressure') {
         const sys = value;
         const dia = diastolicVal || 80;
-        if (sys > 130 || dia > 85) return { label: 'Elevated', color: '#EF4444', icon: AlertTriangle, dot: '#EF4444' };
-        if (sys < 90 || dia < 60) return { label: 'Low', color: '#3B82F6', icon: AlertCircle, dot: '#3B82F6' };
-        return { label: 'Normal', color: '#10B981', icon: CheckCircle2, dot: '#10B981' };
+        if (sys > 130 || dia > 85) return { label: 'Elevated', color: '#EF4444', icon: TriangleAlert, dot: '#EF4444' };
+        if (sys < 90 || dia < 60) return { label: 'Low', color: '#3B82F6', icon: CircleAlert, dot: '#3B82F6' };
+        return { label: 'Normal', color: '#10B981', icon: CircleCheckBig, dot: '#10B981' };
     }
     
     if (metricId === 'oxygen_saturation') {
-        if (value < 95) return { label: 'Low Oxygen', color: '#EF4444', icon: AlertCircle, dot: '#EF4444' };
-        return { label: 'Normal', color: '#10B981', icon: CheckCircle2, dot: '#10B981' };
+        if (value < 95) return { label: 'Low Oxygen', color: '#EF4444', icon: CircleAlert, dot: '#EF4444' };
+        return { label: 'Normal', color: '#10B981', icon: CircleCheckBig, dot: '#10B981' };
     }
     
     if (metricId === 'hydration') {
-        if (value < 60) return { label: 'Low Hydration', color: '#F59E0B', icon: AlertTriangle, dot: '#F59E0B' };
-        return { label: 'Normal', color: '#10B981', icon: CheckCircle2, dot: '#10B981' };
+        if (value < 60) return { label: 'Low Hydration', color: '#F59E0B', icon: TriangleAlert, dot: '#F59E0B' };
+        return { label: 'Normal', color: '#10B981', icon: CircleCheckBig, dot: '#10B981' };
     }
     
-    return { label: 'Normal', color: '#10B981', icon: CheckCircle2, dot: '#10B981' };
+    return { label: 'Normal', color: '#10B981', icon: CircleCheckBig, dot: '#10B981' };
 };
 
 const getComparisonText = (metricId, latestVal, vitalsList) => {
@@ -292,8 +297,8 @@ class ChartErrorBoundary extends React.Component {
     render() {
         if (this.state.hasError) {
             return (
-                <View style={{ height: 200, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9' }}>
-                    <Text style={{ color: '#94A3B8', fontSize: 13, fontWeight: '500' }}>Chart unavailable</Text>
+                <View style={{ height: 180, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9' }}>
+                    <Text style={{ color: '#94A3B8', fontSize: 13, fontWeight: '600' }}>Chart preview unavailable</Text>
                 </View>
             );
         }
@@ -352,6 +357,8 @@ const getMinSpanData = (metricId, timeRange, rangeData, mainData, vitals, extrac
 };
 
 export default function VitalsHistoryScreen({ navigation, route }) {
+    const insets = useSafeAreaInsets();
+
     // ─── State & Refs ────────────────────────────────────────────
     const [vitals, setVitals] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -373,7 +380,6 @@ export default function VitalsHistoryScreen({ navigation, route }) {
 
     // Animation values
     const scrollY = useRef(new Animated.Value(0)).current;
-    const dataFadeAnim = useRef(new Animated.Value(1)).current;
     const fadeAnim = useRef(new Animated.Value(1)).current;
 
     const { width: windowW, height: windowH } = useWindowDimensions();
@@ -414,10 +420,6 @@ export default function VitalsHistoryScreen({ navigation, route }) {
 
     const patient = usePatientStore((state) => state.patient);
 
-    const getCombinedOpacity = (staggerAnim) => {
-        return Animated.multiply(staggerAnim, Animated.multiply(dataFadeAnim, fadeAnim));
-    };
-
     const fetchSyncStatus = useCallback(async () => {
         try {
             const status = await HealthSyncService.getStatus();
@@ -440,7 +442,7 @@ export default function VitalsHistoryScreen({ navigation, route }) {
     }, []);
 
     // ─── Fetch Vitals ─────────────────────────────────────────────
-    const fetchChartData = useCallback(async () => {
+    const fetchChartData = useCallback(async (isInitial = false) => {
         if (isOffline) {
             setError('You are offline. Please connect to the internet to view your vitals history.');
             setLoading(false);
@@ -461,11 +463,8 @@ export default function VitalsHistoryScreen({ navigation, route }) {
         const { start, end } = getDateRangeForRange(timeRange, customStartDate, customEndDate);
 
         try {
-            if (initialLoading) setLoading(true);
-            else {
-                setDataRefreshing(true);
-                Animated.timing(dataFadeAnim, { toValue: 0.3, duration: 150, useNativeDriver: true }).start();
-            }
+            if (isInitial) setLoading(true);
+            else setDataRefreshing(true);
 
             const res = await api.get('/users/patients/me/vitals', {
                 params: {
@@ -490,17 +489,18 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                 setLoading(false);
                 setInitialLoading(false);
                 setDataRefreshing(false);
-                Animated.timing(dataFadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
             }
         }
-    }, [timeRange, customStartDate, customEndDate, isOffline, initialLoading, dataFadeAnim]);
+    }, [timeRange, customStartDate, customEndDate, isOffline]);
 
     const debounceChartRef = useRef(null);
     useEffect(() => {
         if (debounceChartRef.current) clearTimeout(debounceChartRef.current);
-        debounceChartRef.current = setTimeout(() => fetchChartData(), 300);
+        debounceChartRef.current = setTimeout(() => {
+            fetchChartData(initialLoading);
+        }, 200);
         return () => clearTimeout(debounceChartRef.current);
-    }, [fetchChartData]);
+    }, [timeRange, customStartDate, customEndDate]);
 
     useEffect(() => {
         fetchSyncStatus();
@@ -508,11 +508,11 @@ export default function VitalsHistoryScreen({ navigation, route }) {
 
     useEffect(() => {
         const sub1 = DeviceEventEmitter.addListener('VITALS_UPDATED', () => {
-            fetchChartData();
+            fetchChartData(false);
             fetchSyncStatus();
         });
         const sub2 = DeviceEventEmitter.addListener('VITALS_SYNCED', () => {
-            fetchChartData();
+            fetchChartData(false);
             fetchSyncStatus();
         });
         return () => {
@@ -553,7 +553,7 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                 setIsLoggingExpanded(false);
                 setFormValues({ heart_rate: '', systolic: '', diastolic: '', oxygen_saturation: '', hydration: '' });
                 DeviceEventEmitter.emit('VITALS_UPDATED', { source: 'manual' });
-                fetchChartData();
+                fetchChartData(false);
             }
         } catch (err) {
             setFormError(handleAxiosError(err));
@@ -564,8 +564,6 @@ export default function VitalsHistoryScreen({ navigation, route }) {
 
     // ─── Helpers ─────────────────────────────────────────────────
     const adjustCustomDate = (setter, days) => {
-        setDataRefreshing(true);
-        Animated.timing(dataFadeAnim, { toValue: 0.3, duration: 100, useNativeDriver: true }).start();
         setter(prev => { const d = new Date(prev); d.setDate(d.getDate() + days); return d; });
     };
 
@@ -573,9 +571,9 @@ export default function VitalsHistoryScreen({ navigation, route }) {
 
     const handleMetricChange = (id) => {
         if (id === activeMetricId) return;
-        Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
+        Animated.timing(fadeAnim, { toValue: 0, duration: 120, useNativeDriver: true }).start(() => {
             setActiveMetricId(id);
-            Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+            Animated.timing(fadeAnim, { toValue: 1, duration: 180, useNativeDriver: true }).start();
         });
     };
 
@@ -628,12 +626,12 @@ export default function VitalsHistoryScreen({ navigation, route }) {
         return () => unsub();
     }, []);
 
-    // Animations setup
+    // Stagger animation
     const staggerAnims = useRef([...Array(5)].map(() => new Animated.Value(0))).current;
     const runAnimations = useCallback(() => {
         staggerAnims.forEach(a => a.setValue(0));
-        Animated.stagger(100, staggerAnims.map(a =>
-            Animated.timing(a, { toValue: 1, duration: 600, useNativeDriver: true })
+        Animated.stagger(80, staggerAnims.map(a =>
+            Animated.timing(a, { toValue: 1, duration: 450, useNativeDriver: true })
         )).start();
     }, [staggerAnims]);
 
@@ -644,32 +642,40 @@ export default function VitalsHistoryScreen({ navigation, route }) {
 
     const showTooltip = (x, y, value, label) => {
         setTooltipPos({ x, y, visible: true, value, label });
-        Animated.timing(tooltipFade, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+        Animated.timing(tooltipFade, { toValue: 1, duration: 180, useNativeDriver: true }).start();
     };
     const hideTooltip = () => {
-        Animated.timing(tooltipFade, { toValue: 0, duration: 200, useNativeDriver: true }).start(() =>
+        Animated.timing(tooltipFade, { toValue: 0, duration: 150, useNativeDriver: true }).start(() =>
             setTooltipPos(prev => ({ ...prev, visible: false }))
         );
     };
 
+    // Header dimensions derived from insets
+    const headerPaddingTop = Math.max(insets.top, 24);
+    const headerHeight = headerPaddingTop + 58;
+
     // ─── Render: Header ──────────────────────────────────────────
     const renderHeader = () => {
-        const headerOpacity = scrollY.interpolate({ inputRange: [0, 50], outputRange: [0, 1], extrapolate: 'clamp' });
+        const headerOpacity = scrollY.interpolate({ inputRange: [0, 40], outputRange: [0, 1], extrapolate: 'clamp' });
         return (
-            <Animated.View style={styles.glassHeader}>
-                <LinearGradient colors={['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.85)']} style={StyleSheet.absoluteFill} />
+            <View style={[styles.glassHeader, { height: headerHeight, paddingTop: headerPaddingTop }]}>
+                <LinearGradient colors={['rgba(255,255,255,0.98)', 'rgba(255,255,255,0.92)']} style={StyleSheet.absoluteFill} />
                 <View style={styles.headerContent}>
-                    <Pressable onPress={() => navigation.goBack()} style={styles.headerBackBtn}>
-                        <ChevronLeft size={22} color="#1E293B" strokeWidth={2.5} />
+                    <Pressable 
+                        onPress={() => navigation.goBack()} 
+                        style={styles.headerBackBtn}
+                        hitSlop={10}
+                    >
+                        <ChevronLeft size={22} color="#0F172A" strokeWidth={2.5} />
                     </Pressable>
-                    <View style={{ flex: 1, alignItems: 'center' }}>
+                    <View style={styles.headerTitleCenter}>
                         <Text style={styles.headerEyebrow}>HEALTH TELEMETRY</Text>
                         <Text style={styles.headerTitle}>Vitals History</Text>
                     </View>
-                    <View style={{ width: 44 }} />
+                    <View style={{ width: 40 }} />
                 </View>
                 <Animated.View style={[styles.headerBorderLine, { opacity: headerOpacity }]} />
-            </Animated.View>
+            </View>
         );
     };
 
@@ -701,16 +707,7 @@ export default function VitalsHistoryScreen({ navigation, route }) {
 
     // ─── Render: Latest Reading Hero Card ────────────────────────
     const renderHeroCard = (def) => {
-        if (!vitals.length) {
-            return (
-                <View style={[styles.heroCard, { height: 130, justifyContent: 'center' }]}>
-                    <View style={styles.emptyHeroContent}>
-                        <Heart size={28} color="#94A3B8" />
-                        <Text style={styles.emptyHeroText}>No data available for this range</Text>
-                    </View>
-                </View>
-            );
-        }
+        if (!vitals.length) return null;
 
         const latest = vitals[0];
         const latestVal = def.extract(latest);
@@ -724,7 +721,7 @@ export default function VitalsHistoryScreen({ navigation, route }) {
         const dateStr = new Date(latest.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
         return (
-            <Animated.View style={[{ opacity: getCombinedOpacity(staggerAnims[0]) }]}>
+            <Animated.View style={[{ opacity: staggerAnims[0] }]}>
                 <Text style={styles.sectionEyebrow}>CURRENT BIOMETRIC STATE</Text>
                 <AnimatedCard 
                     pressScale={0.98} 
@@ -738,7 +735,7 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                                 <def.icon size={22} color={def.accent} strokeWidth={2.5} />
                             </View>
                             <View>
-                                <Text style={styles.heroLabel}>Latest {def.title}</Text>
+                                <Text style={styles.heroLabel}>LATEST {def.title}</Text>
                                 <View style={styles.heroValueContainer}>
                                     {altVal ? (
                                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -770,16 +767,16 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                         </View>
                         
                         <View style={[styles.statusBadge, { backgroundColor: status.color + '15' }]}>
-                            <StatusIcon size={12} color={status.color} strokeWidth={3} style={{ marginRight: 4 }} />
+                            <StatusIcon size={13} color={status.color} strokeWidth={2.5} style={{ marginRight: 4 }} />
                             <Text style={[styles.statusBadgeText, { color: status.color }]}>{status.label}</Text>
                         </View>
                     </View>
                     
                     <View style={styles.heroFooter}>
-                        <Text style={styles.heroComparisonText}>
-                            <TrendingUp size={11} color="#64748B" style={{ marginRight: 4 }} />
-                            {comparison}
-                        </Text>
+                        <View style={styles.heroComparisonRow}>
+                            <TrendingUp size={12} color="#64748B" style={{ marginRight: 4 }} />
+                            <Text style={styles.heroComparisonText}>{comparison}</Text>
+                        </View>
                         <Text style={styles.heroTimeText}>
                             Updated {dateStr} at {timeStr}
                         </Text>
@@ -805,8 +802,6 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                         key={r}
                         onPress={() => {
                             setTimeRange(r);
-                            setDataRefreshing(true);
-                            Animated.timing(dataFadeAnim, { toValue: 0.3, duration: 100, useNativeDriver: true }).start();
                         }}
                         style={[styles.rangeBtn, isActive && styles.rangeBtnActive]}
                     >
@@ -877,9 +872,9 @@ export default function VitalsHistoryScreen({ navigation, route }) {
 
         const getFontSize = (val) => {
             const str = String(val || '');
-            if (str.length > 5) return 15; // e.g. "125/76"
-            if (str.length > 3) return 18; // e.g. "120"
-            return 22; // default e.g. "72", "98"
+            if (str.length > 5) return 16;
+            if (str.length > 3) return 19;
+            return 22;
         };
 
         const renderStatValue = (val) => {
@@ -912,7 +907,7 @@ export default function VitalsHistoryScreen({ navigation, route }) {
         };
 
         return (
-            <Animated.View style={[{ opacity: getCombinedOpacity(staggerAnims[1]) }, styles.statsCardContainer]}>
+            <Animated.View style={[{ opacity: staggerAnims[1] }, styles.statsCardContainer]}>
                 <Text style={styles.sectionEyebrow}>METRIC SUMMARY</Text>
                 <View style={styles.statsUnifiedCard}>
                     <View style={styles.statColumn}>
@@ -958,15 +953,7 @@ export default function VitalsHistoryScreen({ navigation, route }) {
 
     // ─── Render: Trend Chart ─────────────────────────────────────
     const renderTrendChart = (def) => {
-        if (!vitals.length) {
-            return (
-                <View style={styles.chartCard}>
-                    <View style={styles.emptyChartBox}>
-                        <Text style={styles.emptyChartText}>No records for this period</Text>
-                    </View>
-                </View>
-            );
-        }
+        if (!vitals.length) return null;
 
         const mainData = vitals.map(v => Number(def.extract(v)) || 0).reverse();
         const labels = vitals.map(v => {
@@ -990,13 +977,15 @@ export default function VitalsHistoryScreen({ navigation, route }) {
 
         const chartConfig = {
             ...makeChartConfig(def.accent),
-            fillShadowGradient: def.accent, fillShadowGradientOpacity: 0.15,
-            fillShadowGradientFrom: def.accent, fillShadowGradientTo: '#FFFFFF',
+            fillShadowGradient: def.accent, 
+            fillShadowGradientOpacity: 0.15,
+            fillShadowGradientFrom: def.accent, 
+            fillShadowGradientTo: '#FFFFFF',
             useShadowColorFromDataset: false,
         };
 
         // Trend Summary Sentence
-        let trendSummary = 'Stable over the selected period.';
+        let trendSummary = 'Stable telemetry over selected timeframe.';
         let TrendIcon = Minus;
         let trendColor = '#64748B';
         if (mainData.length >= 2) {
@@ -1014,48 +1003,98 @@ export default function VitalsHistoryScreen({ navigation, route }) {
             }
         }
 
+        const chartWidth = Math.max(SCREEN_W - 64, 300);
+
         return (
-            <Animated.View style={{ opacity: getCombinedOpacity(staggerAnims[2]), marginBottom: 20 }}>
+            <Animated.View style={{ opacity: staggerAnims[2], marginBottom: 20 }}>
                 <Text style={styles.sectionEyebrow}>TELEMETRY TRENDS</Text>
                 <View style={styles.chartCard}>
                     <View style={[styles.cardTopAccent, { backgroundColor: def.accent }]} />
                     <View style={styles.chartTitleRow}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.chartTitle}>{def.title} Trend</Text>
-                        <Text style={styles.chartSubtitle}>
-                            {timeRange === 'today' ? "Today's readings" : `Last ${timeRange === '7d' ? '7 days' : '30 days'} history`}
-                        </Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.chartTitle}>{def.title} Trend</Text>
+                            <Text style={styles.chartSubtitle}>
+                                {timeRange === 'today' ? "Today's readings" : `Last ${timeRange === '7d' ? '7 days' : '30 days'} history`}
+                            </Text>
+                        </View>
+                        <Pressable onPress={() => setIsFullscreen(true)} style={styles.expandBtn} hitSlop={8}>
+                            <Maximize2 size={16} color="#64748B" />
+                        </Pressable>
                     </View>
-                    <Pressable onPress={() => setIsFullscreen(true)} style={styles.expandBtn}>
-                        <Maximize2 size={16} color="#64748B" />
-                    </Pressable>
-                </View>
 
-                {timeRange !== 'today' && rangeData.length > 0 ? (
-                    <View style={styles.victoryContainer}>
+                    {dataRefreshing ? (
+                        <View style={{ height: 210, justifyContent: 'center', alignItems: 'center' }}>
+                            <ActivityIndicator color={def.accent} size="small" />
+                        </View>
+                    ) : timeRange !== 'today' && rangeData.length > 0 ? (
+                        <View style={styles.victoryContainer}>
+                            <ChartErrorBoundary>
+                                <View style={{ alignItems: 'center' }}>
+                                    <LineChart
+                                        data={{
+                                            labels: rangeData.map((d, i) => i % Math.ceil(rangeData.length / 5) === 0 ? d.x : ''),
+                                            datasets: [
+                                                { data: finalMaxData, color: () => 'transparent', strokeWidth: 0, withDots: false },
+                                                { data: finalMinData, color: () => 'transparent', strokeWidth: 0, withDots: false },
+                                                { data: rangeData.map(d => d.y || 0), color: () => def.accent, strokeWidth: 3 },
+                                            ],
+                                        }}
+                                        width={chartWidth} 
+                                        height={210} 
+                                        chartConfig={chartConfig}
+                                        bezier={rangeData.length > 2} 
+                                        style={styles.chart}
+                                        withVerticalLines={false} 
+                                        fromZero={false}
+                                        onDataPointClick={({ x, y, value, index }) => showTooltip(x, y, value, rangeData[index]?.x || '')}
+                                        decorator={() => (
+                                            <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                                                {renderChartInteraction(def)}
+                                                <PulsingDot latestX={latestX} latestY={latestY} hasLatestPoint={hasLatestPoint} color={def.accent} />
+                                            </View>
+                                        )}
+                                        renderDotContent={({ x, y, index }) => {
+                                            if (index === rangeData.length - 1) {
+                                                latestX.value = x;
+                                                latestY.value = y;
+                                                hasLatestPoint.value = true;
+                                            }
+                                            return null;
+                                        }}
+                                    />
+                                    {tooltipPos.visible && <Pressable style={StyleSheet.absoluteFill} onPress={hideTooltip} />}
+                                </View>
+                            </ChartErrorBoundary>
+                        </View>
+                    ) : hasData ? (
                         <ChartErrorBoundary>
-                            <View>
+                            <View style={{ alignItems: 'center' }}>
                                 <LineChart
                                     data={{
-                                        labels: rangeData.map((d, i) => i % Math.ceil(rangeData.length / 6) === 0 ? d.x : ''),
+                                        labels: labels.map((l, i) => i % Math.ceil(labels.length / 5) === 0 ? l : ''),
                                         datasets: [
                                             { data: finalMaxData, color: () => 'transparent', strokeWidth: 0, withDots: false },
                                             { data: finalMinData, color: () => 'transparent', strokeWidth: 0, withDots: false },
-                                            { data: rangeData.map(d => d.y || 0), color: () => def.accent, strokeWidth: 3 },
-                                        ],
+                                            { data: mainData, color: () => def.accent, strokeWidth: 3 },
+                                            ...(def.extractAlt ? [{ data: vitals.map(v => Number(def.extractAlt(v)) || 0).reverse(), color: () => '#94A3B840', strokeWidth: 2, withDots: false }] : [])
+                                        ]
                                     }}
-                                    width={SCREEN_W - 80} height={220} chartConfig={chartConfig}
-                                    bezier={rangeData.length > 1} style={styles.chart}
-                                    withVerticalLines={false} fromZero={false}
-                                    onDataPointClick={({ x, y, value, index }) => showTooltip(x, y, value, rangeData[index].x)}
+                                    width={chartWidth} 
+                                    height={200} 
+                                    chartConfig={chartConfig}
+                                    bezier={mainData.length > 2} 
+                                    style={styles.chart}
+                                    withVerticalLines={false} 
+                                    fromZero={false}
+                                    onDataPointClick={({ x, y, value, index }) => showTooltip(x, y, value, labels[index] || '')}
                                     decorator={() => (
                                         <View style={StyleSheet.absoluteFill} pointerEvents="none">
                                             {renderChartInteraction(def)}
-                                            <PulsingDot latestX={latestX} latestY={latestY} hasLatestPoint={hasLatestPoint} color={def.accent} tooltipVisible={tooltipPos.visible} />
+                                            <PulsingDot latestX={latestX} latestY={latestY} hasLatestPoint={hasLatestPoint} color={def.accent} />
                                         </View>
                                     )}
                                     renderDotContent={({ x, y, index }) => {
-                                        if (index === rangeData.length - 1) {
+                                        if (index === mainData.length - 1) {
                                             latestX.value = x;
                                             latestY.value = y;
                                             hasLatestPoint.value = true;
@@ -1066,57 +1105,16 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                                 {tooltipPos.visible && <Pressable style={StyleSheet.absoluteFill} onPress={hideTooltip} />}
                             </View>
                         </ChartErrorBoundary>
-                    </View>
-                ) : hasData ? (
-                    <ChartErrorBoundary>
-                        <View>
-                            <LineChart
-                                data={{
-                                    labels: labels.map((l, i) => i % Math.ceil(labels.length / 5) === 0 ? l : ''),
-                                    datasets: [
-                                        { data: finalMaxData, color: () => 'transparent', strokeWidth: 0, withDots: false },
-                                        { data: finalMinData, color: () => 'transparent', strokeWidth: 0, withDots: false },
-                                        { data: mainData, color: () => def.accent, strokeWidth: 3 },
-                                        ...(def.extractAlt ? [{ data: vitals.map(v => Number(def.extractAlt(v)) || 0).reverse(), color: () => '#94A3B840', strokeWidth: 2, withDots: false }] : [])
-                                    ]
-                                }}
-                                width={SCREEN_W - 80} height={200} chartConfig={chartConfig}
-                                bezier={mainData.length > 1} style={styles.chart}
-                                withVerticalLines={false} fromZero={false}
-                                onDataPointClick={({ x, y, value, index }) => showTooltip(x, y, value, labels[index])}
-                                decorator={() => (
-                                    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                                        {renderChartInteraction(def)}
-                                        <PulsingDot latestX={latestX} latestY={latestY} hasLatestPoint={hasLatestPoint} color={def.accent} tooltipVisible={tooltipPos.visible} />
-                                    </View>
-                                )}
-                                renderDotContent={({ x, y, index }) => {
-                                    if (index === mainData.length - 1) {
-                                        latestX.value = x;
-                                        latestY.value = y;
-                                        hasLatestPoint.value = true;
-                                    }
-                                    return null;
-                                }}
-                            />
-                            {tooltipPos.visible && <Pressable style={StyleSheet.absoluteFill} onPress={hideTooltip} />}
+                    ) : (
+                        <View style={styles.emptyChartBox}>
+                            <Text style={styles.emptyChartText}>No records logged for this period</Text>
                         </View>
-                    </ChartErrorBoundary>
-                ) : (
-                    <View style={styles.emptyChartBox}>
-                        <Text style={styles.emptyChartText}>No records for this period</Text>
-                    </View>
-                )}
+                    )}
 
-                <Reanimated.View 
-                    key={`trend_${def.id}_${timeRange}`}
-                    entering={FadeInDown.springify().damping(15).stiffness(120)}
-                    exiting={FadeOut.duration(150)}
-                    style={styles.trendSummaryRow}
-                >
-                    <TrendIcon size={14} color={trendColor} style={{ marginRight: 6 }} />
-                    <Text style={[styles.trendSummaryText, { color: trendColor }]}>{trendSummary}</Text>
-                </Reanimated.View>
+                    <View style={styles.trendSummaryRow}>
+                        <TrendIcon size={14} color={trendColor} style={{ marginRight: 6 }} />
+                        <Text style={[styles.trendSummaryText, { color: trendColor }]}>{trendSummary}</Text>
+                    </View>
                 </View>
             </Animated.View>
         );
@@ -1128,11 +1126,11 @@ export default function VitalsHistoryScreen({ navigation, route }) {
         if (!visible) return null;
         return (
             <Animated.View style={{ opacity: tooltipFade, pointerEvents: 'none', position: 'absolute' }}>
-                <Svg height="240" width={SCREEN_W - 80} style={{ position: 'absolute' }}>
+                <Svg height="240" width={SCREEN_W - 64} style={{ position: 'absolute' }}>
                     <Line x1={x} y1={0} x2={x} y2={240} stroke={def.accent} strokeWidth="1.5" strokeDasharray="5, 5" />
                     <Circle cx={x} cy={y} r={6} fill="#FFFFFF" stroke={def.accent} strokeWidth="3" />
                 </Svg>
-                <View style={[styles.tooltipContainer, { top: y - 65, left: x - 50 }]}>
+                <View style={[styles.tooltipContainer, { top: y - 65, left: Math.max(x - 50, 10) }]}>
                     <Text style={styles.tooltipLabel}>{label}</Text>
                     <Text style={[styles.tooltipValue, { color: def.accent }]}>{value} <Text style={styles.tooltipUnit}>{def.unit}</Text></Text>
                     <View style={styles.tooltipArrow} />
@@ -1175,7 +1173,7 @@ export default function VitalsHistoryScreen({ navigation, route }) {
             <Modal visible={isFullscreen || isLandscape} supportedOrientations={['portrait', 'landscape']} animationType="fade" onRequestClose={() => setIsFullscreen(false)}>
                 <View style={[styles.landscapeContainer, { width: windowW, height: windowH }]}>
                     <Pressable style={styles.closeFullscreenBtn} onPress={() => setIsFullscreen(false)} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
-                        <X size={26} color="#1E293B" strokeWidth={2.5} />
+                        <X size={24} color="#1E293B" strokeWidth={2.5} />
                     </Pressable>
                     <View style={styles.landscapeHeader}>
                         <Text style={styles.landscapeTitle}>{def.title}</Text>
@@ -1188,8 +1186,8 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                             <LineChart
                                 data={{
                                     labels: timeRange !== 'today'
-                                        ? rangeData.map((d, i) => i % Math.ceil(rangeData.length / 12) === 0 ? d.x : '')
-                                        : labels.map((l, i) => i % Math.ceil(labels.length / 10) === 0 ? l : ''),
+                                        ? rangeData.map((d, i) => i % Math.ceil(rangeData.length / 10) === 0 ? d.x : '')
+                                        : labels.map((l, i) => i % Math.ceil(labels.length / 8) === 0 ? l : ''),
                                     datasets: [
                                         { data: finalMaxData, color: () => 'transparent', strokeWidth: 0, withDots: false },
                                         { data: finalMinData, color: () => 'transparent', strokeWidth: 0, withDots: false },
@@ -1203,10 +1201,10 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                                     legend: timeRange !== 'today' ? ['Max', 'Min', 'Avg'] : (def.legend ? ['', '', ...def.legend] : []),
                                 }}
                                 width={w} height={h} chartConfig={chartConfig}
-                                bezier={timeRange !== 'today' ? rangeData.length > 1 : mainData.length > 1}
+                                bezier={timeRange !== 'today' ? rangeData.length > 2 : mainData.length > 2}
                                 style={styles.landscapeChart}
                                 withVerticalLines={false} fromZero={false}
-                                onDataPointClick={({ x, y, value, index }) => showTooltip(x, y, value, timeRange !== 'today' ? rangeData[index].x : labels[index])}
+                                onDataPointClick={({ x, y, value, index }) => showTooltip(x, y, value, timeRange !== 'today' ? rangeData[index]?.x || '' : labels[index] || '')}
                                 decorator={() => renderChartInteraction(def)}
                             />
                             {tooltipPos.visible && <Pressable style={[StyleSheet.absoluteFill, { zIndex: 50 }]} onPress={hideTooltip} />}
@@ -1223,38 +1221,51 @@ export default function VitalsHistoryScreen({ navigation, route }) {
         
         const latest = vitals[0];
         const val = def.extract(latest);
+        const altVal = def.extractAlt ? def.extractAlt(latest) : null;
+        const status = getClinicalStatus(def.id, val, altVal);
         const clinicalText = def.insight ? def.insight(val) : 'Stable readings recorded.';
+        const recommendationText = def.recommendation || 'Consistency in taking prescribed medications helps maintain steady vital trends.';
         
         const adherenceDetails = usePatientStore.getState().adherenceDetails;
         const isAdherenceHigh = adherenceDetails?.rate >= 80 || adherenceDetails?.streak >= 3;
 
         return (
-            <Animated.View style={{ opacity: getCombinedOpacity(staggerAnims[3]), marginBottom: 20 }}>
+            <Animated.View style={{ opacity: staggerAnims[3], marginBottom: 20 }}>
                 <Text style={styles.sectionEyebrow}>CLINICAL INSIGHTS</Text>
                 <View style={styles.coachCard}>
                     <View style={styles.coachHeader}>
-                    <View style={styles.coachTitleGroup}>
-                        <View style={styles.coachIconBubble}>
-                            <Sparkles size={16} color="#6366F1" fill="#6366F1" />
+                        <View style={styles.coachTitleGroup}>
+                            <View style={[styles.coachIconBubble, { backgroundColor: def.bgTint }]}>
+                                <Sparkles size={16} color={def.accent} fill={def.accent} />
+                            </View>
+                            <View>
+                                <Text style={styles.coachTitle}>Biometric Analysis</Text>
+                                <Text style={styles.coachSubtitle}>Personalized Telemetry Summary</Text>
+                            </View>
                         </View>
-                        <Text style={styles.coachTitle}>Today's Insight</Text>
+                        <View style={[styles.coachStatusPill, { backgroundColor: status.color + '15' }]}>
+                            <View style={[styles.coachStatusDot, { backgroundColor: status.color }]} />
+                            <Text style={[styles.coachStatusPillText, { color: status.color }]}>{status.label}</Text>
+                        </View>
                     </View>
-                </View>
 
-                <View style={styles.coachBody}>
-                    <Text style={styles.coachInsightText}>{clinicalText}</Text>
-                    
-                    <View style={styles.coachDivider} />
+                    <View style={styles.coachBody}>
+                        <Text style={styles.coachInsightText}>{clinicalText}</Text>
+                        
+                        <View style={styles.coachRecommendationBox}>
+                            <ShieldCheck size={16} color="#4F46E5" style={{ marginTop: 2, marginRight: 10 }} />
+                            <Text style={styles.coachRecommendationText}>{recommendationText}</Text>
+                        </View>
 
-                    <View style={styles.coachAdherenceRow}>
-                        <CheckCircle2 size={14} color="#6366F1" style={{ marginRight: 8 }} />
-                        <Text style={styles.coachAdherenceText}>
-                            {isAdherenceHigh
-                                ? "Excellent medication adherence matches your stable vital trends."
-                                : "Consistency in taking prescribed medications can help improve your vital trends."}
-                        </Text>
+                        <View style={styles.coachAdherenceRow}>
+                            <CircleCheckBig size={14} color="#6366F1" style={{ marginRight: 8 }} />
+                            <Text style={styles.coachAdherenceText}>
+                                {isAdherenceHigh
+                                    ? "Medication Adherence: Consistent routine aligns with stable vitals."
+                                    : "Care Tip: Taking medications on time improves vital stability."}
+                            </Text>
+                        </View>
                     </View>
-                </View>
                 </View>
             </Animated.View>
         );
@@ -1264,12 +1275,10 @@ export default function VitalsHistoryScreen({ navigation, route }) {
     const renderTimeline = (def) => {
         if (!vitals.length) return null;
         return (
-            <Animated.View style={[{ opacity: getCombinedOpacity(staggerAnims[4]) }, { marginTop: 12 }]}>
+            <Animated.View style={[{ opacity: staggerAnims[4] }, { marginBottom: 20 }]}>
                 <Text style={styles.sectionEyebrow}>RECENT READINGS</Text>
-                <View style={styles.timelineContainer}>
-                    <View style={styles.timelineLine} />
+                <View style={styles.timelineCardList}>
                     {vitals.map((log, idx) => {
-                        const isLast = idx === vitals.length - 1;
                         const value = def.extract(log);
                         const altValue = def.extractAlt ? def.extractAlt(log) : null;
                         const status = getClinicalStatus(def.id, value, altValue);
@@ -1277,34 +1286,40 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                         const formattedValue = altValue ? `${value}/${altValue}` : value;
                         const timeStr = new Date(log.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }).toLowerCase();
                         const dateStr = new Date(log.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                        const isDeviceSync = log.source && log.source !== 'manual';
 
                         return (
-                            <View key={log._id || idx} style={[styles.timelineItem, isLast && { marginBottom: 0 }]}>
-                                <View style={styles.timelineDotOuter}>
-                                    <View style={[styles.timelineDotInner, { backgroundColor: status.dot }]} />
-                                </View>
-                                
-                                <Pressable 
-                                    onPress={() => setSelectedDetailLog(log)}
-                                    style={({ pressed }) => [
-                                        styles.timelineContent,
-                                        pressed && { opacity: 0.7, backgroundColor: '#F8FAFC' }
-                                    ]}
-                                >
-                                    <View style={styles.timelineHeader}>
-                                        <View style={styles.timelineTimeRow}>
-                                            <Text style={styles.timelineValue}>{formattedValue} {def.unit}</Text>
-                                            <Text style={styles.timelineTime}>{dateStr} · {timeStr}</Text>
-                                        </View>
-                                        
-                                        {log.source && log.source !== 'manual' ? (
-                                            <Text style={styles.timelineSource}>Synced</Text>
-                                        ) : (
-                                            <Text style={styles.timelineSource}>Manual</Text>
-                                        )}
+                            <Pressable 
+                                key={log._id || idx}
+                                onPress={() => setSelectedDetailLog(log)}
+                                style={({ pressed }) => [
+                                    styles.readingCard,
+                                    pressed && { opacity: 0.85, transform: [{ scale: 0.99 }] }
+                                ]}
+                            >
+                                <View style={styles.readingCardLeft}>
+                                    <View style={[styles.readingIconCircle, { backgroundColor: def.bgTint }]}>
+                                        <def.icon size={18} color={def.accent} strokeWidth={2.5} />
                                     </View>
-                                </Pressable>
-                            </View>
+                                    <View>
+                                        <View style={styles.readingValueRow}>
+                                            <Text style={styles.readingValue}>{formattedValue}</Text>
+                                            <Text style={styles.readingUnit}>{def.unit}</Text>
+                                        </View>
+                                        <Text style={styles.readingDate}>{dateStr} · {timeStr}</Text>
+                                    </View>
+                                </View>
+
+                                <View style={styles.readingCardRight}>
+                                    <View style={[styles.readingStatusBadge, { backgroundColor: status.color + '15' }]}>
+                                        <View style={[styles.readingStatusDot, { backgroundColor: status.color }]} />
+                                        <Text style={[styles.readingStatusText, { color: status.color }]}>{status.label}</Text>
+                                    </View>
+                                    <Text style={[styles.readingSourceBadge, isDeviceSync && styles.readingSourceSync]}>
+                                        {isDeviceSync ? 'Synced' : 'Manual'}
+                                    </Text>
+                                </View>
+                            </Pressable>
                         );
                     })}
                 </View>
@@ -1312,25 +1327,42 @@ export default function VitalsHistoryScreen({ navigation, route }) {
         );
     };
 
+    // ─── Render: Unified Empty State ─────────────────────────────
+    const renderUnifiedEmptyState = (def) => (
+        <Animated.View style={[styles.emptyContainer, { opacity: staggerAnims[0] }]}>
+            <View style={styles.emptyCard}>
+                <View style={[styles.emptyIconCircle, { backgroundColor: def.bgTint }]}>
+                    <def.icon size={36} color={def.accent} strokeWidth={2} />
+                </View>
+                <Text style={styles.emptyTitle}>No {def.title} Records</Text>
+                <Text style={styles.emptySub}>
+                    Log your first {def.title.toLowerCase()} reading to unlock automated trends, health coach insights, and telemetry charts.
+                </Text>
+                <Pressable 
+                    style={styles.emptyActionBtn}
+                    onPress={() => {
+                        setIsLoggingExpanded(true);
+                    }}
+                >
+                    <LinearGradient colors={['#6366F1', '#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.emptyActionGradient}>
+                        <PlusCircle size={16} color="#FFFFFF" />
+                        <Text style={styles.emptyActionTxt}>Log {def.title} Now</Text>
+                    </LinearGradient>
+                </Pressable>
+            </View>
+        </Animated.View>
+    );
+
     // ─── Render: Skeletons ────────────────────────────────────────
     const renderHeroCardSkeleton = () => (
         <View style={[styles.skeletonHeroCard, { marginBottom: 20 }]}>
             <View style={styles.skeletonHeroTop}>
                 <View style={{ gap: 8 }}>
                     <SkeletonItem width={100} height={12} borderRadius={4} />
-                    <SkeletonItem width={140} height={18} borderRadius={6} />
+                    <SkeletonItem width={140} height={24} borderRadius={6} />
                     <SkeletonItem width={110} height={14} borderRadius={4} />
                 </View>
-                <SkeletonItem width={60} height={22} borderRadius={11} />
-            </View>
-            <View style={styles.skeletonHeroChips}>
-                {[...Array(4)].map((_, i) => (
-                    <View key={i} style={styles.skeletonHeroChip}>
-                        <SkeletonItem width={20} height={20} borderRadius={10} style={{ marginBottom: 6 }} />
-                        <SkeletonItem width={35} height={10} borderRadius={3} style={{ marginBottom: 6 }} />
-                        <SkeletonItem width={40} height={14} borderRadius={4} />
-                    </View>
-                ))}
+                <SkeletonItem width={70} height={24} borderRadius={12} />
             </View>
         </View>
     );
@@ -1357,32 +1389,9 @@ export default function VitalsHistoryScreen({ navigation, route }) {
     );
 
     const renderChartCardSkeleton = () => (
-        <View style={[styles.chartCard, { height: 260, justifyContent: 'center' }]}>
+        <View style={[styles.chartCard, { height: 240, justifyContent: 'center' }]}>
             <View style={[styles.cardTopAccent, { backgroundColor: '#E2E8F0' }]} />
             <ActivityIndicator color="#6366F1" size="small" />
-        </View>
-    );
-
-    const renderAIHealthCoachSkeleton = () => (
-        <View style={[styles.coachCard, { marginBottom: 20 }]}>
-            <View style={styles.coachHeader}>
-                <View style={styles.coachTitleGroup}>
-                    <View style={styles.coachIconBubble}>
-                        <SkeletonItem width={16} height={16} borderRadius={8} />
-                    </View>
-                    <SkeletonItem width={100} height={14} borderRadius={4} />
-                </View>
-            </View>
-            <View style={styles.coachBody}>
-                <SkeletonItem width="100%" height={16} borderRadius={4} style={{ marginBottom: 8 }} />
-                <SkeletonItem width="90%" height={16} borderRadius={4} style={{ marginBottom: 8 }} />
-                <SkeletonItem width="60%" height={16} borderRadius={4} style={{ marginBottom: 12 }} />
-                <View style={styles.coachDivider} />
-                <View style={styles.coachAdherenceRow}>
-                    <SkeletonItem width={14} height={14} borderRadius={7} style={{ marginRight: 6 }} />
-                    <SkeletonItem width="80%" height={12} borderRadius={3} />
-                </View>
-            </View>
         </View>
     );
 
@@ -1390,12 +1399,12 @@ export default function VitalsHistoryScreen({ navigation, route }) {
         if (!error && !isOffline) return null;
         return (
             <View style={[styles.errorBanner, isOffline && { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}>
-                {isOffline ? <Clock size={18} color="#DC2626" /> : <AlertTriangle size={18} color="#DC2626" />}
+                {isOffline ? <Clock size={18} color="#DC2626" /> : <TriangleAlert size={18} color="#DC2626" />}
                 <Text style={styles.errorText}>
                     {isOffline ? 'Offline Mode Active. Changes will sync automatically when connected.' : error}
                 </Text>
                 {!isOffline && error && (
-                    <Pressable style={styles.retryBtn} onPress={fetchChartData}>
+                    <Pressable style={styles.retryBtn} onPress={() => fetchChartData(false)}>
                         <RefreshCw size={13} color="#FFF" />
                         <Text style={styles.retryText}>Retry</Text>
                     </Pressable>
@@ -1405,89 +1414,84 @@ export default function VitalsHistoryScreen({ navigation, route }) {
     };
 
     // ─── Main Render ─────────────────────────────────────────────
-    const def = CHART_DEFS.find(c => c.id === activeMetricId);
-
+    const def = CHART_DEFS.find(c => c.id === activeMetricId) || CHART_DEFS[0];
 
     return (
         <TabScreenTransition>
             <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                 <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
                 {renderFullscreenChart()}
-                <View style={[styles.container]}>
+                <View style={styles.container}>
                     {renderHeader()}
                     
                     {/* Ambient Glow Backdrop */}
                     <LinearGradient colors={['#EEF2FF', 'rgba(238,242,255,0.0)', 'rgba(248,250,252,0.0)']} style={styles.ambientGlow} />
 
                     <Animated.ScrollView
-                        contentContainerStyle={styles.scrollContent}
+                        contentContainerStyle={[
+                            styles.scrollContent,
+                            { paddingTop: headerHeight + 14 }
+                        ]}
                         showsVerticalScrollIndicator={false}
                         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
                         scrollEventThrottle={16}
                     >
-                        <>
-                            {/* 1. Metric tabs */}
-                            {renderMetricSelector()}
+                        {/* 1. Metric tabs */}
+                        {renderMetricSelector()}
 
-                            {/* 2. Latest Reading Hero Card */}
-                            {initialLoading ? renderHeroCardSkeleton() : renderHeroCard(def)}
+                        {/* 2. Latest Reading Hero Card */}
+                        {initialLoading ? renderHeroCardSkeleton() : renderHeroCard(def)}
 
-                            {/* 3. Time Range chips */}
-                            {renderTimeRangeSelector()}
-                            {renderCustomDatePicker()}
+                        {/* 3. Time Range chips */}
+                        {renderTimeRangeSelector()}
+                        {renderCustomDatePicker()}
 
-                            {/* Error and sync warnings */}
-                            {renderErrorBanner()}
+                        {/* Error and sync warnings */}
+                        {renderErrorBanner()}
 
-                            {/* 4. Quick Stats & Chart Analytics */}
-                            {initialLoading ? (
-                                <>
-                                    {renderSummaryStatsSkeleton()}
-                                    {renderChartCardSkeleton()}
-                                    {renderAIHealthCoachSkeleton()}
-                                </>
-                            ) : vitals.length === 0 ? (
-                                <Animated.View style={{ opacity: Animated.multiply(dataFadeAnim, fadeAnim) }}>
-                                    <View style={styles.emptyState}>
-                                        <View style={styles.emptyIconCircle}>
-                                            <Heart size={34} color="#6366F1" />
-                                        </View>
-                                        <Text style={styles.emptyTitle}>Start tracking your vitals</Text>
-                                        <Text style={styles.emptySub}>
-                                            Log your first reading to unlock trends, AI insights, and personalized health summaries.
-                                        </Text>
-                                    </View>
-                                </Animated.View>
-                            ) : (
-                                <>
-                                    {renderQuickStats(def)}
-                                    {renderTrendChart(def)}
-                                    {renderAIHealthCoach(def)}
-                                    {renderTimeline(def)}
-                                </>
-                            )}
+                        {/* 4. Quick Stats & Chart Analytics */}
+                        {initialLoading ? (
+                            <>
+                                {renderSummaryStatsSkeleton()}
+                                {renderChartCardSkeleton()}
+                            </>
+                        ) : vitals.length === 0 ? (
+                            renderUnifiedEmptyState(def)
+                        ) : (
+                            <>
+                                {renderQuickStats(def)}
+                                {renderTrendChart(def)}
+                                {renderAIHealthCoach(def)}
+                                {renderTimeline(def)}
+                            </>
+                        )}
 
-                            {/* 5. Collapsible Log Form Drawer */}
-                            <Animated.View style={{ marginTop: 12 }}>
-                                <Text style={styles.sectionEyebrow}>LOG NEW READING</Text>
-                                <View style={styles.chartCard}>
+                        {/* 5. Collapsible Log Form Drawer */}
+                        <Animated.View style={{ marginTop: 8, marginBottom: 16 }}>
+                            <Text style={styles.sectionEyebrow}>LOG NEW READING</Text>
+                            <View style={styles.formCardContainer}>
                                 <View style={[styles.cardTopAccent, { backgroundColor: '#6366F1' }]} />
                                 <Pressable 
                                     style={styles.logToggleRow} 
                                     onPress={() => { setIsLoggingExpanded(!isLoggingExpanded); setFormError(null); }}
                                 >
                                     <View style={styles.logTitleGroup}>
-                                        <PlusCircle size={18} color="#6366F1" />
-                                        <Text style={styles.chartTitle}>Log New Reading</Text>
+                                        <View style={styles.logIconCircle}>
+                                            <PlusCircle size={20} color="#6366F1" />
+                                        </View>
+                                        <View>
+                                            <Text style={styles.formTitle}>Record Vitals Entry</Text>
+                                            <Text style={styles.formSubtitle}>Manual telemetry measurement</Text>
+                                        </View>
                                     </View>
-                                    {isLoggingExpanded ? <ChevronUp size={18} color="#64748B" /> : <ChevronDown size={18} color="#64748B" />}
+                                    {isLoggingExpanded ? <ChevronUp size={20} color="#64748B" /> : <ChevronDown size={20} color="#64748B" />}
                                 </Pressable>
 
                                 {isLoggingExpanded && (
                                     <View style={styles.formArea}>
                                         {formError && (
-                                            <View style={[styles.errorBanner, { marginBottom: 12 }]}>
-                                                <AlertTriangle size={15} color="#DC2626" />
+                                            <View style={[styles.errorBanner, { marginBottom: 14 }]}>
+                                                <TriangleAlert size={15} color="#DC2626" />
                                                 <Text style={styles.errorText}>{formError}</Text>
                                             </View>
                                         )}
@@ -1524,22 +1528,21 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                                             <LinearGradient colors={['#6366F1', '#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitGradient}>
                                                 {loading
                                                     ? <ActivityIndicator color="#FFF" />
-                                                    : <><Zap size={15} color="#FFF" /><Text style={styles.submitTxt}>Save Vitals</Text></>
+                                                    : <><Zap size={16} color="#FFF" /><Text style={styles.submitTxt}>Save Biometric Reading</Text></>
                                                 }
                                             </LinearGradient>
                                         </Pressable>
                                     </View>
                                 )}
-                                </View>
-                            </Animated.View>
-                        </>
+                            </View>
+                        </Animated.View>
                     </Animated.ScrollView>
 
                     {/* Vitals Log Detail Bottom Sheet */}
                     <BottomSheetWrapper
                         isOpen={selectedDetailLog !== null}
                         onClose={() => setSelectedDetailLog(null)}
-                        snapPoints={['40%', '65%']}
+                        snapPoints={['42%', '65%']}
                         title={def ? `${def.title} Log Details` : "Log Details"}
                     >
                         {selectedDetailLog && (() => {
@@ -1554,12 +1557,12 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                             const sourceLabel = log.source && log.source !== 'manual' ? "Device / Wearable Sync" : "Manual Log Entry";
                             
                             return (
-                                <View style={{ gap: 20 }}>
+                                <View style={{ gap: 18 }}>
                                     {/* Prominent display */}
-                                    <View style={{ alignItems: 'center', backgroundColor: '#F8FAFC', padding: 24, borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9', gap: 6 }}>
-                                        <Text style={{ fontSize: 13, fontWeight: '800', color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.5 }}>Recorded Value</Text>
+                                    <View style={{ alignItems: 'center', backgroundColor: '#F8FAFC', padding: 22, borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9', gap: 6 }}>
+                                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.8 }}>Recorded Measurement</Text>
                                         <Text style={{ fontSize: 36, fontWeight: '900', color: '#0F172A' }}>
-                                            {formattedValue} <Text style={{ fontSize: 18, color: '#64748B', fontWeight: '600' }}>{def.unit}</Text>
+                                            {formattedValue} <Text style={{ fontSize: 18, color: '#64748B', fontWeight: '700' }}>{def.unit}</Text>
                                         </Text>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: status.dot + '15', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, marginTop: 4 }}>
                                             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: status.dot }} />
@@ -1569,15 +1572,15 @@ export default function VitalsHistoryScreen({ navigation, route }) {
 
                                     {/* Log Meta Details */}
                                     <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden' }}>
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 15, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
                                             <Text style={{ fontSize: 14, color: '#64748B', fontWeight: '600' }}>Log Date</Text>
                                             <Text style={{ fontSize: 14, color: '#0F172A', fontWeight: '700' }}>{dateStr}</Text>
                                         </View>
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 15, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
                                             <Text style={{ fontSize: 14, color: '#64748B', fontWeight: '600' }}>Log Time</Text>
                                             <Text style={{ fontSize: 14, color: '#0F172A', fontWeight: '700' }}>{timeStr}</Text>
                                         </View>
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 16 }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 15 }}>
                                             <Text style={{ fontSize: 14, color: '#64748B', fontWeight: '600' }}>Source</Text>
                                             <Text style={{ fontSize: 14, color: '#0F172A', fontWeight: '700' }}>{sourceLabel}</Text>
                                         </View>
@@ -1592,7 +1595,7 @@ export default function VitalsHistoryScreen({ navigation, route }) {
                                             borderRadius: 16,
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            marginTop: 10
+                                            marginTop: 6
                                         }}
                                     >
                                         <Text style={{ fontSize: 15, fontWeight: '700', color: '#475569' }}>Close Details</Text>
@@ -1610,19 +1613,66 @@ export default function VitalsHistoryScreen({ navigation, route }) {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
     ambientGlow: { position: 'absolute', top: 0, left: 0, right: 0, height: 280, zIndex: 0 },
-    scrollContent: { paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 110 : 90, paddingBottom: layout.TAB_BAR_CLEARANCE + 20 },
+    scrollContent: { paddingHorizontal: 20, paddingBottom: layout.TAB_BAR_CLEARANCE + 32 },
 
     /* Glass Header */
     glassHeader: {
-        position: 'absolute', top: 0, left: 0, right: 0,
-        height: Platform.OS === 'ios' ? 100 : 80,
-        zIndex: 100, justifyContent: 'flex-end', paddingBottom: 10,
+        position: 'absolute', 
+        top: 0, 
+        left: 0, 
+        right: 0,
+        zIndex: 100, 
+        justifyContent: 'center',
     },
-    headerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 },
-    headerBackBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.7)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
-    headerEyebrow: { fontSize: 10, fontWeight: '800', color: '#7C3AED', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 },
-    headerTitle: { fontSize: 18, fontWeight: '900', color: '#0F172A', letterSpacing: -0.3 },
-    headerBorderLine: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, backgroundColor: '#E2E8F0' },
+    headerContent: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        justifyContent: 'space-between', 
+        paddingHorizontal: 18,
+        height: 52,
+    },
+    headerTitleCenter: { 
+        flex: 1, 
+        alignItems: 'center', 
+        justifyContent: 'center',
+    },
+    headerBackBtn: { 
+        width: 40, 
+        height: 40, 
+        borderRadius: 12, 
+        backgroundColor: '#FFFFFF', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        borderWidth: 1, 
+        borderColor: '#E2E8F0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+        elevation: 1,
+    },
+    headerEyebrow: { 
+        fontSize: 10, 
+        fontWeight: '800', 
+        color: '#7C3AED', 
+        letterSpacing: 1.2, 
+        textTransform: 'uppercase', 
+        marginBottom: 1,
+    },
+    headerTitle: { 
+        fontSize: 17, 
+        fontWeight: '900', 
+        color: '#0F172A', 
+        letterSpacing: -0.3,
+    },
+    headerBorderLine: { 
+        position: 'absolute', 
+        bottom: 0, 
+        left: 0, 
+        right: 0, 
+        height: 1, 
+        backgroundColor: '#E2E8F0',
+    },
 
     sectionEyebrow: {
         fontSize: 11,
@@ -1649,24 +1699,18 @@ const styles = StyleSheet.create({
 
     /* Hero Card */
     heroCardContainer: { marginBottom: 20 },
-    heroCard: {
-        backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, marginBottom: 20,
-        borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2
-    },
-    emptyHeroContent: { paddingVertical: 30, alignItems: 'center', gap: 10 },
-    emptyHeroText: { color: '#64748B', fontSize: 13, fontWeight: '600' },
     heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
     heroLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-    heroIconCircle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+    heroIconCircle: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
     heroLabel: { fontSize: 11, fontWeight: '800', color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 2 },
     heroValueContainer: { flexDirection: 'row', alignItems: 'baseline' },
     heroValue: { fontSize: 32, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
     heroUnit: { fontSize: 13, fontWeight: '800', color: '#64748B' },
     statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
     statusBadgeText: { fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.3 },
-    heroFooter: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#F8FAFC', paddingTop: 14 },
-    heroComparisonText: { fontSize: 12, fontWeight: '700', color: '#64748B', flexDirection: 'row', alignItems: 'center' },
+    heroFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F8FAFC', paddingTop: 14 },
+    heroComparisonRow: { flexDirection: 'row', alignItems: 'center' },
+    heroComparisonText: { fontSize: 12, fontWeight: '700', color: '#64748B' },
     heroTimeText: { fontSize: 11, fontWeight: '600', color: '#94A3B8' },
 
     /* Time Range Chips */
@@ -1693,7 +1737,6 @@ const styles = StyleSheet.create({
     },
     statColumn: { flex: 1, alignItems: 'center' },
     statDivider: { width: 1, height: 32, backgroundColor: '#F1F5F9' },
-    statsScroll: { gap: 10, paddingBottom: 4 },
     statHeader: { flexDirection: 'row', gap: 4, alignItems: 'center', marginBottom: 6 },
     statLabel: { fontSize: 10, fontWeight: '800', color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.5 },
     statValueRow: { flexDirection: 'column', alignItems: 'center', marginTop: 2 },
@@ -1702,24 +1745,22 @@ const styles = StyleSheet.create({
 
     /* Chart Card */
     chartCard: {
-        backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, marginBottom: 20,
+        backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, marginBottom: 20,
         borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden', position: 'relative',
         shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2
     },
     cardTopAccent: { position: 'absolute', top: 0, left: 0, right: 0, height: 3.5, borderTopLeftRadius: 24, borderTopRightRadius: 24 },
-    chartTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12, paddingTop: 4 },
+    chartTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingTop: 4 },
     chartTitle: { fontSize: 15, fontWeight: '900', color: '#0F172A' },
     chartSubtitle: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginTop: 1 },
-    chart: { borderRadius: 16, alignSelf: 'center' },
+    chart: { borderRadius: 16, marginVertical: 4 },
     expandBtn: { padding: 6, backgroundColor: '#F8FAFC', borderRadius: 8, borderWidth: 1, borderColor: '#F1F5F9' },
-    trendSummaryRow: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F8FAFC', paddingTop: 12, marginTop: 10 },
+    trendSummaryRow: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F8FAFC', paddingTop: 12, marginTop: 8 },
     trendSummaryText: { fontSize: 12, fontWeight: '800' },
 
     emptyChartBox: { height: 130, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9', borderStyle: 'dashed' },
     emptyChartText: { color: '#94A3B8', fontStyle: 'italic', fontSize: 13, fontWeight: '500' },
-
-    /* Victory range box */
-    victoryContainer: { marginTop: 6 },
+    victoryContainer: { marginTop: 4 },
 
     /* AI Coach Card */
     coachCard: {
@@ -1727,40 +1768,95 @@ const styles = StyleSheet.create({
         borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden', shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2
     },
-    coachHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-    coachTitleGroup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    coachIconBubble: { width: 30, height: 30, borderRadius: 9, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
+    coachHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+    coachTitleGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    coachIconBubble: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
     coachTitle: { fontSize: 14, fontWeight: '900', color: '#0F172A' },
+    coachSubtitle: { fontSize: 11, fontWeight: '600', color: '#94A3B8', marginTop: 1 },
+    coachStatusPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14 },
+    coachStatusDot: { width: 6, height: 6, borderRadius: 3 },
+    coachStatusPillText: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
     coachBody: { marginTop: 2 },
-    coachInsightText: { fontSize: 13, fontWeight: '700', color: '#1E293B', lineHeight: 18 },
-    coachDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 },
-    coachAdherenceRow: { flexDirection: 'row', alignItems: 'center' },
+    coachInsightText: { fontSize: 14, fontWeight: '700', color: '#1E293B', lineHeight: 21 },
+    coachRecommendationBox: { 
+        flexDirection: 'row', 
+        backgroundColor: '#F5F3FF', 
+        borderRadius: 14, 
+        padding: 12, 
+        marginTop: 12,
+        borderWidth: 1, 
+        borderColor: '#EDE9FE' 
+    },
+    coachRecommendationText: { fontSize: 12, fontWeight: '600', color: '#4338CA', lineHeight: 18, flex: 1 },
+    coachAdherenceRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
     coachAdherenceText: { fontSize: 12, color: '#4F46E5', fontWeight: '700', flex: 1 },
 
-    /* Timeline Journals */
-    historyTitle: { fontSize: 16, fontWeight: '900', color: '#0F172A', marginBottom: 12 },
-    timelineContainer: { paddingLeft: 12, position: 'relative', marginTop: 4 },
-    timelineLine: { position: 'absolute', left: 4, top: 12, bottom: 12, width: 1.5, backgroundColor: '#E2E8F0' },
-    timelineItem: { flexDirection: 'row', position: 'relative', marginBottom: 12 },
-    timelineDotOuter: { position: 'absolute', left: -12.5, top: 13, width: 9, height: 9, borderRadius: 4.5, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', zIndex: 1 },
-    timelineDotInner: { width: 5, height: 5, borderRadius: 2.5 },
-    timelineContent: {
-        flex: 1, backgroundColor: '#FFFFFF', borderRadius: 16, padding: 12,
-        borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.01, shadowRadius: 4, elevation: 1
+    /* Recent Readings Card List */
+    timelineCardList: { gap: 10 },
+    readingCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 18,
+        padding: 15,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.02,
+        shadowRadius: 6,
+        elevation: 1,
     },
-    timelineHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    timelineTimeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    timelineValue: { fontSize: 13, fontWeight: '900', color: '#0F172A' },
-    timelineTime: { fontSize: 11, fontWeight: '700', color: '#94A3B8' },
-    timelineSource: { fontSize: 10, fontWeight: '800', color: '#6366F1', backgroundColor: '#EEF2FF', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 6 },
+    readingCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    readingIconCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+    readingValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+    readingValue: { fontSize: 16, fontWeight: '900', color: '#0F172A' },
+    readingUnit: { fontSize: 12, fontWeight: '700', color: '#64748B' },
+    readingDate: { fontSize: 11, fontWeight: '600', color: '#94A3B8', marginTop: 2 },
+    readingCardRight: { alignItems: 'flex-end', gap: 4 },
+    readingStatusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
+    readingStatusDot: { width: 5, height: 5, borderRadius: 2.5 },
+    readingStatusText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
+    readingSourceBadge: { fontSize: 10, fontWeight: '700', color: '#64748B', backgroundColor: '#F1F5F9', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
+    readingSourceSync: { color: '#6366F1', backgroundColor: '#EEF2FF' },
+
+    /* Unified Empty State */
+    emptyContainer: { marginBottom: 20 },
+    emptyCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        padding: 28,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.03,
+        shadowRadius: 10,
+        elevation: 2,
+    },
+    emptyIconCircle: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+    emptyTitle: { color: '#0F172A', fontSize: 17, fontWeight: '900' },
+    emptySub: { color: '#64748B', fontSize: 13, marginTop: 8, textAlign: 'center', paddingHorizontal: 12, lineHeight: 20 },
+    emptyActionBtn: { marginTop: 18, borderRadius: 14, overflow: 'hidden', width: '100%' },
+    emptyActionGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14 },
+    emptyActionTxt: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
 
     /* Form Card */
-    logToggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    logTitleGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    formArea: { marginTop: 14 },
-    formDivider: { height: 1, backgroundColor: '#F1F5F9', marginBottom: 14 },
-    formRow: { flexDirection: 'row', gap: 12, marginBottom: 2 },
+    formCardContainer: {
+        backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18,
+        borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden', position: 'relative',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2
+    },
+    logToggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
+    logTitleGroup: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    logIconCircle: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
+    formTitle: { fontSize: 15, fontWeight: '900', color: '#0F172A' },
+    formSubtitle: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginTop: 1 },
+    formArea: { marginTop: 16 },
+    formDivider: { height: 1, backgroundColor: '#F1F5F9', marginBottom: 16 },
+    formRow: { flexDirection: 'row', gap: 12, marginBottom: 4 },
     formGroup: { flex: 1, marginBottom: 2 },
     formSectionLabel: { fontSize: 10, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, marginTop: 8 },
     submitBtn: { marginTop: 16, borderRadius: 14, overflow: 'hidden' },
@@ -1773,18 +1869,9 @@ const styles = StyleSheet.create({
     retryBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#DC2626', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
     retryText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
 
-    /* Empty State */
-    emptyState: { alignItems: 'center', paddingVertical: 32 },
-    emptyIconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-    emptyTitle: { color: '#0F172A', fontSize: 16, fontWeight: '800' },
-    emptySub: { color: '#64748B', fontSize: 13, marginTop: 6, textAlign: 'center', paddingHorizontal: 24, lineHeight: 18 },
-
-    /* Skeletons spacing */
+    /* Skeletons */
     skeletonHeroCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.02, shadowRadius: 6, elevation: 1 },
-    skeletonHeroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-    skeletonHeroChips: { flexDirection: 'row', gap: 8 },
-    skeletonHeroChip: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 16, padding: 10, alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
-    skeletonStatCard: { width: 120, backgroundColor: '#FFFFFF', borderRadius: 20, padding: 14, borderWidth: 1, borderColor: '#F1F5F9', borderTopWidth: 3 },
+    skeletonHeroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
 
     /* Landscape / Fullscreen */
     landscapeContainer: { flex: 1, backgroundColor: '#FFFFFF', padding: 16, justifyContent: 'center' },
@@ -1792,5 +1879,10 @@ const styles = StyleSheet.create({
     landscapeTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A' },
     landscapeSubtitle: { fontSize: 12, fontWeight: '700', color: '#64748B', marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
     landscapeChart: { borderRadius: 20, alignSelf: 'center' },
-    closeFullscreenBtn: { position: 'absolute', top: 20, right: 20, zIndex: 1000, backgroundColor: '#F1F5F9', width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 6 },
+    closeFullscreenBtn: { position: 'absolute', top: 20, right: 20, zIndex: 1000, backgroundColor: '#F1F5F9', width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 6 },
+    tooltipContainer: { position: 'absolute', backgroundColor: '#0F172A', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
+    tooltipLabel: { color: '#94A3B8', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+    tooltipValue: { color: '#FFFFFF', fontSize: 13, fontWeight: '900' },
+    tooltipUnit: { color: '#94A3B8', fontSize: 10, fontWeight: '600' },
+    tooltipArrow: { position: 'absolute', bottom: -5, width: 0, height: 0, borderLeftWidth: 5, borderRightWidth: 5, borderTopWidth: 5, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: '#0F172A' },
 });

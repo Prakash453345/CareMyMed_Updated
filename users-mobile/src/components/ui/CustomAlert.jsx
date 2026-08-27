@@ -9,7 +9,7 @@ import {
   Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CheckCircle2, AlertTriangle, Info, XCircle, Check, Trash2, LogOut } from 'lucide-react-native';
+import { CircleCheckBig, TriangleAlert, Info, CircleX, Check, Trash2, LogOut } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useMotion } from '../../theme/MotionProvider';
 
@@ -39,7 +39,7 @@ const THEME = {
     topBarGradient: ['#FB7185', '#E11D48'],
     haloBg: '#FFF1F2',
     haloBorder: '#FECDD3',
-    Icon: XCircle,
+    Icon: CircleX,
   },
   warning: {
     accent: '#D97706',
@@ -47,7 +47,7 @@ const THEME = {
     topBarGradient: ['#FBBF24', '#F59E0B'],
     haloBg: '#FEF3C7',
     haloBorder: '#FDE68A',
-    Icon: AlertTriangle,
+    Icon: TriangleAlert,
   },
   info: {
     accent: '#6366F1',

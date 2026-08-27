@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { MicOff, BarChart2, AlertTriangle, RefreshCw, ShieldAlert } from 'lucide-react-native';
+import { MicOff, ChartBar, TriangleAlert, RefreshCw, ShieldAlert } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function FallbackRenderer({
@@ -52,7 +52,7 @@ export default function FallbackRenderer({
             <View style={[styles.compactContainer, style]}>
                 <View style={styles.headerRow}>
                     <View style={[styles.iconBox, { backgroundColor: 'rgba(245, 158, 11, 0.12)' }]}>
-                        <AlertTriangle size={18} color="#F59E0B" />
+                        <TriangleAlert size={18} color="#F59E0B" />
                     </View>
                     <View style={styles.textWrap}>
                         <Text style={styles.compactTitleText}>
@@ -83,9 +83,9 @@ export default function FallbackRenderer({
                     style={styles.heroIconWrap}
                 >
                     {preset === 'chart' ? (
-                        <BarChart2 size={32} color="#6366F1" strokeWidth={2} />
+                        <ChartBar size={32} color="#6366F1" strokeWidth={2} />
                     ) : (
-                        <AlertTriangle size={32} color="#D97706" strokeWidth={2} />
+                        <TriangleAlert size={32} color="#D97706" strokeWidth={2} />
                     )}
                 </LinearGradient>
 

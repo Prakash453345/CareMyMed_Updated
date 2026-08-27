@@ -8,7 +8,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import { Package, X, Check, AlertCircle, Plus, Minus } from 'lucide-react-native';
+import { Package, X, Check, CircleAlert, Plus, Minus } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { usePatientStore } from '../../store/usePatientStore';
 import {
@@ -162,7 +162,7 @@ export default function SupplyUpdateModal({ visible, onClose, med, schedule, onC
           <View style={[styles.stockBanner, isLowSupply && styles.stockBannerLow]}>
             <View style={styles.stockBannerLeft}>
               {isLowSupply ? (
-                <AlertCircle size={16} color="#EF4444" strokeWidth={2.5} />
+                <CircleAlert size={16} color="#EF4444" strokeWidth={2.5} />
               ) : (
                 <Package size={16} color="#6366F1" strokeWidth={2.5} />
               )}
@@ -256,7 +256,7 @@ export default function SupplyUpdateModal({ visible, onClose, med, schedule, onC
           {/* Error Message */}
           {errorMsg && (
             <View style={styles.errorBanner}>
-              <AlertCircle size={14} color="#EF4444" />
+              <CircleAlert size={14} color="#EF4444" />
               <Text style={styles.errorTxt}>{errorMsg}</Text>
             </View>
           )}

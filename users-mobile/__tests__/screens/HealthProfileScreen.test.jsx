@@ -105,41 +105,16 @@ jest.mock('../../src/components/ui/PremiumFormModal', () => 'PremiumFormModal');
 jest.mock('lucide-react-native', () => {
   const React = require('react');
   const { View } = require('react-native');
-  return {
-    TriangleAlert: () => React.createElement(View),
-    AlertTriangle: () => React.createElement(View),
-    Lock: () => React.createElement(View),
-    ShieldCheck: () => React.createElement(View),
-    HeartPulse: () => React.createElement(View),
-    Activity: () => React.createElement(View),
-    Droplet: () => React.createElement(View),
-    Phone: () => React.createElement(View),
-    Plus: () => React.createElement(View),
-    Pencil: () => React.createElement(View),
-    X: () => React.createElement(View),
-    Trash2: () => React.createElement(View),
-    CircleCheck: () => React.createElement(View),
-    CheckCircle2: () => React.createElement(View),
-    RefreshCw: () => React.createElement(View),
-    ChevronDown: () => React.createElement(View),
-    Upload: () => React.createElement(View),
-    Siren: () => React.createElement(View),
-    ChevronRight: () => React.createElement(View),
-    TrendingUp: () => React.createElement(View),
-    TrendingDown: () => React.createElement(View),
-    Sparkles: () => React.createElement(View),
-    Bell: () => React.createElement(View),
-    FileText: () => React.createElement(View),
-    Pill: () => React.createElement(View),
-    Syringe: () => React.createElement(View),
-    Link2: () => React.createElement(View),
-    Users: () => React.createElement(View),
-    Calendar: () => React.createElement(View),
-    Info: () => React.createElement(View),
-    Clock: () => React.createElement(View),
-    MapPin: () => React.createElement(View),
-    HelpCircle: () => React.createElement(View),
-  };
+  return new Proxy(
+    {},
+    {
+      get: (target, prop) => {
+        return function MockLucideIcon(props) {
+          return React.createElement(View, { testID: `lucide-${String(prop)}`, ...props });
+        };
+      },
+    }
+  );
 });
 
 describe('HealthProfileScreen', () => {

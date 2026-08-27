@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiService } from '../../lib/api';
 import { colors } from '../../theme';
-import { ArrowLeft, MoreHorizontal, Plus, User, Edit2, Bell, AlertTriangle, FileText, Trash2, X, ShieldAlert } from 'lucide-react-native';
+import { ArrowLeft, Ellipsis, Plus, User, Pencil, Bell, TriangleAlert, FileText, Trash2, X, ShieldAlert } from 'lucide-react-native';
 import AlertManager from '../../utils/AlertManager';
 
 const FONT = {
@@ -146,7 +146,7 @@ export default function CareCircleScreen() {
                                     setShowMenu(true);
                                 }}
                             >
-                                <MoreHorizontal color="#64748B" size={20} />
+                                <Ellipsis color="#64748B" size={20} />
                             </Pressable>
                         </View>
                     );
@@ -206,7 +206,7 @@ export default function CareCircleScreen() {
                                 setShowRename(true);
                             }}
                         >
-                            <Edit2 size={18} color="#475569" />
+                            <Pencil size={18} color="#475569" />
                             <Text style={styles.menuItemText}>Rename Relationship</Text>
                         </Pressable>
 
@@ -299,7 +299,7 @@ export default function CareCircleScreen() {
                     <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
                         <View style={styles.confirmHeader}>
                             <View style={styles.warnIconBg}>
-                                <AlertTriangle color="#EF4444" size={24} />
+                                <TriangleAlert color="#EF4444" size={24} />
                             </View>
                             <Text style={styles.confirmTitle}>Remove {menuTarget?.patient_id?.name}?</Text>
                             <Text style={styles.confirmDesc}>

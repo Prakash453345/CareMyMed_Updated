@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
-import { Navigation, ChevronRight, CheckCircle2, Pill, Heart, AlertTriangle } from 'lucide-react-native';
+import { Navigation, ChevronRight, CircleCheckBig, Pill, Heart, TriangleAlert } from 'lucide-react-native';
 import { colors, radius } from '../../theme';
 
 const FONT = {
@@ -23,9 +23,9 @@ export default function TurnByTurnBanner({
             case 'vital':
                 return <Heart size={18} color="#FFFFFF" />;
             case 'alert':
-                return <AlertTriangle size={18} color="#FFFFFF" />;
+                return <TriangleAlert size={18} color="#FFFFFF" />;
             case 'done':
-                return <CheckCircle2 size={18} color="#FFFFFF" />;
+                return <CircleCheckBig size={18} color="#FFFFFF" />;
             default:
                 return <Navigation size={18} color="#FFFFFF" />;
         }

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Dimensions, Linking, ActivityIndicator, Image, Animated, Modal, TouchableOpacity } from 'react-native';
 import { apiService } from '../../lib/api';
-import { HeartPulse, Activity, Bell, Phone, ChevronRight, MessageSquare, ShieldCheck, AlertCircle, RefreshCw, Bluetooth, Lightbulb, Sparkles, TrendingUp, Calendar, ChevronDown, ChevronUp, TriangleAlert, Package2, BotMessageSquare, ClipboardCheck, Clock3, BrainCircuit, ChartColumnIncreasing, X } from 'lucide-react-native';
+import { HeartPulse, Activity, Bell, Phone, ChevronRight, MessageSquare, ShieldCheck, CircleAlert, RefreshCw, Bluetooth, Lightbulb, Sparkles, TrendingUp, Calendar, ChevronDown, ChevronUp, TriangleAlert, Package2, BotMessageSquare, ClipboardCheck, Clock3, BrainCircuit, ChartColumnIncreasing, X } from 'lucide-react-native';
 import AlertManager from '../../utils/AlertManager';
 import { colors, radius, spacing, shadows, layout, motion, anim, useReduceMotion } from '../../theme';
 import { useMotion } from '../../theme/MotionProvider';
@@ -517,7 +517,7 @@ export default function CompanionDashboardScreen() {
                 {isLowVisibility && (
                     <View style={styles.lowVisibilityBanner}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <AlertCircle color="#B45309" size={18} />
+                            <CircleAlert color="#B45309" size={18} />
                             <Text style={styles.lowVisibilityBannerTitle}>Low Care Visibility</Text>
                         </View>
                         <Text style={styles.lowVisibilityBannerText}>

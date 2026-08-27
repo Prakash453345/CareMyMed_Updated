@@ -20,7 +20,7 @@ import {
     UIManager,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { X, Save, AlertTriangle } from 'lucide-react-native';
+import { X, Save, TriangleAlert } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius, motion } from '../../theme';
 import ScalePressable from './ScalePressable';
@@ -43,7 +43,7 @@ class ModalContentErrorBoundary extends React.Component {
         if (this.state.hasError) {
             return (
                 <View style={{ padding: 24, alignItems: 'center', justifyContent: 'center' }}>
-                    <AlertTriangle size={36} color="#EF4444" style={{ marginBottom: 12 }} />
+                    <TriangleAlert size={36} color="#EF4444" style={{ marginBottom: 12 }} />
                     <Text style={{ fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 4, textAlign: 'center' }}>
                         Form Encountered an Issue
                     </Text>

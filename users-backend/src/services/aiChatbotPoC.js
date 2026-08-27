@@ -707,7 +707,7 @@ async function streamPoCResponse(
   let isFallback = false;
   let fallbackReason = null;
   let providerUsed = 'groq';
-  let modelUsed = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  let modelUsed = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 
   let promptTokens = 0;
   let completionTokens = 0;
@@ -1163,7 +1163,7 @@ async function generatePoCResponse(patientId, userQuery, targetLanguage) {
   let isFallback = false;
   let fallbackReason = null;
   let providerUsed = 'groq';
-  let modelUsed = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  let modelUsed = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 
   let promptTokens = 0;
   let completionTokens = 0;

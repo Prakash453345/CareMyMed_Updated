@@ -348,7 +348,7 @@ const TactileWheelPicker = ({
       const y = event.nativeEvent?.contentOffset?.y || 0;
       const dataIndex = Math.max(
         0,
-        Math.min(safeData.length - 1, Math.round(y / itemHeight) - 2)
+        Math.min(safeData.length - 1, Math.round(y / itemHeight))
       );
       if (dataIndex >= 0 && dataIndex < safeData.length) {
         const item = safeData[dataIndex];
@@ -375,7 +375,7 @@ const TactileWheelPicker = ({
       const timer = setTimeout(() => {
         try {
           flatListRef.current?.scrollToOffset?.({
-            offset: (index + 2) * itemHeight,
+            offset: index * itemHeight,
             animated: false,
           });
         } catch (e) {
@@ -512,18 +512,22 @@ const HeightWeightPickerModal = ({
   initialTab = "height",
   heightCm,
   weightKg,
-  onHeightChange,
-  onWeightChange,
+  onSave,
+  isSaving = false,
 }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [localHeight, setLocalHeight] = useState(heightCm);
+  const [localWeight, setLocalWeight] = useState(weightKg);
   const [heightUnit, setHeightUnit] = useState("cm");
   const [weightUnit, setWeightUnit] = useState("kg");
 
   useEffect(() => {
     if (visible) {
       setActiveTab(initialTab);
+      setLocalHeight(heightCm);
+      setLocalWeight(weightKg);
     }
-  }, [visible, initialTab]);
+  }, [visible, initialTab, heightCm, weightKg]);
 
   const heightCmData = useMemo(() => {
     return Array.from({ length: 151 }, (_, i) => {
@@ -559,8 +563,8 @@ const HeightWeightPickerModal = ({
     });
   }, []);
 
-  const parsedCm = Math.max(90, Math.min(240, safeParseVitalsNum(heightCm, 170)));
-  const parsedKg = Math.max(30, Math.min(220, safeParseVitalsNum(weightKg, 70)));
+  const parsedCm = Math.max(90, Math.min(240, safeParseVitalsNum(localHeight, 170)));
+  const parsedKg = Math.max(30, Math.min(220, safeParseVitalsNum(localWeight, 70)));
 
   const totalInches = parsedCm / 2.54;
   const currentFeet = Math.max(3, Math.min(8, Math.floor(totalInches / 12)));
@@ -569,18 +573,27 @@ const HeightWeightPickerModal = ({
 
   const handleFeetChange = (newFt) => {
     const newCm = Math.round((newFt * 12 + currentInches) * 2.54);
-    onHeightChange(String(newCm));
+    setLocalHeight(String(newCm));
   };
 
   const handleInchesChange = (newIn) => {
     const newCm = Math.round((currentFeet * 12 + newIn) * 2.54);
-    onHeightChange(String(newCm));
+    setLocalHeight(String(newCm));
   };
 
   const handleTabSwitch = (tab) => {
     try { Haptics.selectionAsync().catch(() => {}); } catch (e) {}
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setActiveTab(tab);
+  };
+
+  const handleSavePress = () => {
+    if (onSave) {
+      onSave({
+        height_cm: String(parsedCm),
+        weight_kg: String(parsedKg),
+      });
+    }
   };
 
   if (!visible) return null;
@@ -747,7 +760,7 @@ const HeightWeightPickerModal = ({
                 <TactileWheelPicker
                   data={heightCmData}
                   selectedValue={parsedCm}
-                  onValueChange={(val) => onHeightChange(String(val))}
+                  onValueChange={(val) => setLocalHeight(String(val))}
                   itemHeight={44}
                   activeColor="#7C3AED"
                 />
@@ -777,7 +790,7 @@ const HeightWeightPickerModal = ({
               <TactileWheelPicker
                 data={weightKgData}
                 selectedValue={parsedKg}
-                onValueChange={(val) => onWeightChange(String(val))}
+                onValueChange={(val) => setLocalWeight(String(val))}
                 itemHeight={44}
                 activeColor="#10B981"
               />
@@ -787,7 +800,7 @@ const HeightWeightPickerModal = ({
                 selectedValue={currentLbs}
                 onValueChange={(newLbs) => {
                   const kg = Math.round(newLbs * 0.45359237 * 10) / 10;
-                  onWeightChange(String(kg));
+                  setLocalWeight(String(kg));
                 }}
                 itemHeight={44}
                 activeColor="#10B981"
@@ -797,7 +810,8 @@ const HeightWeightPickerModal = ({
 
           {/* Actions */}
           <Pressable
-            onPress={onClose}
+            onPress={handleSavePress}
+            disabled={isSaving}
             style={({ pressed }) => [
               {
                 backgroundColor: activeTab === "height" ? "#7C3AED" : "#10B981",
@@ -805,103 +819,19 @@ const HeightWeightPickerModal = ({
                 paddingVertical: 14,
                 alignItems: "center",
                 justifyContent: "center",
-                opacity: pressed ? 0.85 : 1,
+                opacity: pressed || isSaving ? 0.85 : 1,
               },
             ]}
           >
-            <Text style={{ fontSize: 15, ...FONT.bold, color: "#FFFFFF" }}>Done</Text>
+            {isSaving ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={{ fontSize: 15, ...FONT.bold, color: "#FFFFFF" }}>Save Changes</Text>
+            )}
           </Pressable>
         </View>
       </View>
     </Modal>
-  );
-};
-
-const GoogleFitHeightWeightPicker = ({
-  heightCm,
-  weightKg,
-  onHeightChange,
-  onWeightChange,
-}) => {
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalTab, setModalTab] = useState("height");
-
-  const parsedCm = Math.max(90, Math.min(240, safeParseVitalsNum(heightCm, 170)));
-  const parsedKg = Math.max(30, Math.min(220, safeParseVitalsNum(weightKg, 70)));
-
-  const totalInches = parsedCm / 2.54;
-  const currentFeet = Math.max(3, Math.min(8, Math.floor(totalInches / 12)));
-  const currentInches = Math.max(0, Math.min(11, Math.round(totalInches % 12)));
-  const currentLbs = Math.round(parsedKg / 0.45359237);
-
-  const openModal = (tab) => {
-    try { Haptics.selectionAsync().catch(() => {}); } catch (e) {}
-    setModalTab(tab);
-    setModalVisible(true);
-  };
-
-  return (
-    <View style={{ gap: 12 }}>
-      {/* Clean Height & Weight Summary Cards */}
-      <View style={{ flexDirection: "row", gap: 12 }}>
-        {/* Height Summary Card */}
-        <Pressable
-          onPress={() => openModal("height")}
-          style={({ pressed }) => [
-            s.fitMetricCard,
-            { flex: 1, opacity: pressed ? 0.85 : 1 },
-          ]}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Activity size={16} color="#7C3AED" />
-              <Text style={s.fitCardLabel}>HEIGHT</Text>
-            </View>
-            <ChevronRight size={16} color="#64748B" />
-          </View>
-          <Text style={{ fontSize: 24, ...FONT.bold, color: "#7C3AED", marginTop: 8 }}>
-            {parsedCm} <Text style={{ fontSize: 13, color: "#64748B" }}>CM</Text>
-          </Text>
-          <Text style={{ fontSize: 12, ...FONT.medium, color: "#64748B", marginTop: 2 }}>
-            ≈ {currentFeet} ft {currentInches} in
-          </Text>
-        </Pressable>
-
-        {/* Weight Summary Card */}
-        <Pressable
-          onPress={() => openModal("weight")}
-          style={({ pressed }) => [
-            s.fitMetricCard,
-            { flex: 1, opacity: pressed ? 0.85 : 1 },
-          ]}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Scale size={16} color="#10B981" />
-              <Text style={s.fitCardLabel}>WEIGHT</Text>
-            </View>
-            <ChevronRight size={16} color="#64748B" />
-          </View>
-          <Text style={{ fontSize: 24, ...FONT.bold, color: "#10B981", marginTop: 8 }}>
-            {parsedKg} <Text style={{ fontSize: 13, color: "#64748B" }}>KG</Text>
-          </Text>
-          <Text style={{ fontSize: 12, ...FONT.medium, color: "#64748B", marginTop: 2 }}>
-            ≈ {currentLbs} lbs
-          </Text>
-        </Pressable>
-      </View>
-
-      {/* Centered Floating Wheel Editor Modal */}
-      <HeightWeightPickerModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        initialTab={modalTab}
-        heightCm={heightCm}
-        weightKg={weightKg}
-        onHeightChange={onHeightChange}
-        onWeightChange={onWeightChange}
-      />
-    </View>
   );
 };
 
@@ -928,6 +858,38 @@ export default function HealthProfileScreen({ navigation }) {
   const [timeline, setTimeline] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const isFreePlan = (p) => p?.freePlan || p?.subscription?.plan === "free";
+
+  const [vitalsModalVisible, setVitalsModalVisible] = useState(false);
+  const [vitalsModalTab, setVitalsModalTab] = useState("height");
+  const [isSavingVitals, setIsSavingVitals] = useState(false);
+
+  const openVitalsModal = (tab = "height") => {
+    try {
+      Haptics.selectionAsync().catch(() => {});
+    } catch (e) {}
+    setVitalsModalTab(tab);
+    setVitalsModalVisible(true);
+  };
+
+  const handleSaveVitalsModal = async ({ height_cm, weight_kg }) => {
+    try {
+      setIsSavingVitals(true);
+      const payload = {
+        ...profile?.lifestyle,
+        height_cm: Number(height_cm) || profile?.lifestyle?.height_cm,
+        weight_kg: Number(weight_kg) || profile?.lifestyle?.weight_kg,
+      };
+      await apiService.patients.updateLifestyle(payload);
+      triggerHapticSuccess();
+      await loadProfile();
+      setVitalsModalVisible(false);
+    } catch (err) {
+      console.warn("Failed to save vitals:", err);
+      AlertManager.alert("Error", "Failed to update height/weight.");
+    } finally {
+      setIsSavingVitals(false);
+    }
+  };
 
   const scrollViewRef = useRef(null);
 
@@ -1204,6 +1166,10 @@ export default function HealthProfileScreen({ navigation }) {
   );
 
   const openModal = (type, item = null) => {
+    if (type === "vitals") {
+      openVitalsModal("height");
+      return;
+    }
     setEditingType(type);
     if (item) {
       if (type === "gp" && item.gp_phone) {
@@ -3094,7 +3060,7 @@ export default function HealthProfileScreen({ navigation }) {
               </Pressable>
               <Pressable
                 style={s.bentoCard}
-                onPress={() => openModal("vitals")}
+                onPress={() => openVitalsModal("height")}
               >
                 <View style={[s.bentoCircle, { backgroundColor: "#FAF5FF" }]}>
                   <Activity size={18} color="#8B5CF6" />
@@ -3113,10 +3079,10 @@ export default function HealthProfileScreen({ navigation }) {
               </Pressable>
               <Pressable
                 style={s.bentoCard}
-                onPress={() => openModal("vitals")}
+                onPress={() => openVitalsModal("weight")}
               >
                 <View style={[s.bentoCircle, { backgroundColor: "#D1FAE5" }]}>
-                  <Activity size={18} color="#10B981" />
+                  <Scale size={18} color="#10B981" />
                 </View>
                 <Text style={s.bentoVal}>
                   {lifestyle.weight_kg ? (() => {
@@ -4082,18 +4048,6 @@ export default function HealthProfileScreen({ navigation }) {
                 </View>
               </View>
             </>
-          )}
-          {editingType === "vitals" && (
-            <GoogleFitHeightWeightPicker
-              heightCm={formState.height_cm || 170}
-              weightKg={formState.weight_kg || 70}
-              onHeightChange={(newCm) =>
-                setFormState((prev) => ({ ...prev, height_cm: newCm }))
-              }
-              onWeightChange={(newKg) =>
-                setFormState((prev) => ({ ...prev, weight_kg: newKg }))
-              }
-            />
           )}
           {editingType === "habits" && (
             <>
@@ -7289,6 +7243,17 @@ export default function HealthProfileScreen({ navigation }) {
             </View>
           </View>
         </Modal>
+
+        {/* ── STREAMLINED DIRECT HEIGHT & WEIGHT MODAL ── */}
+        <HeightWeightPickerModal
+          visible={vitalsModalVisible}
+          onClose={() => setVitalsModalVisible(false)}
+          initialTab={vitalsModalTab}
+          heightCm={lifestyle.height_cm || 170}
+          weightKg={lifestyle.weight_kg || 70}
+          onSave={handleSaveVitalsModal}
+          isSaving={isSavingVitals}
+        />
 
       </View>
     </TabScreenTransition>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Image, View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
-import { AlertCircle, RefreshCw } from 'lucide-react-native';
+import { CircleAlert, RefreshCw } from 'lucide-react-native';
 import { API_BASE_URL, getAccessTokenForRequest } from '../lib/api';
 
 /**
@@ -136,7 +136,7 @@ export function AuthenticatedImage({ source, style, resizeMode = 'contain', fall
           styles.errorBox,
         ]}
       >
-        <AlertCircle size={22} color="#EF4444" strokeWidth={2} />
+        <CircleAlert size={22} color="#EF4444" strokeWidth={2} />
         <Text style={styles.errorTitle}>Image Unavailable</Text>
         <View style={styles.retryRow}>
           <RefreshCw size={11} color="#64748B" />
