@@ -629,7 +629,7 @@ router.post('/create-user', authenticate, checkPasswordChange, validateRequest(c
     await profile.save();
 
     // Send temp password email (non-blocking)
-    await sendTempPasswordEmail(email, fullName, tempPassword, ROLE_LABELS[role] || role);
+    const emailResult = await sendTempPasswordEmail(email, fullName, tempPassword, ROLE_LABELS[role] || role);
 
     // Audit log
     await logEvent(req.profile.supabaseUid, 'create_user', 'profile', profile._id, req, {
@@ -717,7 +717,7 @@ router.post('/create-user', authenticate, checkPasswordChange, validateRequest(c
     }
 
     res.status(201).json({
-      message: `${ROLE_LABELS[role] || role} account created successfully. Temporary password sent to ${email}.`,
+      message: `${ROLE_LABELS[role] || role} account created successfully. ${emailResult ? `Temporary password sent to ${email}.` : `Email failed to send. Please provide this temporary password to the user: ${tempPassword}`}`,
       profile: {
         id: profile._id,
         email: profile.email,
@@ -1073,12 +1073,18 @@ router.post('/forgot-password/send-otp', async (req, res) => {
       emailSent = false;
     }
 
-    console.log(`[Forgot Password] OTP ${emailSent ? 'sent' : 'generated (email may be delayed)'} for ${normalizedEmail}`);
+    console.log(`[Forgot Password] OTP ${emailSent ? 'sent' : 'failed'} for ${normalizedEmail}`);
+
+    if (!emailSent) {
+      // If we couldn't send the email, delete the OTP to avoid clutter and return an error
+      await PasswordResetOtp.deleteOne({ email: normalizedEmail, otp: otpHashed });
+      return res.status(500).json({
+        error: 'Failed to send OTP email due to server configuration. Please contact your administrator.'
+      });
+    }
 
     res.json({
-      message: emailSent
-        ? `A 6-digit OTP has been sent to ${normalizedEmail}. It is valid for ${OTP_EXPIRY_MINUTES} minutes.`
-        : `OTP generated for ${normalizedEmail}. Email delivery may be delayed — please check your inbox shortly. Valid for ${OTP_EXPIRY_MINUTES} minutes.`,
+      message: `A 6-digit OTP has been sent to ${normalizedEmail}. It is valid for ${OTP_EXPIRY_MINUTES} minutes.`,
       emailSent,
     });
 

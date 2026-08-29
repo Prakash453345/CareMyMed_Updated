@@ -109,7 +109,7 @@ function initializeWebSocket(server) {
         }
     });
 
-    // ── Connection handler ─────────────────────────────────────
+    // ── Connection handler (Events sent from client) ─────────────────────────────────────
     io.on('connection', (socket) => {
         const { profile } = socket;
         const profileId = profile._id.toString();
