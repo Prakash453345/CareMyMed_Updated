@@ -11,7 +11,7 @@ const getApiBaseUrl = () => {
     return process.env.EXPO_PUBLIC_API_URL;
   }
 
-  const BACKEND_PORT = 5000;
+  const BACKEND_PORT = 3002;
 
   // 2. On Android emulator, localhost maps to 10.0.2.2
   if (Platform.OS === 'android') {
