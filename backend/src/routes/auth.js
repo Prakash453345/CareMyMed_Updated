@@ -1073,18 +1073,10 @@ router.post('/forgot-password/send-otp', async (req, res) => {
       emailSent = false;
     }
 
-    console.log(`[Forgot Password] OTP ${emailSent ? 'sent' : 'failed'} for ${normalizedEmail}`);
-
-    if (!emailSent) {
-      // If we couldn't send the email, delete the OTP to avoid clutter and return an error
-      await PasswordResetOtp.deleteOne({ email: normalizedEmail, otp: otpHashed });
-      return res.status(500).json({
-        error: 'Failed to send OTP email due to server configuration. Please contact your administrator.'
-      });
-    }
+    console.log(`[Forgot Password] OTP ${emailSent ? 'sent' : 'failed/delayed'} for ${normalizedEmail}`);
 
     res.json({
-      message: `A 6-digit OTP has been sent to ${normalizedEmail}. It is valid for ${OTP_EXPIRY_MINUTES} minutes.`,
+      message: `A 6-digit OTP has been generated for ${normalizedEmail}. It is valid for ${OTP_EXPIRY_MINUTES} minutes.`,
       emailSent,
     });
 
