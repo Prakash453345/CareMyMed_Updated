@@ -18,7 +18,7 @@ const PASSWORD_RULES = [
 
 export default function ChangePasswordScreen({ navigation, route }) {
     const forced = route?.params?.forced ?? false;
-    const { changePassword } = useAuth();
+    const { changePassword, signOut } = useAuth();
 
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -113,7 +113,11 @@ export default function ChangePasswordScreen({ navigation, route }) {
                         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.7}>
                             <Feather name="arrow-left" size={20} color="#0F172A" />
                         </TouchableOpacity>
-                    ) : <View style={s.headerSpacer} />}
+                    ) : (
+                        <TouchableOpacity onPress={signOut} style={s.backBtn} activeOpacity={0.7}>
+                            <Feather name="log-out" size={20} color="#EF4444" />
+                        </TouchableOpacity>
+                    )}
                     <Text style={s.headerBrandTitle}>SECURITY CENTER</Text>
                     <View style={s.headerSpacer} />
                 </View>

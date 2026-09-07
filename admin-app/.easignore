@@ -36,10 +36,10 @@ CHANGELOG.md
 docs/
 
 # Explicitly exclude other monorepo directories to reduce upload size!
-/backend/
-/users-backend/
-/users-mobile/
-/users-ai-vitals/
+backend/
+users-backend/
+users-mobile/
+users-ai-vitals/
 
 # Explicitly INCLUDE google-services.json so Firebase works in the cloud build
 !google-services.json

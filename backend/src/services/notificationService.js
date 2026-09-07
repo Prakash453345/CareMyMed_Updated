@@ -6,6 +6,9 @@ const Notification = require('../models/Notification');
 const AuditLog = require('../models/AuditLog');
 const CaretakerPatient = require('../models/CaretakerPatient');
 const { calculateAdherence, calculateStreak } = require('./adherenceCalculator');
+const { deliverPush } = require('./pushService');
+const { sendEmail } = require('./emailService');
+const { enqueuePush, enqueueEmail } = require('../queues/notificationQueue');
 
 /**
  * ═══════════════════════════════════════════════════════════════
@@ -85,8 +88,9 @@ const NOTIFICATION_TEMPLATES = {
 // ── 1. SEND PUSH NOTIFICATION ──────────────────────────────────
 
 /**
- * Sends a push notification via the platform's push service.
- * Currently uses an internal record + ready for FCM / APN integration.
+ * Sends a push notification via the platform's push service (Expo).
+ * Creates the notification record, then queues real delivery
+ * (falling back to inline delivery if the queue is unavailable).
  *
  * @param {ObjectId|string} userId — recipientId
  * @param {{ title: string, body: string, data?: object }} notification
@@ -106,18 +110,16 @@ async function sendPushNotification(userId, notification) {
         data: notification.data || {},
         relatedEntityType: notification.relatedEntityType,
         relatedEntityId: notification.relatedEntityId,
-        status: 'sent',
-        sentAt: new Date(),
+        status: 'pending',
     });
 
-    // ── FCM / APN hook ─────────────────────────────────────────
-    // TODO: integrate actual push provider
-    // if (profile?.pushToken) {
-    //   await fcm.send({ token: profile.pushToken, notification: { title, body }, data });
-    //   record.status = 'delivered';
-    //   record.deliveredAt = new Date();
-    //   await record.save();
-    // }
+    const queued = await enqueuePush({ notificationId: record._id.toString(), priority: record.priority });
+    if (!queued) {
+        // Queue unavailable — deliver inline instead of silently dropping it.
+        deliverPush(record).catch((err) => {
+            record.markAsFailed(err.message.slice(0, 500)).catch(() => {});
+        });
+    }
 
     return record;
 }
@@ -125,7 +127,9 @@ async function sendPushNotification(userId, notification) {
 // ── 2. SEND EMAIL NOTIFICATION ─────────────────────────────────
 
 /**
- * Creates an email notification record and dispatches via the email provider.
+ * Creates an email notification record and dispatches it via the email
+ * provider (Nodemailer/SMTP, see services/emailService.js). Queues
+ * delivery, falling back to inline sending if the queue is unavailable.
  *
  * @param {string} email
  * @param {string} template — key from NOTIFICATION_TEMPLATES or custom
@@ -148,13 +152,17 @@ async function sendEmailNotification(email, template, data) {
         body,
         priority: tmpl?.priority || 'normal',
         data,
-        status: 'sent',
-        sentAt: new Date(),
+        status: 'pending',
     });
 
-    // ── Email provider hook ────────────────────────────────────
-    // TODO: integrate SendGrid / SES / Nodemailer
-    // await sendgrid.send({ to: email, subject: title, html: renderTemplate(template, data) });
+    const html = `<p>${body}</p>`;
+    const queued = await enqueueEmail({ to: email, subject: title, html, notificationId: record._id.toString() });
+    if (!queued) {
+        // Queue unavailable — send inline instead of silently dropping it.
+        sendEmail(email, title, html)
+            .then((result) => (result ? record.markAsSent() : record.markAsFailed('SMTP send failed — see server logs')))
+            .catch((err) => record.markAsFailed(err.message.slice(0, 500)).catch(() => {}));
+    }
 
     return record;
 }

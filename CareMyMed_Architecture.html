@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareMyMed Architecture Diagram</title>
+    <!-- Include Mermaid.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+    <style>
+        body { 
+            font-family: sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            background-color: #f8fafc; 
+            margin: 0; 
+            padding: 20px; 
+        }
+        .container { 
+            background: white; 
+            padding: 40px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); 
+            width: 100%; 
+            max-width: 1200px; 
+            text-align: center; 
+        }
+        .mermaid { 
+            display: flex; 
+            justify-content: center; 
+            margin-top: 20px;
+        }
+        p.instructions {
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>CareMyMed System Architecture</h2>
+        <p class="instructions">Take a screenshot of this diagram or press Ctrl+P to save as PDF. It does not contain any personal information.</p>
+        
+        <div class="mermaid">
+flowchart TB
+    %% Styling definitions for a premium look
+    classDef actor fill:#3b82f6,stroke:#1e3a8a,stroke-width:2px,color:#fff,rx:20px,ry:20px
+    classDef app fill:#0ea5e9,stroke:#0284c7,stroke-width:2px,color:#fff,rx:8px,ry:8px
+    classDef gateway fill:#8b5cf6,stroke:#5b21b6,stroke-width:2px,color:#fff,rx:8px,ry:8px
+    classDef core fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff,rx:8px,ry:8px
+    classDef ai fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff,rx:8px,ry:8px
+    classDef db fill:#ef4444,stroke:#b91c1c,stroke-width:2px,color:#fff,rx:8px,ry:8px
+    classDef alert fill:#f43f5e,stroke:#be123c,stroke-width:3px,color:#fff,rx:8px,ry:8px
+
+    subgraph User_Layer [1. User Layer: Multi-Tier Actors]
+        direction LR
+        P((Patient)):::actor
+        C((Caretaker)):::actor
+        M((Care Manager)):::actor
+        A((Org Admin)):::actor
+    end
+
+    subgraph Presentation_Layer [2. Presentation Layer: Dual-App Ecosystem]
+        direction LR
+        APP1["CareMyMed Mobile App<br/>(Vitals, Meds, Check-ins)"]:::app
+        APP2["Admin & Manager App<br/>(Dashboards, Analytics, RBAC)"]:::app
+    end
+
+    subgraph API_Security_Layer [3. API & Security Gateway Node.js]
+        GW["Express API Gateway"]:::gateway
+        RBAC["5-Tier Role-Based Access Control<br/>(Permissions & Scoping)"]:::gateway
+    end
+
+    subgraph Core_Logic_Layer [4. Core Business Logic & Microservices]
+        direction TB
+        F_ENG["Intelligent Failover Engine<br/>(Auto-Reassigns Patients if Caller Absent)"]:::core
+        MED_SYNC["3-Layer Medication Sync<br/>(Prescription -> Daily Log -> Caller Verify)"]:::core
+        NOTIF["Push Notification Service<br/>(Reminders & Critical Escalations)"]:::core
+    end
+
+    subgraph AI_Layer [5. AI Predictive Intelligence]
+        AI_MODEL["Machine Learning Predictive Service<br/>(Trend Analysis & Early Warning)"]:::ai
+        ANOMALY["Vitals Anomaly Trigger<br/>(Flags Deterioration Risk)"]:::alert
+    end
+
+    subgraph Data_Infrastructure [6. Data Infrastructure]
+        direction LR
+        MONGO[("MongoDB<br/>(Encrypted Health Records)")]:::db
+        REDIS[("Redis<br/>(High-Speed Session Cache)")]:::db
+    end
+
+    %% Flow Connections
+    P & C -->|Interacts| APP1
+    M & A -->|Interacts| APP2
+
+    APP1 <-->|JWT Authenticated| GW
+    APP2 <-->|JWT Authenticated| GW
+
+    GW --> RBAC
+    RBAC --> F_ENG
+    RBAC --> MED_SYNC
+    
+    %% Business Logic to AI
+    GW -->|Feeds Daily Vitals| AI_MODEL
+    AI_MODEL -->|Analyzes Trends| ANOMALY
+    ANOMALY -->|Generates Alerts| NOTIF
+    
+    %% Failover Logic
+    F_ENG -->|Detects Missed Check-ins| NOTIF
+    F_ENG -.->|Updates Assignments| MONGO
+    
+    %% Medication Logic
+    MED_SYNC -.->|Reads/Writes Adherence| MONGO
+
+    %% Database Connections
+    RBAC -.->|Validates Session| REDIS
+    NOTIF -->|Fires Real-time Escalations| M & A
+        </div>
+    </div>
+</body>
+</html>
