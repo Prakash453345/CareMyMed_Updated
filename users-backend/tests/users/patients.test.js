@@ -67,6 +67,11 @@ jest.mock('../../src/models/AIVitalPrediction');
 jest.mock('../../src/models/CompanionAccess');
 jest.mock('../../src/models/VitalLog');
 jest.mock('../../src/models/Medication');
+jest.mock('../../src/jobs/jobQueues', () => ({
+  patientLifecycleQueue: {
+    add: jest.fn().mockResolvedValue({ id: 'mock-job-id' }),
+  },
+}));
 
 // ─── Imports ──────────────────────────────────────────────────────────────────
 
