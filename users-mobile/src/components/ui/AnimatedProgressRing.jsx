@@ -67,7 +67,8 @@ export default function AnimatedProgressRing({
                     strokeDasharray={`${circumference}`}
                     strokeDashoffset={offset}
                     strokeLinecap="round"
-                    transform={`rotate(-90 ${size / 2} ${size / 2})`}
+                    rotation="-90"
+                    origin={`${size / 2}, ${size / 2}`}
                 />
             </Svg>
 

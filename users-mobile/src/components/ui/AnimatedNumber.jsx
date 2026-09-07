@@ -28,15 +28,17 @@ export default function AnimatedNumber({
             setDisplayValue(numVal);
         });
 
-        Animated.spring(animValue, {
+        const springAnim = Animated.spring(animValue, {
             toValue: safeValue,
             speed: 12,
             bounciness: 4,
             useNativeDriver: false,
-        }).start();
+        });
+        springAnim.start();
 
         return () => {
             animValue.removeListener(id);
+            springAnim.stop();
         };
     }, [safeValue, reduceMotion, animValue]);
 

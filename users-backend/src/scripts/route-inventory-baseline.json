@@ -1,0 +1,2028 @@
+{
+  "patients": {
+    "modulePath": "src/routes/users/patients.js",
+    "routerLevelMiddlewareCount": 1,
+    "routerLevelMiddleware": [
+      {
+        "name": "<anonymous>",
+        "path": "/^\\/?(?=\\/|$)/i"
+      }
+    ],
+    "routeCount": 69,
+    "routes": [
+      {
+        "path": "/cities",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 1,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/location/reverse",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 1,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/location/search",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 1,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/initiate-payment",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/subscribe",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/addresses",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me/addresses",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/addresses/:id",
+        "methods": [
+          "PUT"
+        ],
+        "handlerCount": 3,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "PUT"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PUT"
+          },
+          {
+            "index": 2,
+            "name": "<anonymous>",
+            "method": "PUT"
+          }
+        ]
+      },
+      {
+        "path": "/me/addresses/:id",
+        "methods": [
+          "DELETE"
+        ],
+        "handlerCount": 3,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "DELETE"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          },
+          {
+            "index": 2,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          }
+        ]
+      },
+      {
+        "path": "/me",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me",
+        "methods": [
+          "PUT"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "PUT"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PUT"
+          }
+        ]
+      },
+      {
+        "path": "/me/profile",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me/conditions",
+        "methods": [
+          "PUT"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "PUT"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PUT"
+          }
+        ]
+      },
+      {
+        "path": "/me/allergies",
+        "methods": [
+          "PUT"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "PUT"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PUT"
+          }
+        ]
+      },
+      {
+        "path": "/me/vaccinations",
+        "methods": [
+          "PUT"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "PUT"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PUT"
+          }
+        ]
+      },
+      {
+        "path": "/me/appointments",
+        "methods": [
+          "PUT"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "PUT"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PUT"
+          }
+        ]
+      },
+      {
+        "path": "/me/medical-history",
+        "methods": [
+          "PUT"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "PUT"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PUT"
+          }
+        ]
+      },
+      {
+        "path": "/me/prescriptions",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/avatar",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/lifestyle",
+        "methods": [
+          "PUT"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "PUT"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PUT"
+          }
+        ]
+      },
+      {
+        "path": "/me/primary-doctor",
+        "methods": [
+          "PUT"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "PUT"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PUT"
+          }
+        ]
+      },
+      {
+        "path": "/me/conditions/:id",
+        "methods": [
+          "DELETE"
+        ],
+        "handlerCount": 3,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "DELETE"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          },
+          {
+            "index": 2,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          }
+        ]
+      },
+      {
+        "path": "/me/allergies/:id",
+        "methods": [
+          "DELETE"
+        ],
+        "handlerCount": 3,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "DELETE"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          },
+          {
+            "index": 2,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          }
+        ]
+      },
+      {
+        "path": "/me/vaccinations/:id",
+        "methods": [
+          "DELETE"
+        ],
+        "handlerCount": 3,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "DELETE"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          },
+          {
+            "index": 2,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          }
+        ]
+      },
+      {
+        "path": "/me/appointments/:id",
+        "methods": [
+          "DELETE"
+        ],
+        "handlerCount": 3,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "DELETE"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          },
+          {
+            "index": 2,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          }
+        ]
+      },
+      {
+        "path": "/me/medical-history/:id",
+        "methods": [
+          "DELETE"
+        ],
+        "handlerCount": 3,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "DELETE"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          },
+          {
+            "index": 2,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          }
+        ]
+      },
+      {
+        "path": "/me/history/:id",
+        "methods": [
+          "DELETE"
+        ],
+        "handlerCount": 3,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "DELETE"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          },
+          {
+            "index": 2,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          }
+        ]
+      },
+      {
+        "path": "/me/medications/:id",
+        "methods": [
+          "DELETE"
+        ],
+        "handlerCount": 3,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "DELETE"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          },
+          {
+            "index": 2,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          }
+        ]
+      },
+      {
+        "path": "/me/trusted-contacts/:id",
+        "methods": [
+          "DELETE"
+        ],
+        "handlerCount": 3,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "DELETE"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          },
+          {
+            "index": 2,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          }
+        ]
+      },
+      {
+        "path": "/me/contact/:id",
+        "methods": [
+          "DELETE"
+        ],
+        "handlerCount": 3,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "DELETE"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          },
+          {
+            "index": 2,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          }
+        ]
+      },
+      {
+        "path": "/me/emergency-contact",
+        "methods": [
+          "PUT"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "PUT"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PUT"
+          }
+        ]
+      },
+      {
+        "path": "/me/invite-code",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/companions/:id",
+        "methods": [
+          "DELETE"
+        ],
+        "handlerCount": 3,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "DELETE"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          },
+          {
+            "index": 2,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          }
+        ]
+      },
+      {
+        "path": "/me/trusted-contacts",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me/trusted-contacts",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/trusted-contacts/:id",
+        "methods": [
+          "PUT"
+        ],
+        "handlerCount": 3,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "PUT"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PUT"
+          },
+          {
+            "index": 2,
+            "name": "<anonymous>",
+            "method": "PUT"
+          }
+        ]
+      },
+      {
+        "path": "/me/caller",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me/calls",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me/agora-token",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me/calls/initiate",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/calls/:sessionId/status",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me/calls/:sessionId/accept",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/calls/:sessionId/reject",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/calls/:sessionId/end",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/calls/:sessionId/callback-request",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/calls/:sessionId/secure-message",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/calls/:sessionId/feedback",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/medications",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me/medications",
+        "methods": [
+          "PUT"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "PUT"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PUT"
+          }
+        ]
+      },
+      {
+        "path": "/me/call-preferences",
+        "methods": [
+          "PUT"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "PUT"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PUT"
+          }
+        ]
+      },
+      {
+        "path": "/me/notifications",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me/notifications/:id/read",
+        "methods": [
+          "PUT"
+        ],
+        "handlerCount": 3,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "PUT"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PUT"
+          },
+          {
+            "index": 2,
+            "name": "<anonymous>",
+            "method": "PUT"
+          }
+        ]
+      },
+      {
+        "path": "/me/ai-prediction",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me/vitals/forecast",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me/flag-issue",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/vitals",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/vitals",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me/security/screenshots/request-otp",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/security/screenshots/verify",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/security/emergency-contact/request-otp",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/security/emergency-contact/verify",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/dashboard",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me/mood",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/me/health-state",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me/health-history",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me/health-timeline",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/copilot/context",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me/sleep",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/me/sleep",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      }
+    ],
+    "attachedProperties": {
+      "activateSubscription": "function",
+      "subscribeAndSeedDemoData": "function"
+    }
+  },
+  "medicines": {
+    "modulePath": "src/routes/users/medicines.js",
+    "routerLevelMiddlewareCount": 0,
+    "routerLevelMiddleware": [],
+    "routeCount": 13,
+    "routes": [
+      {
+        "path": "/today",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/mark",
+        "methods": [
+          "PUT"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "PUT"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PUT"
+          }
+        ]
+      },
+      {
+        "path": "/mark-slot",
+        "methods": [
+          "PUT"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "PUT"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PUT"
+          }
+        ]
+      },
+      {
+        "path": "/id/:id/refill",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "handleRefillRequest",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/:name/refill",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "handleRefillRequest",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/adherence/weekly-summary",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/adherence/weekly",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/adherence/monthly",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/adherence/details",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/adherence/recap",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/temp-meds",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/temp-meds",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/temp-meds/:medId",
+        "methods": [
+          "DELETE"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticateSession",
+            "method": "DELETE"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          }
+        ]
+      }
+    ],
+    "attachedProperties": {
+      "buildMergedMeds": "function",
+      "computeCurrentStreak": "function"
+    }
+  },
+  "companion": {
+    "modulePath": "src/routes/companion.js",
+    "routerLevelMiddlewareCount": 0,
+    "routerLevelMiddleware": [],
+    "routeCount": 20,
+    "routes": [
+      {
+        "path": "/join",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 1,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/check-email",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "<anonymous>",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/join-otp",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "<anonymous>",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/patient-status",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticate",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/patient-health-history",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticate",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/linked-patients",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticate",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/relationships",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticate",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/relationships",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticate",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/relationships/:id",
+        "methods": [
+          "PATCH"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticate",
+            "method": "PATCH"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PATCH"
+          }
+        ]
+      },
+      {
+        "path": "/relationships/:id",
+        "methods": [
+          "DELETE"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticate",
+            "method": "DELETE"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "DELETE"
+          }
+        ]
+      },
+      {
+        "path": "/nudge",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticate",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/request-bp",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticate",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/alerts/:id/acknowledge",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticate",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/patients/:patientId/invite-code",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticate",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/interventions",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticate",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/interventions",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticate",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/analytics-extended",
+        "methods": [
+          "GET"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticate",
+            "method": "GET"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "GET"
+          }
+        ]
+      },
+      {
+        "path": "/link-patient",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticate",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      },
+      {
+        "path": "/profile",
+        "methods": [
+          "PUT"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticate",
+            "method": "PUT"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "PUT"
+          }
+        ]
+      },
+      {
+        "path": "/patient-status/refresh-insights",
+        "methods": [
+          "POST"
+        ],
+        "handlerCount": 2,
+        "handlers": [
+          {
+            "index": 0,
+            "name": "authenticate",
+            "method": "POST"
+          },
+          {
+            "index": 1,
+            "name": "<anonymous>",
+            "method": "POST"
+          }
+        ]
+      }
+    ],
+    "attachedProperties": {}
+  }
+}

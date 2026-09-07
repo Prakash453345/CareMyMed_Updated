@@ -9,17 +9,6 @@ import usePatientStore from '../../store/usePatientStore';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import Svg, { Path, Circle as SvgCircle, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
-
-import ReanimatedAnimated, {
-    useSharedValue as useReanimatedShared,
-    useAnimatedStyle as useReanimatedStyle,
-    withSpring as reanimatedWithSpring,
-    withDelay as reanimatedWithDelay,
-    withTiming as reanimatedWithTiming,
-    interpolate as reanimatedInterpolate,
-    runOnJS,
-} from 'react-native-reanimated';
-import { reanimatedMotion } from '../../theme/reanimatedMotion';
 import CompanionHeader from '../../components/ui/CompanionHeader';
 import TabScreenTransition from '../../components/ui/TabScreenTransition';
 import StreakCalendar from '../../components/health/StreakCalendar';
@@ -141,128 +130,75 @@ export default function CompanionDashboardScreen() {
         ].filter(Boolean);
     }, [data]);
 
-    // ── Staggered Entrance Animations ──
-    const alertsShared = useReanimatedShared(0);
-    const refillShared = useReanimatedShared(0);
-    const adherenceShared = useReanimatedShared(0);
-    const vitalsShared = useReanimatedShared(0);
-    const intelligenceShared = useReanimatedShared(0);
-    const briefingShared = useReanimatedShared(0);
-    const summaryShared = useReanimatedShared(0);
-    const interventionShared = useReanimatedShared(0);
-    const timelineShared = useReanimatedShared(0);
-    const refreshShared = useReanimatedShared(0);
-
-    const anims = useMemo(() => ({
-        alerts: alertsShared,
-        refill: refillShared,
-        adherence: adherenceShared,
-        vitals: vitalsShared,
-        intelligence_center: intelligenceShared,
-        briefing: briefingShared,
-        summary: summaryShared,
-        intervention_center: interventionShared,
-        timeline: timelineShared,
-        refresh: refreshShared,
-    }), [alertsShared, refillShared, adherenceShared, vitalsShared, intelligenceShared, briefingShared, summaryShared, interventionShared, timelineShared, refreshShared]);
-
-    const styleBriefing = useReanimatedStyle(() => ({
-        opacity: briefingShared.value,
-        transform: [{ translateY: reanimatedInterpolate(briefingShared.value, [0, 1], [15, 0]) }]
-    }));
-    const styleSummary = useReanimatedStyle(() => ({
-        opacity: summaryShared.value,
-        transform: [{ translateY: reanimatedInterpolate(summaryShared.value, [0, 1], [15, 0]) }]
-    }));
-    const styleAlerts = useReanimatedStyle(() => ({
-        opacity: alertsShared.value,
-        transform: [{ translateY: reanimatedInterpolate(alertsShared.value, [0, 1], [15, 0]) }]
-    }));
-    const styleRefill = useReanimatedStyle(() => ({
-        opacity: refillShared.value,
-        transform: [{ translateY: reanimatedInterpolate(refillShared.value, [0, 1], [15, 0]) }]
-    }));
-    const styleAdherence = useReanimatedStyle(() => ({
-        opacity: adherenceShared.value,
-        transform: [{ translateY: reanimatedInterpolate(adherenceShared.value, [0, 1], [15, 0]) }]
-    }));
-    const styleVitals = useReanimatedStyle(() => ({
-        opacity: vitalsShared.value,
-        transform: [{ translateY: reanimatedInterpolate(vitalsShared.value, [0, 1], [15, 0]) }]
-    }));
-    const styleIntelligence = useReanimatedStyle(() => ({
-        opacity: intelligenceShared.value,
-        transform: [{ translateY: reanimatedInterpolate(intelligenceShared.value, [0, 1], [15, 0]) }]
-    }));
-    const styleIntervention = useReanimatedStyle(() => ({
-        opacity: interventionShared.value,
-        transform: [{ translateY: reanimatedInterpolate(interventionShared.value, [0, 1], [15, 0]) }]
-    }));
-    const styleTimeline = useReanimatedStyle(() => ({
-        opacity: timelineShared.value,
-        transform: [{ translateY: reanimatedInterpolate(timelineShared.value, [0, 1], [15, 0]) }]
-    }));
-    const styleRefresh = useReanimatedStyle(() => ({
-        opacity: refreshShared.value,
-        transform: [{ translateY: reanimatedInterpolate(refreshShared.value, [0, 1], [15, 0]) }]
-    }));
-
-    const animatedStyles = {
-        briefing: styleBriefing,
-        summary: styleSummary,
-        alerts: styleAlerts,
-        refill: styleRefill,
-        adherence: styleAdherence,
-        vitals: styleVitals,
-        intelligence_center: styleIntelligence,
-        intervention_center: styleIntervention,
-        timeline: styleTimeline,
-        refresh: styleRefresh,
-    };
+    // ── Staggered Entrance Animations (Native-driven Animated) ──
+    const anims = useRef({
+        alerts: new Animated.Value(0),
+        refill: new Animated.Value(0),
+        adherence: new Animated.Value(0),
+        vitals: new Animated.Value(0),
+        intelligence_center: new Animated.Value(0),
+        briefing: new Animated.Value(0),
+        summary: new Animated.Value(0),
+        intervention_center: new Animated.Value(0),
+        timeline: new Animated.Value(0),
+        refresh: new Animated.Value(0),
+    }).current;
 
     const hasAnimated = useRef(false);
 
     const runEntranceAnimations = useCallback(() => {
         if (reduceMotion) {
             Object.keys(anims).forEach(key => {
-                anims[key].value = 1;
+                anims[key].setValue(1);
             });
             return;
         }
 
         // Reset to 0 first
         Object.keys(anims).forEach(key => {
-            anims[key].value = 0;
+            anims[key].setValue(0);
         });
 
-        const config = reanimatedMotion.springs.default;
+        const delays = {
+            briefing: 0,
+            summary: 80,
+            alerts: 160,
+            refill: 220,
+            adherence: 300,
+            vitals: 400,
+            intelligence_center: 500,
+            intervention_center: 600,
+            timeline: 700,
+            refresh: 800,
+        };
 
-        // Orchestrated entrance sequence matching Puneeth's design story:
-        // 1. Briefing wakes up immediately (starts the AI Orb pulse)
-        anims.briefing.value = reanimatedWithDelay(0, reanimatedWithSpring(1, config));
-        anims.summary.value = reanimatedWithDelay(100, reanimatedWithSpring(1, config));
+        const animations = Object.keys(delays).map(key => {
+            return Animated.sequence([
+                Animated.delay(delays[key]),
+                Animated.spring(anims[key], {
+                    toValue: 1,
+                    friction: 7,
+                    tension: 60,
+                    useNativeDriver: true,
+                }),
+            ]);
+        });
 
-        // 2. Critical alerts & stocks cascade next
-        anims.alerts.value = reanimatedWithDelay(180, reanimatedWithSpring(1, config));
-        anims.refill.value = reanimatedWithDelay(240, reanimatedWithSpring(1, config));
-
-        // 3. Adherence card counts up
-        anims.adherence.value = reanimatedWithDelay(360, reanimatedWithSpring(1, config));
-
-        // 4. Vitals synced statuses slide in
-        anims.vitals.value = reanimatedWithDelay(480, reanimatedWithSpring(1, config));
-
-        // 5. Advanced intelligence & intervention CTAs settle
-        anims.intelligence_center.value = reanimatedWithDelay(600, reanimatedWithSpring(1, config));
-        anims.intervention_center.value = reanimatedWithDelay(700, reanimatedWithSpring(1, config));
-
-        // 6. Timeline list and footer settling
-        anims.timeline.value = reanimatedWithDelay(800, reanimatedWithSpring(1, config));
-        anims.refresh.value = reanimatedWithDelay(900, reanimatedWithSpring(1, config));
+        Animated.parallel(animations).start();
     }, [reduceMotion, anims]);
 
     const sectionAnimForKey = (sectionKey) => {
-        return animatedStyles[sectionKey] || {};
+        const animVal = anims[sectionKey];
+        if (!animVal) return {};
+        return {
+            opacity: animVal,
+            transform: [{
+                translateY: animVal.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [15, 0],
+                }),
+            }],
+        };
     };
 
     // Mock weekly data to render a stunning micro-chart (since backend is real-time only)
@@ -529,7 +465,7 @@ export default function CompanionDashboardScreen() {
                 {/* 1. Alerts Card */}
                 {visibleSections.includes('alerts') && (
                     data.recent_alerts?.length > 0 ? (
-                        <ReanimatedAnimated.View style={[styles.outerCard, sectionAnimForKey('alerts')]}>
+                        <Animated.View style={[styles.outerCard, sectionAnimForKey('alerts')]}>
                             <View style={styles.innerCard}>
                                 <View style={styles.cardHeader}>
                                     <View style={[styles.iconBox, { backgroundColor: colors.dangerLight }]}>
@@ -550,20 +486,20 @@ export default function CompanionDashboardScreen() {
                                     ))}
                                 </View>
                             </View>
-                        </ReanimatedAnimated.View>
+                        </Animated.View>
                     ) : (
-                        <ReanimatedAnimated.View style={[styles.outerCard, sectionAnimForKey('alerts')]}>
+                        <Animated.View style={[styles.outerCard, sectionAnimForKey('alerts')]}>
                             <View style={[styles.innerCard, styles.noAlertsCard]}>
                                 <ShieldCheck color={colors.success} size={24} />
                                 <Text style={styles.noAlertsText}>All systems normal. No active alerts.</Text>
                             </View>
-                        </ReanimatedAnimated.View>
+                        </Animated.View>
                     )
                 )}
 
                 {/* 2. Low Pill Stock Refill Warning Banner */}
                 {visibleSections.includes('refill') && (
-                    <ReanimatedAnimated.View style={[styles.outerCard, sectionAnimForKey('refill')]}>
+                    <Animated.View style={[styles.outerCard, sectionAnimForKey('refill')]}>
                         <View style={[styles.innerCard, { gap: 10 }]}>
                             <View style={styles.refillBannerHeader}>
                                 <Package2 color={colors.warning} size={20} />
@@ -589,7 +525,7 @@ export default function CompanionDashboardScreen() {
                                 ))}
                             </ScrollView>
                         </View>
-                    </ReanimatedAnimated.View>
+                    </Animated.View>
                 )}
 
 
@@ -597,7 +533,7 @@ export default function CompanionDashboardScreen() {
 
                 {/* 9. Adherence Meter Card */}
                 {visibleSections.includes('adherence') && (
-                    <ReanimatedAnimated.View style={[styles.outerCard, sectionAnimForKey('adherence')]}>
+                    <Animated.View style={[styles.outerCard, sectionAnimForKey('adherence')]}>
                         <View style={styles.innerCard}>
                             <View style={styles.cardHeader}>
                                 <View style={[styles.iconBox, { backgroundColor: '#ECFEFF' }]}>
@@ -663,29 +599,32 @@ export default function CompanionDashboardScreen() {
                             <View style={styles.chartContainer}>
                                 <Text style={styles.chartTitle}>Weekly Adherence Trend</Text>
                                 <View style={styles.barChart}>
-                                    {(data?.weekly_adherence || mockWeeklyAdherence).map((item, idx) => (
-                                        <View key={idx} style={styles.barWrapper}>
-                                            <View style={styles.barTrack}>
-                                                <View style={[
-                                                    styles.barFill, 
-                                                    { 
-                                                        height: `${item.rate}%`,
-                                                        backgroundColor: item.rate > 75 ? colors.success : item.rate > 50 ? colors.warning : colors.danger 
-                                                    }
-                                                ]} />
+                                    {(data?.weekly_adherence || mockWeeklyAdherence).map((item, idx) => {
+                                        const safeRate = Number.isFinite(item?.rate) ? Math.max(0, Math.min(100, item.rate)) : 0;
+                                        return (
+                                            <View key={idx} style={styles.barWrapper}>
+                                                <View style={styles.barTrack}>
+                                                    <View style={[
+                                                        styles.barFill, 
+                                                        { 
+                                                            height: `${safeRate}%`,
+                                                            backgroundColor: safeRate > 75 ? colors.success : safeRate > 50 ? colors.warning : colors.danger 
+                                                        }
+                                                    ]} />
+                                                </View>
+                                                <Text style={styles.barLabel}>{item?.day || ''}</Text>
                                             </View>
-                                            <Text style={styles.barLabel}>{item.day}</Text>
-                                        </View>
-                                    ))}
+                                        );
+                                    })}
                                 </View>
                             </View>
                         </View>
-                    </ReanimatedAnimated.View>
+                    </Animated.View>
                 )}
 
                 {/* 7. Vitals Card (with beautiful elegant empty states) */}
                 {visibleSections.includes('vitals') && (
-                    <ReanimatedAnimated.View style={[styles.outerCard, sectionAnimForKey('vitals')]}>
+                    <Animated.View style={[styles.outerCard, sectionAnimForKey('vitals')]}>
                         <View style={styles.innerCard}>
                             <View style={styles.cardHeader}>
                                 <View style={[styles.iconBox, { backgroundColor: '#FFF1F2' }]}>
@@ -762,12 +701,12 @@ export default function CompanionDashboardScreen() {
                                 </View>
                             )}
                         </View>
-                    </ReanimatedAnimated.View>
+                    </Animated.View>
                 )}
 
                 {/* 8. 🧠 Health Intelligence Center CTA Card */}
                 {visibleSections.includes('intelligence_center') && (
-                    <ReanimatedAnimated.View style={sectionAnimForKey('intelligence_center')}>
+                    <Animated.View style={sectionAnimForKey('intelligence_center')}>
                         <AnimatedCard 
                             onPress={() => navigation.navigate('CompanionAnalytics')}
                         >
@@ -821,11 +760,11 @@ export default function CompanionDashboardScreen() {
                                 <ChevronRight size={14} color={colors.primary} />
                             </View>
                         </AnimatedCard>
-                    </ReanimatedAnimated.View>
+                    </Animated.View>
                 )}
                 {/* 3. AI Companion Briefing (Mascot Overlapping Speech Bubble) */}
                 {visibleSections.includes('briefing') && (
-                     <ReanimatedAnimated.View style={[styles.briefingContainerStandalone, sectionAnimForKey('briefing')]}>
+                     <Animated.View style={[styles.briefingContainerStandalone, sectionAnimForKey('briefing')]}>
                          <Image 
                              source={require('../../../assets/doctor_mascot_insights.jpg')} 
                              style={styles.mascotOverlappingImage}
@@ -865,12 +804,12 @@ export default function CompanionDashboardScreen() {
                                  </ScalePressable>
                              ) : null}
                          </View>
-                     </ReanimatedAnimated.View>
+                     </Animated.View>
                   )}
 
                 {/* 4. Top Summary Card (Status Bar) */}
                 {visibleSections.includes('summary') && (
-                    <ReanimatedAnimated.View style={[styles.summaryCard, sectionAnimForKey('summary')]}>
+                    <Animated.View style={[styles.summaryCard, sectionAnimForKey('summary')]}>
                     <View style={styles.summaryColLeft}>
                         <View style={styles.summaryColRow}>
                             <Activity color={(data.recent_alerts && data.recent_alerts.length > 0) ? colors.danger : '#2563EB'} size={20} />
@@ -919,12 +858,12 @@ export default function CompanionDashboardScreen() {
                             </ScalePressable>
                         </View>
                     </View>
-                    </ReanimatedAnimated.View>
+                    </Animated.View>
                 )}
 
                 {/* 5. ⚡ Proactive Intervention Center CTA Card */}
                 {visibleSections.includes('intervention_center') && (
-                    <ReanimatedAnimated.View style={[{ marginTop: 12 }, sectionAnimForKey('intervention_center')]}>
+                    <Animated.View style={[{ marginTop: 12 }, sectionAnimForKey('intervention_center')]}>
                         <AnimatedCard 
                             onPress={() => navigation.navigate('InterventionCenter')}
                         >
@@ -952,12 +891,12 @@ export default function CompanionDashboardScreen() {
                                 <ChevronRight size={14} color={colors.primary} />
                             </View>
                         </AnimatedCard>
-                    </ReanimatedAnimated.View>
+                    </Animated.View>
                 )}
 
                 {/* 6. Daily Medication Timeline Checklist */}
                 {visibleSections.includes('timeline') && (
-                    <ReanimatedAnimated.View style={[styles.outerCard, sectionAnimForKey('timeline')]}>
+                    <Animated.View style={[styles.outerCard, sectionAnimForKey('timeline')]}>
                         <View style={styles.innerCard}>
                             <View style={styles.cardHeader}>
                                 <View style={[styles.iconBox, { backgroundColor: '#F1F5F9' }]}>
@@ -1046,13 +985,13 @@ export default function CompanionDashboardScreen() {
 
                                                             <View style={[
                                                                 styles.timelineStatusBadge, 
-                                                                { backgroundColor: item.taken ? '#ECFDF5' : '#FEF3C7' }
+                                                                { backgroundColor: item?.taken ? '#ECFDF5' : '#FEF3C7' }
                                                             ]}>
                                                                 <Text style={[
                                                                     styles.timelineStatusText, 
-                                                                    { color: item.taken ? '#10B981' : '#D97706' }
+                                                                    { color: item?.taken ? '#10B981' : '#D97706' }
                                                                 ]}>
-                                                                    {item.taken ? 'Taken' : 'Pending'}
+                                                                    {item?.taken ? 'Taken' : 'Pending'}
                                                                 </Text>
                                                             </View>
 
@@ -1074,12 +1013,12 @@ export default function CompanionDashboardScreen() {
                                 })()}
                             </View>
                         </View>
-                    </ReanimatedAnimated.View>
+                    </Animated.View>
                 )}
 
                 {/* 10. Refresh AI Insights Button */}
                 {visibleSections.includes('refresh') && (
-                    <ReanimatedAnimated.View style={[sectionAnimForKey('refresh')]}>
+                    <Animated.View style={[sectionAnimForKey('refresh')]}>
                         <ScalePressable 
                             style={styles.refreshInsightsBtn}
                             onPress={handleManualRefresh}
@@ -1094,7 +1033,7 @@ export default function CompanionDashboardScreen() {
                                 </View>
                             )}
                         </ScalePressable>
-                    </ReanimatedAnimated.View>
+                    </Animated.View>
                 )}
             </ScrollView>
 
@@ -1185,13 +1124,13 @@ export default function CompanionDashboardScreen() {
                                             </View>
                                             <View style={[
                                                 styles.medListStatusBadge,
-                                                { backgroundColor: med.taken ? '#ECFDF5' : '#FEF3C7' }
+                                                { backgroundColor: med?.taken ? '#ECFDF5' : '#FEF3C7' }
                                             ]}>
                                                 <Text style={[
                                                     styles.medListStatusText,
-                                                    { color: med.taken ? '#10B981' : '#D97706' }
+                                                    { color: med?.taken ? '#10B981' : '#D97706' }
                                                 ]}>
-                                                    {med.taken ? 'Taken' : 'Pending'}
+                                                    {med?.taken ? 'Taken' : 'Pending'}
                                                 </Text>
                                             </View>
                                         </View>

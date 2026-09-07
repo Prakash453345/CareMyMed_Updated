@@ -123,23 +123,25 @@ export default function CompanionHomeScreen() {
             if (typeof patient === 'string') {
                 targetId = patient;
             } else if (patient && typeof patient === 'object') {
-                targetId = (typeof patient.id === 'string' ? patient.id : null) ||
-                           (typeof patient._id === 'string' ? patient._id : null) ||
-                           (typeof patient.patient_id === 'string' ? patient.patient_id : null) ||
-                           (patient.patient_id && typeof patient.patient_id === 'object' ? (patient.patient_id._id || patient.patient_id.id) : null) ||
-                           (patient.id && typeof patient.id === 'object' ? (patient.id._id || patient.id.id) : null);
+                const candidate = patient.id ?? patient._id ?? patient.patient_id;
+                if (candidate && typeof candidate === 'object') {
+                    targetId = candidate._id ?? candidate.id ?? (typeof candidate.toString === 'function' ? candidate.toString() : null);
+                } else if (candidate != null) {
+                    targetId = String(candidate);
+                }
             }
+            const safeTargetId = targetId ? String(targetId).trim() : null;
             const rawName = patient?.name || patient?.patient_id?.name || '';
             const normalizedName = typeof rawName === 'string' ? rawName.trim() : '';
 
-            if (targetId) {
-                setCompanionSelectedPatientId(targetId);
+            if (safeTargetId) {
+                setCompanionSelectedPatientId(safeTargetId);
                 if (normalizedName) {
                     setCompanionSelectedPatientName(normalizedName);
                 }
                 navigation.navigate('CompanionTabs', {
                     screen: 'CompanionDashboard',
-                    params: { patientId: targetId, patientName: normalizedName }
+                    params: { patientId: safeTargetId, patientName: normalizedName }
                 });
             }
         } catch (err) {

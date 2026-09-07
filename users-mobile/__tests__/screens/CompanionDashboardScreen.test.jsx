@@ -56,10 +56,11 @@ jest.mock('../../src/lib/api', () => ({
 }));
 
 describe('CompanionDashboardScreen', () => {
-  it('renders without throwing', () => {
+  it('renders without throwing', async () => {
     try {
-      const { toJSON } = render(<CompanionDashboardScreen />);
-      console.log('RENDER SUCCESSFUL:', toJSON());
+      const { findByText } = render(<CompanionDashboardScreen />);
+      const title = await findByText("Puneeth's Health");
+      expect(title).toBeTruthy();
     } catch (e) {
       console.error('RENDER CAUGHT ERROR:', e);
       throw e;

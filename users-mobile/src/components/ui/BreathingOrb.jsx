@@ -33,7 +33,7 @@ export default function BreathingOrb({
             return;
         }
 
-        Animated.loop(
+        const loopAnim = Animated.loop(
             Animated.sequence([
                 Animated.timing(breathAnim, {
                     toValue: 1,
@@ -48,8 +48,13 @@ export default function BreathingOrb({
                     useNativeDriver: true,
                 }),
             ])
-        ).start();
-    }, [reduceMotion]);
+        );
+        loopAnim.start();
+
+        return () => {
+            loopAnim.stop();
+        };
+    }, [reduceMotion, breathAnim]);
 
     const coreSize = size * 0.56;
     const innerGlowSize = size * 0.76;
