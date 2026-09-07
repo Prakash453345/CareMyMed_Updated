@@ -172,6 +172,7 @@ if (require.main === module) {
   const { startFailoverService } = require('./services/callerFailoverService');
   const { startOrgAdminScheduler } = require('./services/orgAdminNotificationScheduler');
   const { startSuperAdminScheduler } = require('./services/superAdminNotificationScheduler');
+  const { startNotificationWorker, stopNotificationWorker } = require('./queues/notificationWorker');
 
   const server = http.createServer(app);
 
@@ -204,6 +205,9 @@ if (require.main === module) {
 
       // Start caller failover service (every 5 min)
       startFailoverService(5 * 60 * 1000);
+
+      // Start the background worker that delivers queued push/email notifications
+      startNotificationWorker();
     });
   });
 
@@ -211,6 +215,7 @@ if (require.main === module) {
   const gracefulShutdown = async (signal) => {
     console.log(`\n${signal} received — shutting down gracefully...`);
     server.close(async () => {
+      await stopNotificationWorker();
       await disconnectRedis();
       console.log('🔒 Server closed');
       process.exit(0);
