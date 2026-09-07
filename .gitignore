@@ -19,6 +19,7 @@ users-mobile/.env
 .expo/
 dist/
 web-build/
+users-mobile/out/
 expo-env.d.ts
 .metro-health-check*
 

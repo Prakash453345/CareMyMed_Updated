@@ -33,6 +33,7 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import SupplyUpdateModal from "../../components/ui/SupplyUpdateModal";
 import { useMedicationCompletionAnimation } from "../../hooks/useMedicationCompletionAnimation";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const triggerHapticSelection = async () => {
   try {
@@ -675,8 +676,10 @@ export default function PatientHomeScreen({ navigation }) {
   const [inlineCardAnchorY, setInlineCardAnchorY] = useState(185);
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  // Calculate dynamic docking target & distance based on status bar / inset layout
-  const dockTargetY = Platform.OS === "ios" ? 56 : (StatusBar.currentHeight ? StatusBar.currentHeight + 12 : 44);
+  // Calculate dynamic docking target & distance based on safe area insets / status bar
+  const insets = useSafeAreaInsets();
+  const safeTop = insets.top > 0 ? insets.top : (StatusBar.currentHeight ? StatusBar.currentHeight + 8 : 34);
+  const dockTargetY = safeTop + 10;
   const dockDistance = Math.max(10, inlineCardAnchorY - dockTargetY);
 
   // Native GPU-Accelerated Y Translation (Inline <-> Docked)

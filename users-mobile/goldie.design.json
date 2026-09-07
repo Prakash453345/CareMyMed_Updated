@@ -1,0 +1,8 @@
+{
+  "background": "linear-gradient(165deg, #D7B3FF 0%, #FFFFFF 100%)",
+  "frame": "17-pro-blue",
+  "fontFamily": "-apple-system, \"SF Pro Display\", Roboto, sans-serif",
+  "template": "storyboard",
+  "layout": "classic",
+  "screenOnly": false
+}
