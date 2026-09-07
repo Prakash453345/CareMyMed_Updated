@@ -17,10 +17,7 @@ describe('Groq Vision Model Candidate Pipeline', () => {
   it('includes qwen/qwen3.6-27b in vision candidate fallback list', () => {
     const groqVisionModel = process.env.GROQ_VISION_MODEL || 'qwen/qwen3.6-27b';
     const visionCandidates = Array.from(
-      new Set([
-        groqVisionModel,
-        'qwen/qwen3.6-27b',
-      ])
+      new Set([groqVisionModel, 'qwen/qwen3.6-27b'])
     );
 
     expect(visionCandidates).toContain('qwen/qwen3.6-27b');
@@ -31,10 +28,7 @@ describe('Groq Vision Model Candidate Pipeline', () => {
     process.env.GROQ_VISION_MODEL = 'custom-vision-model-v1';
     const groqVisionModel = process.env.GROQ_VISION_MODEL || 'qwen/qwen3.6-27b';
     const visionCandidates = Array.from(
-      new Set([
-        groqVisionModel,
-        'qwen/qwen3.6-27b',
-      ])
+      new Set([groqVisionModel, 'qwen/qwen3.6-27b'])
     );
 
     expect(visionCandidates[0]).toBe('custom-vision-model-v1');
@@ -47,7 +41,8 @@ describe('Groq Vision Model Candidate Pipeline', () => {
         choices: [
           {
             message: {
-              content: 'Brand Name: Bidical 500\nGeneric Ingredients: Calcium, Vitamin D3\nDosage: 500mg\nManufacturer: Indoco',
+              content:
+                'Brand Name: Bidical 500\nGeneric Ingredients: Calcium, Vitamin D3\nDosage: 500mg\nManufacturer: Indoco',
             },
           },
         ],
@@ -56,10 +51,13 @@ describe('Groq Vision Model Candidate Pipeline', () => {
 
     axios.post.mockResolvedValueOnce(mockVisionResponse);
 
-    const res = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-      model: 'qwen/qwen3.6-27b',
-      messages: [{ role: 'user', content: [{ type: 'text', text: 'OCR' }] }],
-    });
+    const res = await axios.post(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        model: 'qwen/qwen3.6-27b',
+        messages: [{ role: 'user', content: [{ type: 'text', text: 'OCR' }] }],
+      }
+    );
 
     const content = res.data.choices[0].message.content;
     expect(content).toContain('Bidical 500');
@@ -70,8 +68,10 @@ describe('Groq Vision Model Candidate Pipeline', () => {
   it('persists stable server attachment URIs with attachmentId for authenticated media access', () => {
     const attachmentId = 'att_1786942468332_abc123';
     const publicUrl = `/api/chatbot/attachments/${attachmentId}`;
-    
-    expect(publicUrl).toMatch(/^\/api\/chatbot\/attachments\/att_\d+_[a-z0-9]+$/);
+
+    expect(publicUrl).toMatch(
+      /^\/api\/chatbot\/attachments\/att_\d+_[a-z0-9]+$/
+    );
     expect(publicUrl).not.toContain('file://');
     expect(publicUrl).not.toContain('ph://');
   });

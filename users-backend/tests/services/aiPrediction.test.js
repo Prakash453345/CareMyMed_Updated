@@ -89,7 +89,9 @@ describe('AIPredictionService', () => {
 
     it('should handle null/undefined existing doc gracefully', () => {
       expect(AIPredictionService.calculateStreak(null, 'Critical')).toBe(1);
-      expect(AIPredictionService.calculateStreak(undefined, 'Critical')).toBe(1);
+      expect(AIPredictionService.calculateStreak(undefined, 'Critical')).toBe(
+        1
+      );
     });
   });
 
@@ -138,11 +140,14 @@ describe('AIPredictionService', () => {
         }),
       });
 
-      const result = await AIPredictionService.processPatientPrediction(patientId);
+      const result =
+        await AIPredictionService.processPatientPrediction(patientId);
 
       expect(result.success).toBe(false);
       expect(result.status).toBe('building');
-      expect(ForecastRepository.saveBuildingStatus).toHaveBeenCalledWith(patientId);
+      expect(ForecastRepository.saveBuildingStatus).toHaveBeenCalledWith(
+        patientId
+      );
       expect(ForecastService.generateForecast).not.toHaveBeenCalled();
     });
 
@@ -178,7 +183,8 @@ describe('AIPredictionService', () => {
         health_label: 'Normal',
       });
 
-      const result = await AIPredictionService.processPatientPrediction(patientId);
+      const result =
+        await AIPredictionService.processPatientPrediction(patientId);
 
       expect(result.success).toBe(true);
       expect(result.status).toBe('ready');
@@ -229,7 +235,8 @@ describe('AIPredictionService', () => {
         success: true,
       });
 
-      const result = await AIPredictionService.processPatientPrediction(patientId);
+      const result =
+        await AIPredictionService.processPatientPrediction(patientId);
 
       expect(result.success).toBe(true);
       expect(result.currentStreak).toBe(2);
@@ -249,7 +256,8 @@ describe('AIPredictionService', () => {
         new Error('Python execution error')
       );
 
-      const result = await AIPredictionService.processPatientPrediction(patientId);
+      const result =
+        await AIPredictionService.processPatientPrediction(patientId);
 
       expect(result.success).toBe(false);
       expect(result.status).toBe('unavailable');

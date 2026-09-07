@@ -15,7 +15,6 @@ const AuditLog = require('../models/AuditLog');
 const emergencyConfig = require('../config/emergency_phrases.json');
 const AIChatSession = require('../models/AIChatSession');
 
-
 // Configure Multer for in-memory storage and strict filtering (audio + image attachments)
 const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
@@ -39,7 +38,10 @@ const upload = multer({
       'image/png',
       'image/webp',
     ];
-    if (allowedAudio.includes(file.mimetype) || allowedImages.includes(file.mimetype)) {
+    if (
+      allowedAudio.includes(file.mimetype) ||
+      allowedImages.includes(file.mimetype)
+    ) {
       cb(null, true);
     } else {
       cb(
@@ -247,13 +249,21 @@ router.post(
   aiChatRateLimiter,
   aiChatIpRateLimiter,
   aiChatPatientRateLimiter,
-  upload.fields([{ name: 'audio', maxCount: 1 }, { name: 'image', maxCount: 1 }]),
+  upload.fields([
+    { name: 'audio', maxCount: 1 },
+    { name: 'image', maxCount: 1 },
+  ]),
   async (req, res) => {
     let patientId = null;
     let sessionId = req.body.sessionId;
 
     try {
-      const { targetLanguage, query, audioDuration, patientId: bodyPatientId } = req.body;
+      const {
+        targetLanguage,
+        query,
+        audioDuration,
+        patientId: bodyPatientId,
+      } = req.body;
 
       // Securely resolve patient context
       patientId = await getPatientId(req, bodyPatientId);
@@ -269,8 +279,12 @@ router.post(
           );
       }
 
-      const audioFile = req.files?.audio?.[0] || (req.file?.fieldname === 'audio' ? req.file : null);
-      const imageFile = req.files?.image?.[0] || (req.file?.fieldname === 'image' ? req.file : null);
+      const audioFile =
+        req.files?.audio?.[0] ||
+        (req.file?.fieldname === 'audio' ? req.file : null);
+      const imageFile =
+        req.files?.image?.[0] ||
+        (req.file?.fieldname === 'image' ? req.file : null);
 
       let extractedQuery = (query || '').trim();
       let transcribedText = null;
@@ -304,10 +318,15 @@ router.post(
 
             if (groqRes.data && groqRes.data.text) {
               transcribedText = groqRes.data.text.trim();
-              console.log(`[ChatbotRoute] Groq Whisper STT Success: "${transcribedText}"`);
+              console.log(
+                `[ChatbotRoute] Groq Whisper STT Success: "${transcribedText}"`
+              );
             }
           } catch (groqErr) {
-            console.error(`[ChatbotRoute] Groq Whisper STT Error:`, groqErr.response?.data || groqErr.message);
+            console.error(
+              `[ChatbotRoute] Groq Whisper STT Error:`,
+              groqErr.response?.data || groqErr.message
+            );
           }
         }
 
@@ -342,7 +361,8 @@ router.post(
 
         const googleVisionKey = process.env.GOOGLE_VISION_API_KEY;
         const groqApiKey = process.env.GROQ_API_KEY;
-        const groqVisionModel = process.env.GROQ_VISION_MODEL || 'qwen/qwen3.6-27b';
+        const groqVisionModel =
+          process.env.GROQ_VISION_MODEL || 'qwen/qwen3.6-27b';
 
         if (imageFile.buffer) {
           const base64Content = imageFile.buffer.toString('base64');
@@ -359,7 +379,7 @@ router.post(
                       image: { content: base64Content },
                       features: [
                         { type: 'DOCUMENT_TEXT_DETECTION' },
-                        { type: 'TEXT_DETECTION' }
+                        { type: 'TEXT_DETECTION' },
                       ],
                     },
                   ],
@@ -368,7 +388,8 @@ router.post(
               );
               const extractedRaw =
                 gvResponse.data.responses?.[0]?.fullTextAnnotation?.text ||
-                gvResponse.data.responses?.[0]?.textAnnotations?.[0]?.description ||
+                gvResponse.data.responses?.[0]?.textAnnotations?.[0]
+                  ?.description ||
                 '';
               if (extractedRaw.trim()) {
                 visionContextText = `[EXTRACTED TEXT FROM IMAGE]:\n${extractedRaw.trim()}`;
@@ -376,7 +397,10 @@ router.post(
               }
             } catch (ocrErr) {
               visionError = ocrErr;
-              console.warn('[ChatbotRoute] Google Vision OCR warning:', ocrErr.message);
+              console.warn(
+                '[ChatbotRoute] Google Vision OCR warning:',
+                ocrErr.message
+              );
             }
           }
 
@@ -432,7 +456,9 @@ router.post(
                 if (visionAnalysis && visionAnalysis.trim()) {
                   visionContextText = `[GROQ VISION IMAGE ANALYSIS & TRANSCRIBED CONTENT]:\n${visionAnalysis.trim()}`;
                   visionProcessed = true;
-                  console.log(`[ChatbotRoute] Groq Vision succeeded with model: ${modelCandidate}`);
+                  console.log(
+                    `[ChatbotRoute] Groq Vision succeeded with model: ${modelCandidate}`
+                  );
                 }
               } catch (groqVisionErr) {
                 visionError = groqVisionErr;
@@ -452,7 +478,11 @@ router.post(
 
         const userCaption = extractedQuery;
         // Validate user-supplied caption length
-        if (userCaption && typeof userCaption === 'string' && userCaption.length > 1000) {
+        if (
+          userCaption &&
+          typeof userCaption === 'string' &&
+          userCaption.length > 1000
+        ) {
           return res
             .status(400)
             .json(
@@ -466,7 +496,7 @@ router.post(
         const structuredContext = [
           `[USER ATTACHED IMAGE]`,
           `${visionContextText}`,
-          `User Question / Caption: ${userCaption || 'What does this image say or show?'}`
+          `User Question / Caption: ${userCaption || 'What does this image say or show?'}`,
         ].join('\n\n');
 
         extractedQuery = structuredContext;
@@ -601,7 +631,10 @@ router.post(
             : '.jpg';
           const attachmentId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
           const filename = `chat_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${fileExt || '.jpg'}`;
-          const uploadsDir = path.resolve(__dirname, '../../uploads/chat_attachments');
+          const uploadsDir = path.resolve(
+            __dirname,
+            '../../uploads/chat_attachments'
+          );
           if (!fs.existsSync(uploadsDir)) {
             fs.mkdirSync(uploadsDir, { recursive: true });
           }
@@ -749,7 +782,9 @@ router.get('/attachments/:attachmentId', authenticate, async (req, res) => {
     // Path traversal check on requested identifier
     const sanitizedId = path.basename(rawId);
     if (sanitizedId !== rawId || rawId.includes('..')) {
-      return res.status(400).json({ error: 'Invalid attachment request path.' });
+      return res
+        .status(400)
+        .json({ error: 'Invalid attachment request path.' });
     }
 
     // Find active or past session belonging to patientId containing this attachmentId or filename
@@ -764,7 +799,9 @@ router.get('/attachments/:attachmentId', authenticate, async (req, res) => {
     });
 
     if (!session) {
-      return res.status(404).json({ error: 'Attachment not found or access denied.' });
+      return res
+        .status(404)
+        .json({ error: 'Attachment not found or access denied.' });
     }
 
     // Locate the matching attachment object from session messages
@@ -777,7 +814,8 @@ router.get('/attachments/:attachmentId', authenticate, async (req, res) => {
             att.storagePath === sanitizedId ||
             (att.url && att.url.includes(sanitizedId))
           ) {
-            storageFileName = att.storagePath || (att.url ? path.basename(att.url) : null);
+            storageFileName =
+              att.storagePath || (att.url ? path.basename(att.url) : null);
             break;
           }
         }
@@ -793,9 +831,12 @@ router.get('/attachments/:attachmentId', authenticate, async (req, res) => {
     }
 
     const safeFilename = path.basename(storageFileName);
-    const canonicalDir = path.resolve(__dirname, '../../uploads/chat_attachments');
+    const canonicalDir = path.resolve(
+      __dirname,
+      '../../uploads/chat_attachments'
+    );
     const legacyDir = path.resolve(__dirname, '../uploads/chat_attachments');
-    
+
     let targetPath = path.resolve(canonicalDir, safeFilename);
     if (!fs.existsSync(targetPath)) {
       const legacyPath = path.resolve(legacyDir, safeFilename);
@@ -805,7 +846,9 @@ router.get('/attachments/:attachmentId', authenticate, async (req, res) => {
     }
 
     if (!fs.existsSync(targetPath)) {
-      return res.status(404).json({ error: 'Attachment file does not exist on disk.' });
+      return res
+        .status(404)
+        .json({ error: 'Attachment file does not exist on disk.' });
     }
 
     return res.sendFile(targetPath);

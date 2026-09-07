@@ -155,7 +155,9 @@ describe('Chatbot Sessions Route Tests', () => {
       const res = await request(app).get('/api/chatbot/sessions/session-1');
       expect(res.status).toBe(200);
       expect(res.body).toEqual(mockSession);
-      expect(res.body.messages[1].attachments[0].url).toContain('/api/chatbot/attachments/');
+      expect(res.body.messages[1].attachments[0].url).toContain(
+        '/api/chatbot/attachments/'
+      );
       expect(res.body.messages[1].image).not.toContain('base64');
       expect(AIChatSession.findOne).toHaveBeenCalledWith({
         _id: 'session-1',
@@ -209,13 +211,17 @@ describe('Chatbot Sessions Route Tests', () => {
     it('denies access (404/403) when user does not own session containing attachment', async () => {
       AIChatSession.findOne = jest.fn().mockResolvedValue(null);
 
-      const res = await request(app).get('/api/chatbot/attachments/unauthorized_att');
+      const res = await request(app).get(
+        '/api/chatbot/attachments/unauthorized_att'
+      );
       expect(res.status).toBe(404);
       expect(res.body.error).toMatch(/not found|access denied/i);
     });
 
     it('rejects path traversal attempts with 400', async () => {
-      const res = await request(app).get('/api/chatbot/attachments/..%2F..%2Fetc%2Fpasswd');
+      const res = await request(app).get(
+        '/api/chatbot/attachments/..%2F..%2Fetc%2Fpasswd'
+      );
       expect(res.status).toBe(400);
       expect(res.body.error).toMatch(/invalid/i);
     });
@@ -223,7 +229,10 @@ describe('Chatbot Sessions Route Tests', () => {
     it('serves attachment file bytes when user owns session and file exists', async () => {
       const fs = require('fs');
       const path = require('path');
-      const uploadsDir = path.resolve(__dirname, '../../src/uploads/chat_attachments');
+      const uploadsDir = path.resolve(
+        __dirname,
+        '../../src/uploads/chat_attachments'
+      );
       if (!fs.existsSync(uploadsDir)) {
         fs.mkdirSync(uploadsDir, { recursive: true });
       }
@@ -248,7 +257,9 @@ describe('Chatbot Sessions Route Tests', () => {
       };
       AIChatSession.findOne = jest.fn().mockResolvedValue(mockSession);
 
-      const res = await request(app).get('/api/chatbot/attachments/att_test_123');
+      const res = await request(app).get(
+        '/api/chatbot/attachments/att_test_123'
+      );
       expect(res.status).toBe(200);
 
       // Clean up test file

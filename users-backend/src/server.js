@@ -282,8 +282,6 @@ app.use(
 // Companion Routes
 app.use('/api/companion', companionRoutes);
 
-
-
 // ─── Chatbot API ───────────────────────────────
 const chatbotRoutes = require('./routes/chatbotRoutes');
 app.use('/api/chatbot', authenticate, requireSubscription, chatbotRoutes);

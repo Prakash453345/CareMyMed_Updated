@@ -2304,7 +2304,9 @@ router.get('/me/vitals/forecast', authenticateSession, async (req, res) => {
     ).size;
 
     const ForecastRepository = require('../../repositories/ForecastRepository');
-    const predictionDoc = await ForecastRepository.getLatestForecast(patient._id);
+    const predictionDoc = await ForecastRepository.getLatestForecast(
+      patient._id
+    );
 
     if (distinctDays < 7) {
       return res.json({
@@ -2369,7 +2371,8 @@ router.get('/me/vitals/forecast', authenticateSession, async (req, res) => {
         generatedAt: predictionDoc.updated_at || predictionDoc.created_at,
         historyWindowDays: predictionDoc.metadata?.historyWindowDays || 14,
         predictionWindowDays: predictionDoc.metadata?.predictionWindowDays || 3,
-        trainingSamples: predictionDoc.metadata?.trainingSamples || distinctDays,
+        trainingSamples:
+          predictionDoc.metadata?.trainingSamples || distinctDays,
       },
     });
   } catch (error) {
@@ -2466,7 +2469,10 @@ router.post('/me/vitals', authenticateSession, async (req, res) => {
       const AIPredictionService = require('../../services/aiPredictionService');
       AIPredictionService.queuePatientForecast(patient._id);
     } catch (forecastErr) {
-      logger.warn('Debounced AI forecast queue trigger warning:', forecastErr.message);
+      logger.warn(
+        'Debounced AI forecast queue trigger warning:',
+        forecastErr.message
+      );
     }
 
     res

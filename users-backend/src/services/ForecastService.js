@@ -47,14 +47,14 @@ class ForecastService {
           const samples = parsed.trainingSamples || historicalData.length;
           const confidenceScore = Math.min(
             0.96,
-            Math.max(0.60, Number((0.55 + samples * 0.035).toFixed(2)))
+            Math.max(0.6, Number((0.55 + samples * 0.035).toFixed(2)))
           );
           const confidenceLabel =
             confidenceScore >= 0.85
               ? 'High'
-              : confidenceScore >= 0.70
-              ? 'Moderate'
-              : 'Low';
+              : confidenceScore >= 0.7
+                ? 'Moderate'
+                : 'Low';
 
           resolve({
             health_label: parsed.health_label || 'Normal',

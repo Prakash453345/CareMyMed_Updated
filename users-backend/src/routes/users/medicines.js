@@ -867,7 +867,8 @@ const handleRefillRequest = async (req, res) => {
     // Match embedded medication by canonical ID first, then by name
     const patientMed = patient.medications.find(
       (m) =>
-        (medicineId && (m.id === medicineId || m._id?.toString() === medicineId)) ||
+        (medicineId &&
+          (m.id === medicineId || m._id?.toString() === medicineId)) ||
         m._id?.toString() === targetParam ||
         m.id === targetParam ||
         m.name === targetParam
