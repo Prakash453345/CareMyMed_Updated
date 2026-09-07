@@ -53,7 +53,10 @@ describe('Subscription Service', () => {
     Patient.updateOne.mockResolvedValue({ modifiedCount: 1 });
 
     // Act
-    const result = await SubscriptionService.activateSubscription(mockPatient, 'premium_monthly');
+    const result = await SubscriptionService.activateSubscription(
+      mockPatient,
+      'premium_monthly'
+    );
 
     // Assert
     expect(Patient.updateOne).toHaveBeenCalledWith(

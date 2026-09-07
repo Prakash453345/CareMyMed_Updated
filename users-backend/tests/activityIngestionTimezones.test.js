@@ -69,7 +69,11 @@ describe('Activity and Body Ingestion Timezone and Date Normalization', () => {
         steps: 5000,
       };
 
-      await ActivityIngestionService.processDaily(patientId, data, 'health_connect');
+      await ActivityIngestionService.processDaily(
+        patientId,
+        data,
+        'health_connect'
+      );
 
       expect(ActivityLog.findOneAndUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -91,7 +95,11 @@ describe('Activity and Body Ingestion Timezone and Date Normalization', () => {
         steps: 8000,
       };
 
-      await ActivityIngestionService.processDaily(patientId, data, 'health_connect');
+      await ActivityIngestionService.processDaily(
+        patientId,
+        data,
+        'health_connect'
+      );
 
       expect(ActivityLog.findOneAndUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -109,7 +117,11 @@ describe('Activity and Body Ingestion Timezone and Date Normalization', () => {
         steps: 9000,
       };
 
-      await ActivityIngestionService.processDaily(patientId, data, 'health_connect');
+      await ActivityIngestionService.processDaily(
+        patientId,
+        data,
+        'health_connect'
+      );
 
       expect(ActivityLog.findOneAndUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -128,7 +140,11 @@ describe('Activity and Body Ingestion Timezone and Date Normalization', () => {
         steps: 12000,
       };
 
-      await ActivityIngestionService.processDaily(patientId, data, 'health_connect');
+      await ActivityIngestionService.processDaily(
+        patientId,
+        data,
+        'health_connect'
+      );
 
       expect(ActivityLog.findOneAndUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -147,7 +163,11 @@ describe('Activity and Body Ingestion Timezone and Date Normalization', () => {
         weight_kg: 80,
       };
 
-      await BodyCompositionService.processSnapshot(patientId, data, 'health_connect');
+      await BodyCompositionService.processSnapshot(
+        patientId,
+        data,
+        'health_connect'
+      );
 
       expect(BodyCompositionLog.findOneAndUpdate).toHaveBeenCalledWith(
         expect.objectContaining({

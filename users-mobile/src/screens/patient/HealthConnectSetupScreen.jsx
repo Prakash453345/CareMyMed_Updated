@@ -8,7 +8,8 @@ import {
     Watch, Heart, Wind, Moon, ShieldCheck, ChevronLeft, ChevronDown,
     CheckCircle2, XCircle, Smartphone, ArrowRight, Activity, Sliders,
     HelpCircle, Lock, RefreshCw, MoreHorizontal, AlertTriangle, LogOut,
-    Flame, Scale, Droplet, Settings, ArrowUp, ArrowDown, Eye, EyeOff, MapPin
+    Flame, Scale, Droplet, Settings, ArrowUp, ArrowDown, Eye, EyeOff, MapPin,
+    Footprints, PersonStanding, Bike, Timer
 } from 'lucide-react-native';
 import {
     initializeHealthPlatform,
@@ -110,60 +111,44 @@ export default function HealthConnectSetupScreen({ navigation }) {
         glucose: false,
         usageStats: false,
     });
+    const [localPedometerSteps, setLocalPedometerSteps] = useState(null);
 
-    // Dynamically calculate actual sync quality based on granted channels with successful data syncs
     useEffect(() => {
-        let totalGranted = 0;
-        let syncedCount = 0;
-
-        // 1. Heart Rate
-        if (permissionsMap.heartRate) {
-            totalGranted++;
-            if (vitals?.heart_rate) syncedCount++;
-        }
-        // 2. Sleep Quality
-        if (permissionsMap.sleep || permissionsMap.usageStats) {
-            totalGranted++;
-            if (sleepStr && !sleepStr.toLowerCase().includes('no activity') && !sleepStr.toLowerCase().includes('waiting')) {
-                syncedCount++;
+        let active = true;
+        const fetchPedometerFallback = async () => {
+            try {
+                const { Pedometer } = require('expo-sensors');
+                const isAvailable = await Pedometer.isAvailableAsync();
+                if (isAvailable) {
+                    let { status } = await Pedometer.getPermissionsAsync();
+                    if (status !== 'granted') {
+                        const req = await Pedometer.requestPermissionsAsync();
+                        status = req.status;
+                    }
+                    if (status === 'granted') {
+                        const startOfToday = new Date();
+                        startOfToday.setHours(0, 0, 0, 0);
+                        const res = await Pedometer.getStepCountAsync(startOfToday, new Date());
+                        if (res && typeof res.steps === 'number' && active) {
+                            setLocalPedometerSteps(res.steps);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('Pedometer fallback query error:', err);
             }
-        }
-        // 3. Blood Pressure
-        if (permissionsMap.bloodPressure) {
-            totalGranted++;
-            if (vitals?.blood_pressure?.systolic) syncedCount++;
-        }
-        // 4. Oxygen Level
-        if (permissionsMap.oxygen) {
-            totalGranted++;
-            if (vitals?.oxygen_saturation) syncedCount++;
-        }
-        // 5. Steps
-        if (permissionsMap.steps) {
-            totalGranted++;
-            if (activity?.steps !== undefined && activity?.steps !== null) syncedCount++;
-        }
-        // 6. Exercise
-        if (permissionsMap.exercise) {
-            totalGranted++;
-            const exerciseMins = activity?.exercises?.reduce((sum, e) => sum + (e.duration_minutes || 0), 0) || 0;
-            if (activity?.exercises !== undefined && activity?.exercises !== null) syncedCount++;
-        }
-        // 7. Weight
-        if (permissionsMap.weight) {
-            totalGranted++;
-            const profile = usePatientStore.getState().patient || {};
-            if (profile.weight_kg || activity?.weight) syncedCount++;
-        }
-        // 8. Blood Glucose
-        if (permissionsMap.glucose) {
-            totalGranted++;
-            if (vitals?.blood_glucose) syncedCount++;
-        }
+        };
+        fetchPedometerFallback();
+        return () => { active = false; };
+    }, []);
 
-        const calculatedQuality = totalGranted === 0 ? 0 : Math.round((syncedCount / totalGranted) * 100);
+    // Dynamically calculate actual sync quality based on configuration/permission completeness
+    useEffect(() => {
+        const keys = Object.keys(permissionsMap);
+        const grantedCount = keys.filter(k => permissionsMap[k]).length;
+        const calculatedQuality = keys.length === 0 ? 0 : Math.round((grantedCount / keys.length) * 100);
         setSyncQuality(calculatedQuality);
-    }, [permissionsMap, vitals, activity, sleepStr]);
+    }, [permissionsMap]);
     const [permissionsChecklistVisible, setPermissionsChecklistVisible] = useState(false);
     // Bento card configuration and customize states
     const [bentoCards, setBentoCards] = useState([
@@ -512,8 +497,21 @@ export default function HealthConnectSetupScreen({ navigation }) {
             if (Platform.OS === 'android') {
                 const hasUsage = await sleepEstimation.hasUsageStatsPermission();
                 detailed.usageStats = hasUsage;
+                try {
+                    const { Pedometer } = require('expo-sensors');
+                    const isAvailable = await Pedometer.isAvailableAsync();
+                    if (isAvailable) {
+                        const { status: pedStatus } = await Pedometer.getPermissionsAsync();
+                        detailed.pedometer = pedStatus === 'granted';
+                    } else {
+                        detailed.pedometer = false;
+                    }
+                } catch (e) {
+                    detailed.pedometer = false;
+                }
             } else {
                 detailed.usageStats = true;
+                detailed.pedometer = true;
             }
             setPermissionsMap(detailed);
 
@@ -543,7 +541,7 @@ export default function HealthConnectSetupScreen({ navigation }) {
         }
     };
 
-    const handleConnect = async () => {
+    const handleConnect = async (includeActivity = true) => {
         setLoading(true);
         try {
             const initialized = await initializeHealthPlatform();
@@ -579,10 +577,10 @@ export default function HealthConnectSetupScreen({ navigation }) {
                 await trackSetupEvent('permissions_granted', { allowedCount });
 
                 // Request Pedometer (ACTIVITY_RECOGNITION) permission for hardware step sensor fallback.
-                // This must happen in a user-triggered context (button press) so the OS shows the prompt.
+                // Only fires if the user tapped "Turn on" in the activity explainer step.
                 // When Health Connect has no step records, the sync pipeline falls back to the device's
                 // built-in step counter sensor — real data from a real sensor, not synthetic values.
-                if (Platform.OS === 'android') {
+                if (includeActivity && Platform.OS === 'android') {
                     try {
                         const { Pedometer } = require('expo-sensors');
                         const isAvailable = await Pedometer.isAvailableAsync();
@@ -751,22 +749,24 @@ export default function HealthConnectSetupScreen({ navigation }) {
             case 'glucose': hasPerm = permissionsMap.glucose; break;
         }
 
+        const stepCount = (activity?.steps && activity.steps > 0) ? activity.steps : localPedometerSteps;
+
         switch (card.id) {
             case 'hr':
                 icon = <Heart size={16} color="#EF4444" strokeWidth={2.5} />;
                 bg = '#FEE2E2';
                 val = hasPerm 
-                    ? (vitals?.heart_rate ? `${vitals.heart_rate} bpm` : 'Waiting for first sync...') 
+                    ? (vitals?.heart_rate ? `${vitals.heart_rate} bpm` : 'No wearable · Log') 
                     : 'Permission Required';
-                badge = 'LIVE';
+                badge = vitals?.heart_rate ? 'LIVE' : 'MANUAL';
                 break;
             case 'sleep':
                 icon = <Moon size={16} color="#8B5CF6" strokeWidth={2.5} />;
                 bg = '#F5F3FF';
                 val = hasPerm 
-                    ? (sleepStr ? sleepStr : 'No activity today') 
+                    ? (sleepStr ? sleepStr : 'No sleep data') 
                     : 'Permission Required';
-                badge = 'DAILY';
+                badge = 'PHONE ENGINE';
                 break;
             case 'bp':
                 icon = <Activity size={16} color="#3B82F6" strokeWidth={2.5} />;
@@ -774,51 +774,53 @@ export default function HealthConnectSetupScreen({ navigation }) {
                 val = hasPerm 
                     ? (vitals?.blood_pressure?.systolic 
                         ? `${vitals.blood_pressure.systolic}/${vitals.blood_pressure.diastolic}` 
-                        : 'Waiting for first sync...') 
+                        : 'No wearable · Log') 
                     : 'Permission Required';
-                badge = 'LIVE';
+                badge = vitals?.blood_pressure?.systolic ? 'LIVE' : 'MANUAL';
                 break;
             case 'spo2':
                 icon = <Wind size={16} color="#06B6D4" strokeWidth={2.5} />;
                 bg = '#ECFEFF';
                 val = hasPerm 
-                    ? (vitals?.oxygen_saturation ? `${vitals.oxygen_saturation}%` : 'Waiting for first sync...') 
+                    ? (vitals?.oxygen_saturation ? `${vitals.oxygen_saturation}%` : 'No wearable · Log') 
                     : 'Permission Required';
-                badge = 'LIVE';
+                badge = vitals?.oxygen_saturation ? 'LIVE' : 'MANUAL';
                 break;
             case 'steps':
                 icon = <Activity size={16} color="#10B981" strokeWidth={2.5} />;
                 bg = '#D1FAE5';
                 val = hasPerm 
-                    ? (activity?.steps != null ? `${activity.steps.toLocaleString()} steps` : '0 steps') 
+                    ? (stepCount != null && stepCount > 0 
+                        ? `${stepCount.toLocaleString()} steps` 
+                        : (permissionsMap.pedometer ? '0 steps today' : 'Enable Phone Steps')) 
                     : 'Permission Required';
-                badge = 'DAILY';
+                badge = stepCount != null && stepCount > 0 ? (activity?.steps ? 'HEALTH CONNECT' : 'PHONE SENSOR') : 'PEDOMETER';
                 break;
             case 'exercise':
                 icon = <Flame size={16} color="#F59E0B" strokeWidth={2.5} />;
                 bg = '#FEF3C7';
                 const exerciseMins = activity?.exercises?.reduce((sum, e) => sum + (e.duration_minutes || 0), 0) || 0;
                 val = hasPerm 
-                    ? (exerciseMins > 0 ? `${exerciseMins} mins` : 'No exercise today') 
+                    ? (exerciseMins > 0 ? `${exerciseMins} mins` : 'No workouts logged') 
                     : 'Permission Required';
-                badge = 'DAILY';
+                badge = 'WORKOUTS';
                 break;
             case 'weight':
                 icon = <Scale size={16} color="#6366F1" strokeWidth={2.5} />;
                 bg = '#E0E7FF';
                 const profile = usePatientStore.getState().patient || {};
                 val = hasPerm 
-                    ? (profile.weight_kg ? `${profile.weight_kg} kg` : (activity?.weight ? `${activity.weight} kg` : 'Waiting for first sync...')) 
+                    ? (profile.weight_kg ? `${profile.weight_kg} kg` : (activity?.weight ? `${activity.weight} kg` : 'Log Weight')) 
                     : 'Permission Required';
-                badge = 'LATEST';
+                badge = 'PROFILE';
                 break;
             case 'glucose':
                 icon = <Droplet size={16} color="#EC4899" strokeWidth={2.5} />;
                 bg = '#FCE7F3';
                 val = hasPerm 
-                    ? (vitals?.blood_glucose ? `${vitals.blood_glucose} mg/dL` : 'Waiting for first sync...') 
+                    ? (vitals?.blood_glucose ? `${vitals.blood_glucose} mg/dL` : 'No wearable · Log') 
                     : 'Permission Required';
-                badge = 'LIVE';
+                badge = vitals?.blood_glucose ? 'LIVE' : 'MANUAL';
                 break;
         }
 
@@ -833,6 +835,13 @@ export default function HealthConnectSetupScreen({ navigation }) {
                 onPress={() => {
                     if (!hasPerm) {
                         openHealthSettings();
+                    } else if (card.id === 'steps' && (!stepCount || stepCount === 0) && !permissionsMap.pedometer) {
+                        try {
+                            const { Pedometer } = require('expo-sensors');
+                            Pedometer.requestPermissionsAsync().then(() => checkCurrentStatus());
+                        } catch (e) {}
+                    } else {
+                        navigation.navigate('HealthProfile');
                     }
                 }}
             >
@@ -941,23 +950,80 @@ export default function HealthConnectSetupScreen({ navigation }) {
                     <View style={styles.obActionArea}>
                         <Pressable
                             style={({ pressed }) => [styles.obConnectBtn, pressed && { opacity: 0.85 }]}
-                            onPress={handleConnect}
+                            onPress={() => setOnboardingStep('activity')}
                             disabled={loading}
                         >
-                            {loading ? (
-                                <ActivityIndicator color="#FFFFFF" size="small" />
-                            ) : (
-                                <>
-                                    <Watch size={18} color="#FFFFFF" strokeWidth={2.5} />
-                                    <Text style={styles.obConnectBtnTxt}>Connect {Platform.OS === 'ios' ? 'HealthKit' : 'Health Connect'}</Text>
-                                </>
-                            )}
+                            <>
+                                <Watch size={18} color="#FFFFFF" strokeWidth={2.5} />
+                                <Text style={styles.obConnectBtnTxt}>Connect {Platform.OS === 'ios' ? 'HealthKit' : 'Health Connect'}</Text>
+                            </>
                         </Pressable>
                         <Text style={styles.obConnectNote}>
                             Secure connection · You can revoke access anytime in device settings.
                         </Text>
                     </View>
                 </>
+
+            ) : !isConnected && onboardingStep === 'activity' ? (
+                /* ── Onboarding: Activity Tracking Explainer ──────── */
+                <View style={styles.obActivityScreen}>
+                    {/* Icon */}
+                    <View style={styles.obActivityIconWrap}>
+                        <Footprints size={48} color="#60A5FA" strokeWidth={1.5} />
+                    </View>
+
+                    {/* Title */}
+                    <Text style={styles.obActivityTitle}>Track your activities</Text>
+
+                    {/* Description */}
+                    <Text style={styles.obActivityDesc}>
+                        CareMyMed can track walking, running and cycling in the background.
+                        This means you'll get metrics like steps, distance and calories for all these activities.
+                    </Text>
+                    <Text style={styles.obActivityDesc}>
+                        To do this, the app needs permission to recognise your activity. Over time, CareMyMed
+                        uses this data to personalise your health insights and recognise activity better.
+                    </Text>
+                    <Text style={styles.obActivityDescMuted}>
+                        If you choose to turn this off, you can still manually log activity from your wearable
+                        via Health Connect.
+                    </Text>
+
+                    {/* Activity Icons Row */}
+                    <View style={styles.obActivityIconsRow}>
+                        <View style={styles.obActivityIconItem}>
+                            <Footprints size={40} color="#93C5FD" strokeWidth={1.5} />
+                        </View>
+                        <View style={styles.obActivityIconItem}>
+                            <Timer size={40} color="#93C5FD" strokeWidth={1.5} />
+                        </View>
+                        <View style={styles.obActivityIconItem}>
+                            <Bike size={40} color="#93C5FD" strokeWidth={1.5} />
+                        </View>
+                    </View>
+
+                    {/* Actions */}
+                    <View style={styles.obActivityActions}>
+                        <Pressable
+                            style={({ pressed }) => [styles.obConnectBtn, pressed && { opacity: 0.85 }]}
+                            onPress={() => handleConnect(true)}
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color="#FFFFFF" size="small" />
+                            ) : (
+                                <Text style={styles.obConnectBtnTxt}>Turn on</Text>
+                            )}
+                        </Pressable>
+                        <Pressable
+                            style={({ pressed }) => [styles.obActivitySkipBtn, pressed && { opacity: 0.6 }]}
+                            onPress={() => handleConnect(false)}
+                            disabled={loading}
+                        >
+                            <Text style={styles.obActivitySkipTxt}>No, thanks</Text>
+                        </Pressable>
+                    </View>
+                </View>
 
             ) : !isConnected && onboardingStep === 'confirm' ? (
                 /* ── Onboarding: Post-Permission Confirmation ────── */
@@ -1136,7 +1202,8 @@ export default function HealthConnectSetupScreen({ navigation }) {
                                     { key: 'sleep', label: 'Sleep (Wearable)', icon: <Moon size={14} color="#8B5CF6" /> },
                                     { key: 'usageStats', label: 'Phone Inactivity (Sleep fallback)', icon: <Smartphone size={14} color="#6366F1" /> },
                                     { key: 'oxygen', label: 'Oxygen Level', icon: <Wind size={14} color="#06B6D4" /> },
-                                    { key: 'steps', label: 'Steps', icon: <Activity size={14} color="#10B981" /> },
+                                    { key: 'steps', label: 'Steps (Health Connect)', icon: <Activity size={14} color="#10B981" /> },
+                                    { key: 'pedometer', label: 'Phone Step Sensor (Steps fallback)', icon: <Activity size={14} color="#10B981" /> },
                                     { key: 'exercise', label: 'Exercise', icon: <Flame size={14} color="#F59E0B" /> },
                                     { key: 'weight', label: 'Weight', icon: <Scale size={14} color="#6366F1" /> },
                                     { key: 'glucose', label: 'Blood Glucose', icon: <Droplet size={14} color="#EC4899" /> },
@@ -1163,6 +1230,21 @@ export default function HealthConnectSetupScreen({ navigation }) {
                                                             }
                                                         ]
                                                     );
+                                                }
+                                            } else if (item.key === 'pedometer') {
+                                                if (!permissionsMap.pedometer) {
+                                                    try {
+                                                        const { Pedometer } = require('expo-sensors');
+                                                        const { status } = await Pedometer.requestPermissionsAsync();
+                                                        if (status === 'granted') {
+                                                            AlertManager.alert('Permission Granted', 'CareMyMed will now sync steps directly from your phone sensor.');
+                                                        }
+                                                        checkCurrentStatus();
+                                                    } catch (e) {
+                                                        console.warn('Failed to request pedometer permission:', e);
+                                                    }
+                                                } else {
+                                                    AlertManager.alert('Permission Enabled', 'Device step counter is active and will count steps when Health Connect data is unavailable.');
                                                 }
                                             } else {
                                                 openHealthSettings();
@@ -1288,6 +1370,13 @@ export default function HealthConnectSetupScreen({ navigation }) {
                             </View>
                         ));
                     })()}
+                    
+                    <View style={styles.bentoTipContainer}>
+                        <HelpCircle size={14} color={colors.textMuted} style={{ marginRight: 6, marginTop: 1 }} />
+                        <Text style={styles.bentoTipText}>
+                            No wearable? Phone-only users can log Vitals (Heart Rate, Blood Pressure, SpO2, and Blood Glucose) manually on the Health Profile screen.
+                        </Text>
+                    </View>
                 </Animated.View>
 
                 {/* ── Today's Sync Timeline ──────────────────────── */}
@@ -1367,77 +1456,60 @@ export default function HealthConnectSetupScreen({ navigation }) {
                     <View style={styles.optionalSection}>
                         <Text style={styles.sectionTitleLabel}>Optional Categories to Sync</Text>
                         
-                        <View style={styles.optCard}>
-                            <View style={styles.optCardHeader}>
-                                <Smartphone size={20} color={colors.primary} />
-                                <Text style={styles.optCardTitle}>Steps & Daily Activity</Text>
-                                <Pressable 
-                                    style={[styles.optToggle, syncActivityEnabled && styles.optToggleActive]} 
-                                    onPress={() => toggleOptionalCategory('activity')}
-                                >
-                                    <Text style={[styles.optToggleTxt, syncActivityEnabled && styles.optToggleTxtActive]}>
-                                        {syncActivityEnabled ? 'Enabled' : 'Enable'}
-                                    </Text>
-                                </Pressable>
+                        {[
+                            { key: 'activity', title: 'Steps & Daily Activity', desc: 'Sync daily steps, distance, active calories burned, and flights climbed.', icon: <Smartphone size={20} color={colors.primary} />, enabled: syncActivityEnabled },
+                            { key: 'body', title: 'Weight & Body Composition', desc: 'Sync weight, height, and body fat percentage snapshots.', icon: <Scale size={20} color={colors.primary} />, enabled: syncBodyEnabled },
+                            { key: 'glucose', title: 'Blood Glucose Monitoring', desc: 'Sync continuous/manual blood glucose metrics.', icon: <Droplet size={20} color={colors.primary} />, enabled: syncGlucoseEnabled },
+                            { key: 'extvitals', title: 'VO₂ Max & Respiratory Rate', desc: 'Sync cardiovascular efficiency (VO₂ max) and sleep breathing rates.', icon: <Activity size={20} color={colors.primary} />, enabled: syncExtVitalsEnabled },
+                        ].map((cat) => (
+                            <View key={cat.key} style={styles.optCard}>
+                                <View style={styles.optCardHeader}>
+                                    {cat.icon}
+                                    <Text style={styles.optCardTitle}>{cat.title}</Text>
+                                    <Pressable 
+                                        style={({ pressed }) => [
+                                            {
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                gap: 6,
+                                                paddingHorizontal: 12,
+                                                paddingVertical: 7,
+                                                borderRadius: 20,
+                                                backgroundColor: cat.enabled ? '#ECFDF5' : '#F1F5F9',
+                                                borderWidth: 1.5,
+                                                borderColor: cat.enabled ? '#A7F3D0' : '#E2E8F0',
+                                                shadowColor: cat.enabled ? '#10B981' : '#0F172A',
+                                                shadowOffset: { width: 0, height: 2 },
+                                                shadowOpacity: cat.enabled ? 0.12 : 0,
+                                                shadowRadius: 6,
+                                                elevation: cat.enabled ? 2 : 0,
+                                            },
+                                            pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }
+                                        ]} 
+                                        onPress={() => toggleOptionalCategory(cat.key)}
+                                    >
+                                        {cat.enabled ? (
+                                            <CheckCircle2 size={15} color="#059669" strokeWidth={2.5} />
+                                        ) : (
+                                            <View style={{ width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: '#94A3B8' }} />
+                                        )}
+                                        <Text
+                                            style={{
+                                                fontSize: 11,
+                                                fontWeight: "800",
+                                                color: cat.enabled ? '#059669' : '#64748B',
+                                                letterSpacing: 0.3,
+                                            }}
+                                        >
+                                            {cat.enabled ? 'SYNCING ON' : 'OFF · TAP TO SYNC'}
+                                        </Text>
+                                    </Pressable>
+                                </View>
+                                <Text style={styles.optCardDesc}>
+                                    {cat.desc}
+                                </Text>
                             </View>
-                            <Text style={styles.optCardDesc}>
-                                Sync daily steps, distance, active calories burned, and flights climbed.
-                            </Text>
-                        </View>
-
-                        <View style={styles.optCard}>
-                            <View style={styles.optCardHeader}>
-                                <Scale size={20} color={colors.primary} />
-                                <Text style={styles.optCardTitle}>Weight & Body Composition</Text>
-                                <Pressable 
-                                    style={[styles.optToggle, syncBodyEnabled && styles.optToggleActive]} 
-                                    onPress={() => toggleOptionalCategory('body')}
-                                >
-                                    <Text style={[styles.optToggleTxt, syncBodyEnabled && styles.optToggleTxtActive]}>
-                                        {syncBodyEnabled ? 'Enabled' : 'Enable'}
-                                    </Text>
-                                </Pressable>
-                            </View>
-                            <Text style={styles.optCardDesc}>
-                                Sync weight, height, and body fat percentage snapshots.
-                            </Text>
-                        </View>
-
-                        <View style={styles.optCard}>
-                            <View style={styles.optCardHeader}>
-                                <Droplet size={20} color={colors.primary} />
-                                <Text style={styles.optCardTitle}>Blood Glucose Monitoring</Text>
-                                <Pressable 
-                                    style={[styles.optToggle, syncGlucoseEnabled && styles.optToggleActive]} 
-                                    onPress={() => toggleOptionalCategory('glucose')}
-                                >
-                                    <Text style={[styles.optToggleTxt, syncGlucoseEnabled && styles.optToggleTxtActive]}>
-                                        {syncGlucoseEnabled ? 'Enabled' : 'Enable'}
-                                    </Text>
-                                </Pressable>
-                            </View>
-                            <Text style={styles.optCardDesc}>
-                                Sync continuous/manual blood glucose metrics.
-                            </Text>
-                        </View>
-
-                        <View style={styles.optCard}>
-                            <View style={styles.optCardHeader}>
-                                <Activity size={20} color={colors.primary} />
-                                <Text style={styles.optCardTitle}>VO₂ Max & Respiratory Rate</Text>
-                                <Pressable 
-                                    style={[styles.optToggle, syncExtVitalsEnabled && styles.optToggleActive]} 
-                                    onPress={() => toggleOptionalCategory('extvitals')}
-                                >
-                                    <Text style={[styles.optToggleTxt, syncExtVitalsEnabled && styles.optToggleTxtActive]}>
-                                        {syncExtVitalsEnabled ? 'Enabled' : 'Enable'}
-                                    </Text>
-                                </Pressable>
-                            </View>
-                            <Text style={styles.optCardDesc}>
-                                Sync cardiovascular efficiency (VO₂ max) and sleep breathing rates.
-                            </Text>
-                        </View>
+                        ))}
                     </View>
 
                     {/* ── Health Connect Note Card ─────────────────── */}
@@ -1449,12 +1521,15 @@ export default function HealthConnectSetupScreen({ navigation }) {
                     </View>
 
                     {/* ── Privacy Info ──────────────────────────────── */}
-                    <View style={styles.privacySection}>
-                        <Lock size={14} color={colors.textMuted} />
-                        <Text style={styles.privacyText}>
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 20, paddingTop: 4 }}>
+                        <Lock size={14} color={'#9CA3AF'} />
+                        <Text style={{ fontSize: 12, color: '#9CA3AF', lineHeight: 18, flex: 1 }}>
                             Your health metrics are encrypted end-to-end. CareMyMed only reads records to calculate real-time insights — we never modify your native records.
                         </Text>
                     </View>
+
+                    {/* Bottom spacer — ensures last content scrolls above the floating sync bar */}
+                    <View style={{ height: 100 }} />
                 </Animated.View>
                 </>
             )}
@@ -2586,5 +2661,88 @@ const styles = StyleSheet.create({
         fontSize: 13,
         ...FONT.bold,
         color: '#FFFFFF',
+    },
+    bentoTipContainer: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        backgroundColor: colors.card || '#FFFFFF',
+        borderColor: colors.border || '#E5E7EB',
+        borderWidth: 1,
+        borderRadius: radius.md || 8,
+        padding: 12,
+        marginTop: 16,
+    },
+    bentoTipText: {
+        flex: 1,
+        fontSize: 12,
+        ...FONT.regular,
+        color: colors.textMuted || '#6B7280',
+        lineHeight: 16,
+    },
+
+    // ── Activity Tracking Explainer Step ──────────────────────────────
+    obActivityScreen: {
+        flex: 1,
+        alignItems: 'center',
+        paddingHorizontal: 28,
+        paddingTop: 32,
+        paddingBottom: 24,
+    },
+    obActivityIconWrap: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: 'rgba(96, 165, 250, 0.12)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 24,
+    },
+    obActivityTitle: {
+        fontSize: 26,
+        ...FONT.semibold,
+        color: colors.textPrimary,
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+    obActivityDesc: {
+        fontSize: 15,
+        ...FONT.regular,
+        color: colors.textSecondary,
+        textAlign: 'center',
+        lineHeight: 22,
+        marginBottom: 14,
+    },
+    obActivityDescMuted: {
+        fontSize: 13,
+        ...FONT.regular,
+        color: colors.textMuted || '#6B7280',
+        textAlign: 'center',
+        lineHeight: 19,
+        marginBottom: 32,
+    },
+    obActivityIconsRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 32,
+        marginBottom: 40,
+    },
+    obActivityIconItem: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: 0.85,
+    },
+    obActivityActions: {
+        width: '100%',
+        alignItems: 'center',
+        gap: 4,
+    },
+    obActivitySkipBtn: {
+        paddingVertical: 14,
+        paddingHorizontal: 24,
+    },
+    obActivitySkipTxt: {
+        fontSize: 15,
+        ...FONT.medium,
+        color: colors.textSecondary,
     },
 });

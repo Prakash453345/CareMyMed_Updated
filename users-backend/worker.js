@@ -369,11 +369,13 @@ async function start() {
     'patient-lifecycle',
     async (job) => {
       const { name, data } = job;
-      console.log(`[Worker] Processing patient-lifecycle job ${job.id} for event ${name}`);
-      
+      console.log(
+        `[Worker] Processing patient-lifecycle job ${job.id} for event ${name}`
+      );
+
       if (name === 'subscription_activated') {
         const { patientId, orgId } = data;
-        
+
         const Patient = require('./src/models/Patient');
         const patientObj = await Patient.findById(patientId);
         if (!patientObj) {
@@ -383,7 +385,9 @@ async function start() {
         // Idempotency check:
         // If a care manager is already assigned, we do NOT run AssignmentService to prevent double assignments / races.
         if (patientObj.assigned_manager_id) {
-          console.log(`[Worker] Patient ${patientId} already has manager assigned: ${patientObj.assigned_manager_id}. Skipping assignment.`);
+          console.log(
+            `[Worker] Patient ${patientId} already has manager assigned: ${patientObj.assigned_manager_id}. Skipping assignment.`
+          );
         } else {
           const AssignmentService = require('./src/services/AssignmentService');
           await AssignmentService.assignManager(patientId, orgId);
@@ -402,7 +406,8 @@ async function start() {
             patient_id: patientId,
             type: 'system',
             title: 'Welcome to CareMyMed! 🎉',
-            message: 'Your account is now active. Explore the app while we appoint your dedicated caller.',
+            message:
+              'Your account is now active. Explore the app while we appoint your dedicated caller.',
             target_screen: 'HealthProfile',
           });
         }

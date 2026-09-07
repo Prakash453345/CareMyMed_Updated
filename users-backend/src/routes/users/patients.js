@@ -100,8 +100,6 @@ async function refreshHealthScoreCache(patientId, targetDate = null) {
 
 // ─── Subscription & Onboarding ────────────────────────────────────────────────
 
-
-
 // ─── Public endpoints ─────────────────────────────────────────────────────────
 
 router.get('/cities', async (req, res) => {
@@ -286,7 +284,10 @@ router.post('/subscribe', authenticateSession, async (req, res) => {
     // We no longer block active users from subscribing.
     // If they are already active, we just stack their days in `subscribeAndSeedDemoData`.
 
-    patient = await SubscriptionService.activateSubscription(patient, resolvedPlanId);
+    patient = await SubscriptionService.activateSubscription(
+      patient,
+      resolvedPlanId
+    );
 
     res.json({
       success: true,
@@ -765,7 +766,10 @@ router.post('/me/prescriptions', authenticateSession, async (req, res) => {
 
     // In development mode, automatically simulate a caretaker review after 8 seconds
     if (process.env.NODE_ENV === 'development') {
-      const savedRxId = patient.uploaded_prescriptions[patient.uploaded_prescriptions.length - 1]._id;
+      const savedRxId =
+        patient.uploaded_prescriptions[
+          patient.uploaded_prescriptions.length - 1
+        ]._id;
       setTimeout(async () => {
         try {
           const freshPatient = await Patient.findById(patient._id);
@@ -775,15 +779,22 @@ router.post('/me/prescriptions', authenticateSession, async (req, res) => {
               rx.status = 'reviewed';
               rx.reviewed_by = 'Care AI Assistant';
               rx.reviewed_at = new Date();
-              rx.reviewer_notes = 'Prescription verified. Added prescribed medications to care plan.';
+              rx.reviewer_notes =
+                'Prescription verified. Added prescribed medications to care plan.';
               await freshPatient.save();
-              logger.info('Simulated prescription auto-review completed in development', {
-                patientId: freshPatient._id,
-                prescriptionId: savedRxId,
-              });
+              logger.info(
+                'Simulated prescription auto-review completed in development',
+                {
+                  patientId: freshPatient._id,
+                  prescriptionId: savedRxId,
+                }
+              );
 
               // Send push notification if token is available
-              if (freshPatient.expo_push_token && freshPatient.push_notifications_enabled !== false) {
+              if (
+                freshPatient.expo_push_token &&
+                freshPatient.push_notifications_enabled !== false
+              ) {
                 const PushNotificationService = require('../../utils/pushNotifications');
                 await PushNotificationService.sendPush(
                   freshPatient.expo_push_token,
@@ -794,9 +805,12 @@ router.post('/me/prescriptions', authenticateSession, async (req, res) => {
             }
           }
         } catch (simErr) {
-          logger.error('Failed to run development simulated prescription auto-review', {
-            error: simErr.message,
-          });
+          logger.error(
+            'Failed to run development simulated prescription auto-review',
+            {
+              error: simErr.message,
+            }
+          );
         }
       }, 8000);
     }
@@ -1398,25 +1412,33 @@ router.get('/me/caller', authenticateSession, async (req, res) => {
       if (caller) {
         // Sync caller onto the patient record; only set manager if patient doesn't already have one
         const syncUpdate = { assigned_caller_id: caller._id };
-        if (caller.manager_id && !patient.assigned_manager_id && !patient.care_manager_id) {
+        if (
+          caller.manager_id &&
+          !patient.assigned_manager_id &&
+          !patient.care_manager_id
+        ) {
           syncUpdate.assigned_manager_id = caller.manager_id;
           syncUpdate.care_manager_id = caller.manager_id;
         }
-        await Patient.updateOne(
-          { _id: patient._id },
-          { $set: syncUpdate }
-        );
+        await Patient.updateOne({ _id: patient._id }, { $set: syncUpdate });
         req.patient = await Patient.findById(patient._id);
-        logger.info('Synced assigned_caller_id (manager preserved if existing)', {
-          patientId: patient._id,
-          callerId: caller._id,
-          existingManagerId: patient.assigned_manager_id || patient.care_manager_id || null,
-          callerManagerId: caller.manager_id || null,
-        });
+        logger.info(
+          'Synced assigned_caller_id (manager preserved if existing)',
+          {
+            patientId: patient._id,
+            callerId: caller._id,
+            existingManagerId:
+              patient.assigned_manager_id || patient.care_manager_id || null,
+            callerManagerId: caller.manager_id || null,
+          }
+        );
 
         // Populate manager: use patient's existing manager, or fall back to caller's
         if (!manager) {
-          const mgrIdToUse = patient.assigned_manager_id || patient.care_manager_id || caller.manager_id;
+          const mgrIdToUse =
+            patient.assigned_manager_id ||
+            patient.care_manager_id ||
+            caller.manager_id;
           if (mgrIdToUse) {
             manager = await Profile.findById(mgrIdToUse).select(
               'fullName phone email profile_photo_url languages_spoken experience_years last_active_at'
@@ -1429,16 +1451,28 @@ router.get('/me/caller', authenticateSession, async (req, res) => {
     // Backfill: Only if patient has NO manager at all, resolve from caller.manager_id
     if (caller && !manager) {
       // Use patient's existing manager first, then fall back to caller's manager
-      const backfillMgrId = patient.assigned_manager_id || patient.care_manager_id || caller.manager_id;
+      const backfillMgrId =
+        patient.assigned_manager_id ||
+        patient.care_manager_id ||
+        caller.manager_id;
       if (backfillMgrId) {
         manager = await Profile.findById(backfillMgrId).select(
           'fullName phone email profile_photo_url languages_spoken experience_years last_active_at'
         );
         // Only write to DB if patient had no manager at all (don't overwrite existing)
-        if (manager && !patient.assigned_manager_id && !patient.care_manager_id) {
+        if (
+          manager &&
+          !patient.assigned_manager_id &&
+          !patient.care_manager_id
+        ) {
           await Patient.updateOne(
             { _id: patient._id },
-            { $set: { assigned_manager_id: backfillMgrId, care_manager_id: backfillMgrId } }
+            {
+              $set: {
+                assigned_manager_id: backfillMgrId,
+                care_manager_id: backfillMgrId,
+              },
+            }
           );
           logger.info('Backfilled assigned_manager_id (no existing manager)', {
             patientId: patient._id,
@@ -2238,9 +2272,8 @@ router.put(
 router.get('/me/ai-prediction', authenticateSession, async (req, res) => {
   try {
     const patient = await getOrCreatePatient(req);
-    const prediction = await AIVitalPrediction.findOne({
-      patient_id: patient._id,
-    });
+    const ForecastRepository = require('../../repositories/ForecastRepository');
+    const prediction = await ForecastRepository.getLatestForecast(patient._id);
     res.json({ prediction: prediction || null });
   } catch (error) {
     logger.error('Get AI Prediction error', {
@@ -2248,6 +2281,100 @@ router.get('/me/ai-prediction', authenticateSession, async (req, res) => {
       patientId: req.user?.id,
     });
     res.status(500).json({ error: 'Failed to fetch AI Prediction' });
+  }
+});
+
+/**
+ * GET /api/users/patients/me/vitals/forecast
+ * Clean status schema endpoint returning prediction, LLM explanation, and unlock progress.
+ */
+router.get('/me/vitals/forecast', authenticateSession, async (req, res) => {
+  try {
+    const patient = await getOrCreatePatient(req);
+    const date14DaysAgo = new Date();
+    date14DaysAgo.setDate(date14DaysAgo.getDate() - 14);
+
+    const vitals = await VitalLog.find({
+      patient_id: patient._id,
+      date: { $gte: date14DaysAgo },
+    }).lean();
+
+    const distinctDays = new Set(
+      vitals.map((v) => new Date(v.date).toISOString().slice(0, 10))
+    ).size;
+
+    const ForecastRepository = require('../../repositories/ForecastRepository');
+    const predictionDoc = await ForecastRepository.getLatestForecast(patient._id);
+
+    if (distinctDays < 7) {
+      return res.json({
+        status: 'building',
+        progress: {
+          loggedDays: distinctDays,
+          requiredDays: 7,
+          remainingDays: Math.max(0, 7 - distinctDays),
+          progressPercent: Math.round((distinctDays / 7) * 100),
+        },
+        forecast: null,
+        confidence: 'Low',
+        confidenceScore: 0.4,
+        explanation: null,
+        metadata: null,
+      });
+    }
+
+    if (!predictionDoc) {
+      return res.json({
+        status: 'building',
+        progress: {
+          loggedDays: distinctDays,
+          requiredDays: 7,
+          remainingDays: 0,
+          progressPercent: 100,
+        },
+        forecast: null,
+        confidence: 'Moderate',
+        explanation: 'Generating initial forecast in background...',
+        metadata: null,
+      });
+    }
+
+    // Check if forecast is stale (older than 7 days)
+    const isStale =
+      predictionDoc.updated_at &&
+      new Date() - new Date(predictionDoc.updated_at) > 7 * 24 * 60 * 60 * 1000;
+
+    const status = isStale ? 'stale' : predictionDoc.status || 'ready';
+
+    res.json({
+      status,
+      progress: {
+        loggedDays: Math.max(distinctDays, 7),
+        requiredDays: 7,
+        remainingDays: 0,
+        progressPercent: 100,
+      },
+      forecast: {
+        health_label: predictionDoc.health_label || 'Normal',
+        trend: predictionDoc.trend || 'stable',
+        predictions: predictionDoc.predictions || [],
+      },
+      confidence: predictionDoc.confidence_label || 'High',
+      confidenceScore: predictionDoc.confidence_score || 0.88,
+      explanation: predictionDoc.explanation,
+      metadata: {
+        model: predictionDoc.metadata?.model || 'prophet',
+        version: predictionDoc.metadata?.version || '1.2',
+        generatedBy: predictionDoc.metadata?.generatedBy || 'forecast-service',
+        generatedAt: predictionDoc.updated_at || predictionDoc.created_at,
+        historyWindowDays: predictionDoc.metadata?.historyWindowDays || 14,
+        predictionWindowDays: predictionDoc.metadata?.predictionWindowDays || 3,
+        trainingSamples: predictionDoc.metadata?.trainingSamples || distinctDays,
+      },
+    });
+  } catch (error) {
+    logger.error('Get vitals forecast error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch vitals forecast' });
   }
 });
 
@@ -2329,12 +2456,18 @@ router.post('/me/vitals', authenticateSession, async (req, res) => {
       source: vitalLog.source,
     });
 
-    // Trigger health state recomputation
+    // Trigger health score recomputation and debounced AI forecast generation
     refreshHealthScoreCache(patient._id).catch((e) =>
       logger.warn('Vitals trigger recompute state failed', {
         error: e.message,
       })
     );
+    try {
+      const AIPredictionService = require('../../services/aiPredictionService');
+      AIPredictionService.queuePatientForecast(patient._id);
+    } catch (forecastErr) {
+      logger.warn('Debounced AI forecast queue trigger warning:', forecastErr.message);
+    }
 
     res
       .status(201)

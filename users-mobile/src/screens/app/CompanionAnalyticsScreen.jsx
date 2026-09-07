@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Dimensions, ActivityIndicator, Image, Animated, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiService } from '../../lib/api';
-import { HeartPulse, Activity, Bell, ShieldCheck, AlertCircle, ChevronLeft, RefreshCw, Lightbulb, Sparkles, Calendar, TrendingUp, Pill, Phone, ChevronRight, Eye, Flame, ArrowUpRight, Clock, Smile, ClipboardList } from 'lucide-react-native';
+import { HeartPulse, Activity, Bell, ShieldCheck, CircleAlert, ChevronLeft, RefreshCw, Lightbulb, Sparkles, Calendar, TrendingUp, Pill, Phone, ChevronRight, Eye, Flame, ArrowUpRight, Clock, Smile, ClipboardList } from 'lucide-react-native';
 import AlertManager from '../../utils/AlertManager';
 import { colors, radius, spacing, shadows, layout, motion, anim, useReduceMotion } from '../../theme';
 import usePatientStore from '../../store/usePatientStore';
@@ -927,7 +927,7 @@ export default function CompanionAnalyticsScreen() {
                             <View style={[styles.accentStrip, { backgroundColor: '#F59E0B' }]} />
                             <View style={styles.glassAlertContent}>
                                 <View style={styles.glassAlertHeader}>
-                                    <AlertCircle color="#F59E0B" size={15} />
+                                    <CircleAlert color="#F59E0B" size={15} />
                                     <Text style={[styles.glassAlertTitle, { color: '#B45309' }]}>Limited Data Available</Text>
                                 </View>
                                 <Text style={[styles.glassAlertText, { color: '#D97706' }]}>
@@ -1042,7 +1042,7 @@ export default function CompanionAnalyticsScreen() {
                                 <View style={[styles.accentStrip, { backgroundColor: '#EF4444' }]} />
                                 <View style={styles.glassAlertContent}>
                                     <View style={styles.glassAlertHeader}>
-                                        <AlertCircle size={15} color="#EF4444" />
+                                        <CircleAlert size={15} color="#EF4444" />
                                         <Text style={[styles.glassAlertTitle, { color: '#991B1B' }]}>Early Warning Alert</Text>
                                     </View>
                                     <Text style={[styles.glassAlertText, { color: '#B91C1C' }]}>

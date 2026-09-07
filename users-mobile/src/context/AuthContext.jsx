@@ -241,7 +241,38 @@ export function AuthProvider({ children }) {
                 if (apiTok?.access_token) {
                     if (__DEV__) console.log('[Auth] Fetching profile + patient...');
 
-                    const profileRes = await apiService.auth.getProfile().catch(() => ({ data: null }));
+                    // Hydrate immediately from disk cache FIRST so AppNavigator sees authenticated user with 0 flash
+                    const initialCachedProfile = await getCachedProfile().catch(() => null);
+                    if (initialCachedProfile) {
+                        const id = initialCachedProfile.id || initialCachedProfile._id;
+                        setCacheUserId(id);
+                        setProfile(initialCachedProfile);
+                        profileRef.current = initialCachedProfile;
+                        setUser({ id, email: initialCachedProfile.email });
+                        setSession({ access_token: apiTok.access_token, user: { id } });
+                        const initialCachedPat = await getCachedPatient().catch(() => null);
+                        if (initialCachedPat) {
+                            setPatient(initialCachedPat);
+                            usePatientStore.getState().setPatient(initialCachedPat);
+                        }
+                    }
+
+                    let profileRes = null;
+                    let isUnauthorized = false;
+                    try {
+                        profileRes = await apiService.auth.getProfile();
+                    } catch (err) {
+                        if (err.response?.status === 401 || err.response?.status === 403) {
+                            isUnauthorized = true;
+                        }
+                    }
+
+                    if (isUnauthorized) {
+                        if (__DEV__) console.warn('[Auth] Background profile refresh returned 401/403. Session expired. Signing out...');
+                        await signOut();
+                        return;
+                    }
+
                     const resolvedRole = profileRes?.data?.profile?.role;
                     // Only fetch patient data for patient roles — companions get a 403 from /patients/me
                     if (resolvedRole !== 'companion') {
@@ -260,7 +291,7 @@ export function AuthProvider({ children }) {
                         setUser(userData);
                         setSession({ access_token: apiTok.access_token, user: userData });
                         analytics.identify(userData.id, { role: profileData.role });
-                    } else {
+                    } else if (!initialCachedProfile) {
                         // Network responded but returned no profile — serve cache.
                         const cached = await getCachedProfile();
                         if (cached) {

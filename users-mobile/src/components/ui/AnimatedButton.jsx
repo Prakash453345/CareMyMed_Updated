@@ -1,22 +1,13 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, Pressable, ActivityIndicator, Platform, View } from 'react-native';
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withSpring,
-    withTiming,
-} from 'react-native-reanimated';
-import { reanimatedMotion } from '../../theme/reanimatedMotion';
+import React, { useEffect, useRef } from 'react';
+import { StyleSheet, Pressable, ActivityIndicator, View, Animated } from 'react-native';
 import { HapticPatterns } from '../../utils/haptics';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function AnimatedButton({
     children,
     onPress,
     disabled = false,
     loading = false,
-    hapticType = 'selection', // 'selection' | 'log' | 'milestone' | 'none'
+    hapticType = 'selection',
     pressScale = 0.97,
     backgroundColor = '#7C3AED',
     rippleColor = 'rgba(255, 255, 255, 0.2)',
@@ -25,22 +16,34 @@ export default function AnimatedButton({
     loaderColor = '#FFFFFF',
     ...props
 }) {
-    const scale = useSharedValue(1);
-    const opacity = useSharedValue(1);
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+    const opacityAnim = useRef(new Animated.Value(disabled ? 0.5 : 1)).current;
 
     useEffect(() => {
-        opacity.value = withTiming(disabled ? 0.5 : 1, {
-            duration: reanimatedMotion.durations.fast,
-        });
-    }, [disabled, opacity]);
+        Animated.timing(opacityAnim, {
+            toValue: disabled ? 0.5 : 1,
+            duration: 150,
+            useNativeDriver: true,
+        }).start();
+    }, [disabled, opacityAnim]);
 
     const handlePressIn = () => {
         if (disabled || loading) return;
-        scale.value = withSpring(pressScale, reanimatedMotion.springs.snappy);
+        Animated.spring(scaleAnim, {
+            toValue: pressScale,
+            useNativeDriver: true,
+            speed: 20,
+            bounciness: 4,
+        }).start();
     };
 
     const handlePressOut = () => {
-        scale.value = withSpring(1, reanimatedMotion.springs.snappy);
+        Animated.spring(scaleAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+            speed: 20,
+            bounciness: 4,
+        }).start();
     };
 
     const handlePress = () => {
@@ -51,15 +54,8 @@ export default function AnimatedButton({
         if (onPress) onPress();
     };
 
-    const animatedStyle = useAnimatedStyle(() => {
-        return {
-            opacity: opacity.value,
-            transform: [{ scale: scale.value }],
-        };
-    });
-
     return (
-        <AnimatedPressable
+        <Pressable
             disabled={disabled || loading}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
@@ -69,22 +65,24 @@ export default function AnimatedButton({
                     ? { color: rippleColor, borderless: false }
                     : null
             }
-            style={[
-                styles.button,
-                { backgroundColor },
-                animatedStyle,
-                style,
-            ]}
+            style={style}
             {...props}
         >
-            <View style={[styles.contentContainer, contentStyle]}>
-                {loading ? (
-                    <ActivityIndicator size="small" color={loaderColor} testID="loader" />
-                ) : (
-                    children
-                )}
-            </View>
-        </AnimatedPressable>
+            <Animated.View
+                style={[
+                    styles.button,
+                    { backgroundColor, opacity: opacityAnim, transform: [{ scale: scaleAnim }] },
+                ]}
+            >
+                <View style={[styles.contentContainer, contentStyle]}>
+                    {loading ? (
+                        <ActivityIndicator size="small" color={loaderColor} testID="loader" />
+                    ) : (
+                        children
+                    )}
+                </View>
+            </Animated.View>
+        </Pressable>
     );
 }
 

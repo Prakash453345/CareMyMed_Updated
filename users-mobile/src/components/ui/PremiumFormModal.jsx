@@ -15,10 +15,57 @@ import {
     ActivityIndicator,
     Dimensions,
     PanResponder,
+    DeviceEventEmitter,
+    LayoutAnimation,
+    UIManager,
 } from 'react-native';
-import { X } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { X, Save, TriangleAlert } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius, motion } from '../../theme';
 import ScalePressable from './ScalePressable';
+
+class ModalContentErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+    componentDidCatch(error, errorInfo) {
+        console.error('[ModalContentErrorBoundary] Caught inside modal:', error?.message);
+    }
+    handleRetry = () => {
+        this.setState({ hasError: false, error: null });
+    };
+    render() {
+        if (this.state.hasError) {
+            return (
+                <View style={{ padding: 24, alignItems: 'center', justifyContent: 'center' }}>
+                    <TriangleAlert size={36} color="#EF4444" style={{ marginBottom: 12 }} />
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 4, textAlign: 'center' }}>
+                        Form Encountered an Issue
+                    </Text>
+                    <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginBottom: 16, lineHeight: 18 }}>
+                        An unexpected error occurred loading this form section. The rest of your app remains safe.
+                    </Text>
+                    <Pressable
+                        style={{ backgroundColor: '#8B5CF6', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 }}
+                        onPress={this.handleRetry}
+                    >
+                        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Try Again</Text>
+                    </Pressable>
+                </View>
+            );
+        }
+        return this.props.children;
+    }
+}
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const FONT = {
     regular: { fontFamily: 'Inter', fontWeight: '400' },
@@ -31,21 +78,13 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 /**
  * PremiumFormModal — A universal, keyboard-safe, bottom-sheet form wrapper.
- *
- * Props:
- *   visible       - boolean controlling modal visibility
- *   title         - string header title
- *   onClose       - function called when user closes
- *   onSave        - function called when user taps save (optional; if omitted, no sticky button)
- *   saveText      - string for save button label (default: "Save")
- *   saving        - boolean to show loading spinner on save button
- *   saveDisabled  - boolean to disable save button
- *   children      - your custom form fields
- *   headerRight   - optional JSX to render in header right area (e.g. delete button)
  */
+let activeModalsCount = 0;
+
 const PremiumFormModal = ({
     visible,
     title = 'Edit',
+    subtitle,
     onClose,
     onSave,
     saveText = 'Save',
@@ -54,12 +93,29 @@ const PremiumFormModal = ({
     children,
     headerRight,
     centered = false,
+    floating = false,
+    scrollEnabled = true,
     icon,
+    iconColor = '#7C3AED',
+    iconBg = '#F5F3FF',
 }) => {
+    let insets = { top: 0, bottom: 0 };
+    try {
+        insets = useSafeAreaInsets();
+    } catch (e) {
+        // Safe fallback if called outside SafeAreaProvider
+    }
+
     const slideAnim = useRef(new Animated.Value(0)).current;
     const backdropAnim = useRef(new Animated.Value(0)).current;
     const [keyboardHeight, setKeyboardHeight] = useState(0);
     const panY = useRef(new Animated.Value(0)).current;
+    const wasVisibleRef = useRef(false);
+
+    const FOOTER_HEIGHT = 52;
+    const dynamicScrollPadding = onSave
+        ? FOOTER_HEIGHT + (insets?.bottom || 0) + (keyboardHeight > 0 ? 36 : 28)
+        : 32;
 
     useEffect(() => {
         if (visible) {
@@ -67,7 +123,8 @@ const PremiumFormModal = ({
             Animated.parallel([
                 Animated.spring(slideAnim, {
                     toValue: 1,
-                    ...motion.springSoft,
+                    friction: 7,
+                    tension: 45,
                     useNativeDriver: true,
                 }),
                 Animated.timing(backdropAnim, {
@@ -76,20 +133,44 @@ const PremiumFormModal = ({
                     useNativeDriver: true,
                 }),
             ]).start();
+
+            if (!wasVisibleRef.current) {
+                wasVisibleRef.current = true;
+                activeModalsCount++;
+                DeviceEventEmitter.emit('FORM_MODAL_VISIBLE', activeModalsCount > 0);
+            }
         } else {
             slideAnim.setValue(0);
             backdropAnim.setValue(0);
             panY.setValue(0);
+
+            if (wasVisibleRef.current) {
+                wasVisibleRef.current = false;
+                activeModalsCount = Math.max(0, activeModalsCount - 1);
+                DeviceEventEmitter.emit('FORM_MODAL_VISIBLE', activeModalsCount > 0);
+            }
         }
+
+        return () => {
+            if (wasVisibleRef.current) {
+                wasVisibleRef.current = false;
+                activeModalsCount = Math.max(0, activeModalsCount - 1);
+                DeviceEventEmitter.emit('FORM_MODAL_VISIBLE', activeModalsCount > 0);
+            }
+        };
     }, [visible]);
 
-    // Track keyboard on Android for manual padding
+    // Track keyboard height with fluid LayoutAnimation height morphing
     useEffect(() => {
-        if (Platform.OS !== 'android') return;
-        const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
+        const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+        const showSub = Keyboard.addListener(showEvent, (e) => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setKeyboardHeight(e.endCoordinates.height);
         });
-        const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+        const hideSub = Keyboard.addListener(hideEvent, () => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setKeyboardHeight(0);
         });
         return () => {
@@ -128,7 +209,6 @@ const PremiumFormModal = ({
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: (_, gestureState) => {
-                // Only trigger for vertical swipes down
                 return !centered && gestureState.dy > 5 && Math.abs(gestureState.dx) < 15;
             },
             onPanResponderMove: (_, gestureState) => {
@@ -166,8 +246,29 @@ const PremiumFormModal = ({
         })
     ).current;
 
-    // On Android, we manually handle keyboard offset via bottom padding
-    const androidKeyboardPad = Platform.OS === 'android' ? keyboardHeight : 0;
+    // Organic scale morph interpolator for smooth spring entry/exit
+    const sheetScaleMorph = slideAnim.interpolate({
+        inputRange: [0, 0.6, 0.88, 1],
+        outputRange: [0.92, 0.97, 1.012, 1],
+    });
+
+    const sheetTranslateY = Animated.add(
+        slideAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [SCREEN_HEIGHT, 0],
+        }),
+        panY
+    );
+
+    const renderIcon = () => {
+        if (!icon) return null;
+        if (React.isValidElement(icon)) return icon;
+        if (typeof icon === 'function' || typeof icon === 'object') {
+            const IconComp = icon;
+            return <IconComp size={20} color={iconColor} strokeWidth={2.5} />;
+        }
+        return null;
+    };
 
     return (
         <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose} statusBarTranslucent>
@@ -176,35 +277,33 @@ const PremiumFormModal = ({
                 <Animated.View style={[styles.backdrop, { opacity: backdropAnim }]} />
             </TouchableWithoutFeedback>
 
-            <KeyboardAvoidingView
-                style={[styles.sheetWrapper, { paddingHorizontal: 20 }, centered && styles.sheetWrapperCentered]}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 20}
+            <View
+                style={[
+                    styles.sheetWrapper,
+                    centered ? { paddingHorizontal: 20 } : { paddingHorizontal: 0 },
+                    centered && styles.sheetWrapperCentered,
+                    !centered && keyboardHeight > 0 && { paddingBottom: keyboardHeight },
+                    centered && keyboardHeight > 0 && { paddingBottom: keyboardHeight / 2 }
+                ]}
+                pointerEvents="box-none"
             >
               <Animated.View
                 style={[
-                    centered ? { flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%' } : { flex: 1, justifyContent: 'center' },
+                    centered ? styles.animatedCentered : styles.animatedBottomSheet,
                     {
                         opacity: slideAnim,
                         transform: centered
                             ? [
                                   {
                                       scale: slideAnim.interpolate({
-                                          inputRange: [0, 1],
-                                          outputRange: [0.95, 1],
+                                          inputRange: [0, 0.8, 1],
+                                          outputRange: [0.92, 1.02, 1],
                                       }),
                                   },
                               ]
                             : [
-                                  {
-                                      translateY: Animated.add(
-                                          slideAnim.interpolate({
-                                              inputRange: [0, 1],
-                                              outputRange: [SCREEN_HEIGHT, 0],
-                                          }),
-                                          panY
-                                      ),
-                                  },
+                                  { translateY: sheetTranslateY },
+                                  { scale: sheetScaleMorph },
                               ],
                     },
                 ]}
@@ -213,79 +312,111 @@ const PremiumFormModal = ({
                 <View style={[
                     styles.sheetContainer,
                     centered && styles.sheetContainerCentered,
-                    androidKeyboardPad > 0 && { maxHeight: SCREEN_HEIGHT - androidKeyboardPad - 80 }
+                    floating && styles.sheetContainerFloating,
+                    keyboardHeight > 0 && { maxHeight: Math.max(280, SCREEN_HEIGHT - keyboardHeight - (Platform.OS === 'android' ? 30 : 50)) }
                 ]}>
-                    {/* Top drag handle indicator for bottom sheets */}
-                    {!centered && (
-                        <View {...panResponder.panHandlers} style={{ width: '100%', alignItems: 'center', paddingTop: 10, paddingBottom: 6 }}>
-                            <View style={styles.sheetHandle} />
-                        </View>
-                    )}
-
-                    {/* Header */}
-                    <View style={[styles.header, centered && styles.headerCentered, !centered && { paddingTop: 6 }]}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
-                            {icon && (
-                                <View style={styles.iconCircle}>
-                                    {icon}
+                    <ModalContentErrorBoundary>
+                        <KeyboardAvoidingView
+                            style={{ flex: 1 }}
+                            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                        >
+                            {/* Top drag handle indicator for bottom sheets */}
+                            {!centered && (
+                                <View {...panResponder.panHandlers} style={styles.handleHitArea}>
+                                    <View style={styles.sheetHandle} />
                                 </View>
                             )}
-                            <Text style={styles.title} numberOfLines={1}>
-                                {title}
-                            </Text>
-                        </View>
-                        <View style={styles.headerActions}>
-                            {headerRight}
-                            <Pressable
-                                onPress={handleClose}
-                                style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
-                                hitSlop={12}
-                            >
-                                <X size={22} color="#64748B" />
-                            </Pressable>
-                        </View>
-                    </View>
 
-                    {/* Scrollable Form Body */}
-                    <ScrollView
-                        style={{ flex: 1 }}
-                        contentContainerStyle={[
-                            styles.scrollContent,
-                            androidKeyboardPad > 0 && { paddingBottom: 24 },
-                        ]}
-                        showsVerticalScrollIndicator={false}
-                        keyboardShouldPersistTaps="handled"
-                        keyboardDismissMode="interactive"
-                        bounces={true}
-                        nestedScrollEnabled={true}
-                    >
-                        {children}
-                    </ScrollView>
+                            {/* Header */}
+                            <View style={[
+                                styles.header,
+                                centered && styles.headerCentered,
+                            ]}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
+                                    {icon && (
+                                        <View style={[styles.iconCircle, { backgroundColor: iconBg }]}>
+                                            {renderIcon()}
+                                        </View>
+                                    )}
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.title} numberOfLines={1}>
+                                            {title}
+                                        </Text>
+                                        {subtitle && (
+                                            <Text style={styles.subtitle} numberOfLines={2}>
+                                                {subtitle}
+                                            </Text>
+                                        )}
+                                    </View>
+                                </View>
+                                <View style={styles.headerActions}>
+                                    {headerRight}
+                                    <Pressable
+                                        onPress={handleClose}
+                                        style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
+                                        hitSlop={12}
+                                    >
+                                        <X size={18} color="#64748B" strokeWidth={2.4} />
+                                    </Pressable>
+                                </View>
+                            </View>
 
-                    {/* Sticky Save Button — always above keyboard */}
-                    {onSave && (
-                        <View style={[styles.stickyFooter, androidKeyboardPad > 0 && { paddingBottom: 12 }]}>
-                            <ScalePressable
-                                onPress={handleSave}
-                                disabled={saving || saveDisabled}
-                                pressScale={0.97}
-                                hapticType="selection"
-                                style={[
-                                    styles.saveBtn,
-                                    (saving || saveDisabled) && styles.saveBtnDisabled,
+                            {/* Scrollable Form Body */}
+                            <ScrollView
+                                style={{ flex: 1 }}
+                                scrollEnabled={scrollEnabled}
+                                contentContainerStyle={[
+                                    styles.scrollContent,
+                                    { paddingBottom: dynamicScrollPadding },
                                 ]}
+                                showsVerticalScrollIndicator={false}
+                                keyboardShouldPersistTaps="handled"
+                                keyboardDismissMode="on-drag"
+                                bounces={true}
+                                nestedScrollEnabled={true}
                             >
-                                {saving ? (
-                                    <ActivityIndicator color="#FFFFFF" size="small" />
-                                ) : (
-                                    <Text style={styles.saveBtnText}>{saveText}</Text>
-                                )}
-                            </ScalePressable>
-                        </View>
-                    )}
+                                {children}
+                            </ScrollView>
+
+                            {/* Sticky Save Button — anchored at sheet bottom with safe keyboard clearance */}
+                            {onSave && (
+                                <View style={[
+                                    styles.stickyFooter,
+                                    keyboardHeight > 0 && { paddingBottom: 16, paddingTop: 10 }
+                                ]}>
+                                    <ScalePressable
+                                        onPress={handleSave}
+                                        disabled={saving || saveDisabled}
+                                        pressScale={0.97}
+                                        hapticType="selection"
+                                        style={{ width: '100%' }}
+                                    >
+                                        <LinearGradient
+                                            colors={saveDisabled ? ['#94A3B8', '#94A3B8'] : ['#7C3AED', '#6D28D9']}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 0 }}
+                                            style={[
+                                                styles.saveBtnGradient,
+                                                (saving || saveDisabled) && { opacity: 0.6 }
+                                            ]}
+                                        >
+                                            {saving ? (
+                                                <ActivityIndicator color="#FFFFFF" size="small" />
+                                            ) : (
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                                                    <Save size={18} color="#FFFFFF" strokeWidth={2.5} />
+                                                    <Text style={styles.saveBtnText}>{saveText}</Text>
+                                                </View>
+                                            )}
+                                        </LinearGradient>
+                                    </ScalePressable>
+                                </View>
+                            )}
+                        </KeyboardAvoidingView>
+                    </ModalContentErrorBoundary>
                 </View>
               </Animated.View>
-            </KeyboardAvoidingView>
+            </View>
         </Modal>
     );
 };
@@ -293,7 +424,7 @@ const PremiumFormModal = ({
 const styles = StyleSheet.create({
     backdrop: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(15, 23, 42, 0.55)',
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
     },
     sheetWrapper: {
         position: 'absolute',
@@ -307,6 +438,16 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    animatedBottomSheet: {
+        width: '100%',
+        justifyContent: 'flex-end',
+    },
+    animatedCentered: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: '100%',
+    },
     sheetContainerCentered: {
         minHeight: 0,
         marginBottom: 0,
@@ -319,104 +460,114 @@ const styles = StyleSheet.create({
         paddingBottom: 8,
     },
     iconCircle: {
-        width: 40,
-        height: 40,
+        width: 38,
+        height: 38,
         borderRadius: 12,
-        backgroundColor: '#EFF6FF',
         alignItems: 'center',
         justifyContent: 'center',
     },
     sheetContainer: {
-        minHeight: SCREEN_HEIGHT * 0.62,
-        maxHeight: SCREEN_HEIGHT * 0.92,
+        minHeight: SCREEN_HEIGHT * 0.55,
+        maxHeight: SCREEN_HEIGHT * 0.90,
         backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
         borderBottomLeftRadius: 0,
         borderBottomRightRadius: 0,
         shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: -12 },
-        shadowOpacity: 0.1,
-        shadowRadius: 24,
-        elevation: 24,
+        shadowOffset: { width: 0, height: -8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 20,
+        elevation: 16,
         overflow: 'hidden',
         marginBottom: 0,
     },
+    sheetContainerFloating: {
+        marginHorizontal: 16,
+        marginBottom: Platform.OS === 'ios' ? 24 : 16,
+        borderRadius: 28,
+        borderBottomLeftRadius: 28,
+        borderBottomRightRadius: 28,
+    },
+    handleHitArea: {
+        width: '100%',
+        alignItems: 'center',
+        paddingTop: 8,
+        paddingBottom: 4,
+    },
     sheetHandle: {
-        width: 46,
-        height: 5,
-        borderRadius: 2.5,
-        backgroundColor: '#E2E8F0',
-        alignSelf: 'center',
-        marginTop: 10,
-        marginBottom: 2,
+        width: 36,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#CBD5E1',
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 24,
-        paddingTop: 20,
-        paddingBottom: 16,
+        paddingHorizontal: 20,
+        paddingTop: 8,
+        paddingBottom: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#F8FAFC',
+        borderBottomColor: '#F1F5F9',
     },
     title: {
-        fontSize: 20,
+        fontSize: 18,
         ...FONT.bold,
-        color: colors.textPrimary || '#0F172A',
-        flex: 1,
-        letterSpacing: -0.4,
+        color: '#0F172A',
+        letterSpacing: -0.3,
+    },
+    subtitle: {
+        fontSize: 12,
+        color: '#64748B',
+        marginTop: 1,
+        fontWeight: '500',
+        lineHeight: 16,
     },
     headerActions: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: 8,
     },
     closeBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
         backgroundColor: '#F1F5F9',
         alignItems: 'center',
         justifyContent: 'center',
     },
     scrollContent: {
-        paddingHorizontal: 24,
-        paddingTop: 16,
-        paddingBottom: 40,
+        paddingHorizontal: 20,
+        paddingTop: 14,
+        paddingBottom: 110,
         flexGrow: 1,
-        gap: 16,
+        gap: 12,
     },
     stickyFooter: {
-        paddingHorizontal: 24,
-        paddingTop: 14,
-        paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+        paddingHorizontal: 20,
+        paddingTop: 10,
+        paddingBottom: Platform.OS === 'ios' ? 30 : 16,
         borderTopWidth: 1,
-        borderTopColor: '#F8FAFC',
+        borderTopColor: '#F1F5F9',
         backgroundColor: '#FFFFFF',
     },
-    saveBtn: {
-        height: 56,
-        borderRadius: radius.lg || 16,
-        backgroundColor: colors.primary || '#2563EB',
+    saveBtnGradient: {
+        height: 48,
+        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: colors.primary || '#2563EB',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.2,
-        shadowRadius: 12,
-        elevation: 8,
-    },
-    saveBtnPressed: {
-        transform: [{ scale: 0.97 }],
-        opacity: 0.9,
+        shadowColor: '#7C3AED',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.22,
+        shadowRadius: 8,
+        elevation: 4,
     },
     saveBtnDisabled: {
         opacity: 0.5,
     },
     saveBtnText: {
-        fontSize: 17,
+        fontSize: 15,
         ...FONT.bold,
         color: '#FFFFFF',
         letterSpacing: 0.2,

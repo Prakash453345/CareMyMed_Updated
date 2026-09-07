@@ -26,6 +26,7 @@ export default function CheckoutBottomSheet({ visible, onClose, plan, onSuccess,
     const reduceMotion = useReduceMotion();
     
     // Animations
+    const isPayingRef = useRef(false);
     const slideAnim = useRef(new Animated.Value(SH)).current;
     const progressAnim = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -76,6 +77,10 @@ export default function CheckoutBottomSheet({ visible, onClose, plan, onSuccess,
     };
 
     const handlePay = async (app) => {
+        // Synchronous single-flight lock: drop microsecond double-taps immediately
+        if (step === 'processing' || isPayingRef.current) return;
+        isPayingRef.current = true;
+
         setSelectedUpi(app.id);
         setStep('processing');
 
@@ -145,6 +150,7 @@ export default function CheckoutBottomSheet({ visible, onClose, plan, onSuccess,
 
         } catch (error) {
             console.error('Payment error', error);
+            isPayingRef.current = false;
             setStep('select');
             progressAnim.setValue(0);
             AlertManager.alert('Payment Failed', 'Something went wrong with the transaction. Please try again.');

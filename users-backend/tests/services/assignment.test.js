@@ -66,7 +66,10 @@ describe('Assignment Service (Manager Allocation)', () => {
     Alert.create.mockResolvedValue({});
 
     // Act
-    const assignedManager = await AssignmentService.assignManager(patientId, orgId);
+    const assignedManager = await AssignmentService.assignManager(
+      patientId,
+      orgId
+    );
 
     // Assert
     expect(Patient.findById).toHaveBeenCalledWith(patientId);
@@ -143,7 +146,10 @@ describe('Assignment Service (Manager Allocation)', () => {
     Alert.create.mockResolvedValue({});
 
     // Act
-    const assignedManager = await AssignmentService.assignManager(patientId, orgId);
+    const assignedManager = await AssignmentService.assignManager(
+      patientId,
+      orgId
+    );
 
     // Assert
     expect(assignedManager).toEqual(globalManager);

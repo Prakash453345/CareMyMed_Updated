@@ -1,42 +1,38 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { StyleSheet, View, Animated } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
-import Animated, {
-    useSharedValue,
-    useAnimatedProps,
-    withSpring,
-} from 'react-native-reanimated';
-import { reanimatedMotion } from '../../theme/reanimatedMotion';
-
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export default function AnimatedProgressRing({
     progress = 0,
     size = 88,
     strokeWidth = 8,
-    colors = ['#A78BFA', '#7C3AED'], // gradient array
+    colors = ['#A78BFA', '#7C3AED'],
     trackColor = '#F3E8FF',
     children,
 }) {
-    const animatedProgress = useSharedValue(progress);
-
-    useEffect(() => {
-        animatedProgress.value = withSpring(
-            progress,
-            reanimatedMotion.springs.default
-        );
-    }, [progress, animatedProgress]);
-
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
 
-    const animatedProps = useAnimatedProps(() => {
-        const cappedProgress = Math.max(0, Math.min(100, animatedProgress.value));
-        const strokeDashoffset = circumference * (1 - cappedProgress / 100);
-        return {
-            strokeDashoffset,
+    const animValue = useRef(new Animated.Value(progress)).current;
+    const [offset, setOffset] = useState(circumference * (1 - Math.max(0, Math.min(100, progress)) / 100));
+
+    useEffect(() => {
+        const id = animValue.addListener(({ value: val }) => {
+            const cappedProgress = Math.max(0, Math.min(100, val));
+            setOffset(circumference * (1 - cappedProgress / 100));
+        });
+
+        Animated.spring(animValue, {
+            toValue: progress,
+            speed: 12,
+            bounciness: 4,
+            useNativeDriver: false,
+        }).start();
+
+        return () => {
+            animValue.removeListener(id);
         };
-    });
+    }, [progress, circumference, animValue]);
 
     const isGradient = Array.isArray(colors) && colors.length > 1;
 
@@ -52,7 +48,6 @@ export default function AnimatedProgressRing({
                     )}
                 </Defs>
                 
-                {/* Background Ring */}
                 <Circle
                     cx={size / 2}
                     cy={size / 2}
@@ -62,8 +57,7 @@ export default function AnimatedProgressRing({
                     fill="transparent"
                 />
 
-                {/* Animated Progress Ring */}
-                <AnimatedCircle
+                <Circle
                     cx={size / 2}
                     cy={size / 2}
                     r={radius}
@@ -71,13 +65,12 @@ export default function AnimatedProgressRing({
                     strokeWidth={strokeWidth}
                     fill="transparent"
                     strokeDasharray={`${circumference}`}
-                    animatedProps={animatedProps}
+                    strokeDashoffset={offset}
                     strokeLinecap="round"
                     transform={`rotate(-90 ${size / 2} ${size / 2})`}
                 />
             </Svg>
 
-            {/* Custom centered children inside the ring */}
             {children && <View style={styles.childContainer}>{children}</View>}
         </View>
     );

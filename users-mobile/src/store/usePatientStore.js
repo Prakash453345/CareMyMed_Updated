@@ -24,6 +24,7 @@ import WidgetBridge from '../lib/WidgetBridge';
 import i18n from '../i18n';
 import { HapticPatterns } from '../utils/haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isMedicationScheduledForToday, getFormattedScheduleLabel } from '../utils/medicationScheduler';
 
 const TIME_LABELS = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening', night: 'Night', as_needed: 'As Needed' };
 const ACCENT_MAP = { morning: '#22C55E', afternoon: '#F59E0B', evening: '#7C3AED', night: '#8B5CF6', as_needed: '#6366F1' };
@@ -158,9 +159,11 @@ const usePatientStore = create((set, get) => ({
     simulateOffline: false,
     networkSimulationMode: 'online', // 'online' | 'offline' | 'flaky' | 'slow'
     lastSyncTimestamp: null,
+    reduceMotion: false,
     _optimisticMeds: {},
     newlyUnlockedAchievement: null,
     clearNewlyUnlockedAchievement: () => set({ newlyUnlockedAchievement: null }),
+    setReduceMotion: (val) => set({ reduceMotion: !!val }),
 
     setPatient: (patient) => {
         const current = get().patient;
@@ -174,7 +177,10 @@ const usePatientStore = create((set, get) => ({
             }
         }).catch(() => {});
     },
+    companionSelectedPatientId: null,
+    companionSelectedPatientName: null,
     setCompanionSelectedPatientId: (id) => set({ companionSelectedPatientId: id }),
+    setCompanionSelectedPatientName: (name) => set({ companionSelectedPatientName: name }),
     setSyncState: (state) => set({ syncState: state }),
     setPendingSyncCount: (count) => set({ pendingSyncCount: count }),
     setPendingInterventionsCount: (count) => set({ pendingInterventionsCount: typeof count === 'function' ? count(get().pendingInterventionsCount) : count }),
@@ -185,6 +191,7 @@ const usePatientStore = create((set, get) => ({
     resetStore: () => set({
         patient: null,
         companionSelectedPatientId: null,
+        companionSelectedPatientName: null,
         vitals: null,
         vitalsHistory: [],
         aiPrediction: null,
@@ -311,27 +318,32 @@ const usePatientStore = create((set, get) => ({
                 }
 
                 const optRef = { ...get()._optimisticMeds };
-                const freshMeds = (dashData.meds?.log?.medicines || []).map(m => {
-                    const id = `${m.medicine_name}_${m.scheduled_time}`;
-                    const optTs = optRef[id];
-                    let isTaken = m.taken;
-                    if (optTs) {
-                        if (isTaken) delete optRef[id];
-                        else if (Date.now() - optTs < 60000) isTaken = true;
-                        else delete optRef[id];
-                    }
-                    return {
-                        id,
-                        name: m.medicine_name,
-                        dosage: m.dosage || 'As prescribed',
-                        instructions: m.instructions || '',
-                        time: i18n.t(`time_slots.${m.scheduled_time}`, { defaultValue: TIME_LABELS[m.scheduled_time] || m.scheduled_time }),
-                        type: m.scheduled_time,
-                        taken: isTaken,
-                        accent: ACCENT_MAP[m.scheduled_time] || '#6366F1',
-                        refillInfo: m.refillInfo || null,
-                    };
-                });
+                const freshMeds = (dashData.meds?.log?.medicines || [])
+                    .map(m => {
+                        const id = `${m.medicine_name}_${m.scheduled_time}`;
+                        const optTs = optRef[id];
+                        let isTaken = m.taken;
+                        if (optTs) {
+                            if (isTaken) delete optRef[id];
+                            else if (Date.now() - optTs < 60000) isTaken = true;
+                            else delete optRef[id];
+                        }
+                        return {
+                            id,
+                            name: m.medicine_name,
+                            dosage: m.dosage || 'As prescribed',
+                            instructions: m.instructions || '',
+                            time: i18n.t(`time_slots.${m.scheduled_time}`, { defaultValue: TIME_LABELS[m.scheduled_time] || m.scheduled_time }),
+                            type: m.scheduled_time,
+                            taken: isTaken,
+                            accent: ACCENT_MAP[m.scheduled_time] || '#6366F1',
+                            refillInfo: m.refillInfo || null,
+                            daysOfWeek: m.daysOfWeek || m.days_of_week || null,
+                            frequency: m.frequency || m.frequency_type || null,
+                            scheduleBadge: getFormattedScheduleLabel(m),
+                        };
+                    })
+                    .filter(m => isMedicationScheduledForToday(m));
 
                 const SLOT_ORDER = { morning: 1, afternoon: 2, evening: 3, night: 4, as_needed: 5 };
                 freshMeds.sort((a, b) => {
@@ -557,6 +569,8 @@ const usePatientStore = create((set, get) => ({
                         accent: ACCENT_MAP[m.scheduled_time] || '#6366F1',
                         preferred_time: m.preferred_time || prefs[m.scheduled_time] || '',
                         refillInfo: m.refillInfo || null,
+                        frequency: m.frequency || m.frequency_type || null,
+                        times: m.times || m.scheduled_times || null,
                     };
                 });
 
@@ -697,9 +711,7 @@ const usePatientStore = create((set, get) => ({
                 taken: targetState,
             });
 
-            // Re-fetch medications + weekly adherence so chart/avg update immediately
-            get().fetchMedications();
-            get().fetchDashboard(true);
+            // State is already updated optimistically in local store; network sync completed successfully.
         } catch (err) {
             if ((err.request && !err.response) || err.code === 'ECONNABORTED' || err.message === 'Network Error') {
                 console.warn('[Store] Network error, enqueueing mutation offline:', err.message);
@@ -805,7 +817,7 @@ const usePatientStore = create((set, get) => ({
 
         try {
             await apiService.medicines.markSlotTaken({ scheduled_time: slot, marked_by: 'patient' });
-            get().fetchDashboard(true);
+            // State is already updated optimistically in local store; network sync completed successfully.
         } catch (err) {
             if ((err.request && !err.response) || err.code === 'ECONNABORTED' || err.message === 'Network Error') {
                 console.warn('[Store] Network error, enqueueing mark-slot mutation offline:', err.message);
@@ -821,6 +833,52 @@ const usePatientStore = create((set, get) => ({
             // BUG 14 FIX: actually revert instead of leaving UI wrong
             console.warn('[Store] optimisticMarkSlotTaken failed, reverting:', err.message);
             set({ dashboardMeds: prevDashboardMeds, medicationSchedule: prevSchedule });
+        }
+    },
+
+    updateMedSupply: async (med, addQty) => {
+        const prevDashboardMeds = get().dashboardMeds;
+        const prevSchedule = get().medicationSchedule;
+
+        const medId = typeof med === 'object' ? (med?.id || med?._id) : (typeof med === 'string' ? med : null);
+        const medName = typeof med === 'object' ? med?.name : (typeof med === 'string' ? med : null);
+
+        set(s => {
+            const mapMed = (m) => {
+                const isMatch = (medId && (m.id === medId || m._id === medId || String(m._id) === String(medId))) || 
+                                (medName && m.name === medName);
+                if (isMatch) {
+                    const currentInfo = m.refillInfo || { totalDoses: 30, remainingDoses: 0, alertThreshold: 5 };
+                    const newRemaining = (currentInfo.remainingDoses || 0) + addQty;
+                    const newRefillInfo = {
+                        ...currentInfo,
+                        remainingDoses: newRemaining,
+                        totalDoses: newRemaining,
+                        lastRefillDate: new Date().toISOString(),
+                    };
+                    return { ...m, refillInfo: newRefillInfo };
+                }
+                return m;
+            };
+
+            const schedule = { ...s.medicationSchedule };
+            Object.keys(schedule).forEach(k => {
+                if (Array.isArray(schedule[k])) {
+                    schedule[k] = schedule[k].map(mapMed);
+                }
+            });
+            const dashboardMeds = Array.isArray(s.dashboardMeds) ? s.dashboardMeds.map(mapMed) : [];
+            return { dashboardMeds, medicationSchedule: schedule };
+        });
+
+        try {
+            await apiService.medicines.refill(medName || medId, addQty, medId);
+            get().fetchDashboard(true);
+            return { success: true };
+        } catch (err) {
+            console.warn('[Store] updateMedSupply failed, rolling back:', err?.message);
+            set({ dashboardMeds: prevDashboardMeds, medicationSchedule: prevSchedule });
+            throw err;
         }
     },
 

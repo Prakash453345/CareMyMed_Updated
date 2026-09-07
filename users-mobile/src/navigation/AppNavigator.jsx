@@ -13,7 +13,7 @@ import {
 import Constants from 'expo-constants';
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { LayoutDashboard, Users, Pill, ShieldPlus, UserCircle, Bell, MessageSquare } from "lucide-react-native";
+import { LayoutDashboard, Users, Pill, ShieldPlus, CircleUser, Bell, MessageSquare } from "lucide-react-native";
 import { useAuth } from "../context/AuthContext";
 import {
     sendDailyWelcomeNotification,
@@ -26,10 +26,13 @@ import usePatientStore from '../store/usePatientStore';
 import NetInfo from '@react-native-community/netinfo';
 import OfflineSyncService from '../lib/OfflineSyncService';
 import { navigate } from '../lib/navigationRef';
+import { routeNotification, flushPendingNotifications } from '../utils/NotificationRouter';
 import GlobalSyncBanner from '../components/ui/GlobalSyncBanner';
 import AchievementCelebration from '../components/adherence/AchievementCelebration';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import i18n from '../i18n';
+import { useGuide } from '../context/GuideContext';
+import BrandedSplashScreen from '../components/ui/BrandedSplashScreen';
 
 import PatientSignupScreen from "../screens/onboarding/PatientSignupScreen";
 import LoginScreen from "../screens/onboarding/LoginScreen";
@@ -39,6 +42,7 @@ import MFAVerifyScreen from "../screens/auth/MFAVerifyScreen";
 import MFASetupScreen from "../screens/settings/MFASetupScreen";
 import DeveloperObservabilityScreen from "../screens/settings/DeveloperObservabilityScreen";
 import PatientDiagnosticsScreen from "../screens/settings/PatientDiagnosticsScreen";
+import SettingsScreen from "../screens/settings/SettingsScreen";
 import CompanionSignupScreen from '../screens/onboarding/CompanionSignupScreen';
 
 import CompanionHomeScreen from '../screens/app/CompanionHomeScreen';
@@ -70,9 +74,31 @@ import ChatFAB from "../components/ui/ChatFAB";
 import HealthCopilotScreen from "../screens/patient/HealthCopilotScreen";
 import InterventionCenterScreen from "../screens/app/InterventionCenterScreen";
 import BottomSheetProvider from "../components/ui/BottomSheetProvider";
+import LivingGlassProvider from "../livingGlass/runtime/LivingGlassRuntime";
+import { withRecoverableBoundary } from "../components/RecoverableBoundary";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+
+// ── Resilient Wrapped Screens (prevents full-screen app error takeovers) ─────
+const ResilientHomeScreen = withRecoverableBoundary(PatientHomeScreen, { featureName: 'PatientHome', screenName: 'HomeScreen' });
+const ResilientMyCallerScreen = withRecoverableBoundary(MyCallerScreen, { featureName: 'MyCaller', screenName: 'MyCallerScreen' });
+const ResilientMedicationsScreen = withRecoverableBoundary(MedicationsScreen, { featureName: 'Medications', screenName: 'MedicationsScreen' });
+const ResilientHealthProfileScreen = withRecoverableBoundary(HealthProfileScreen, { featureName: 'HealthProfile', screenName: 'HealthProfileScreen' });
+const ResilientProfileScreen = withRecoverableBoundary(PatientProfileScreen, { featureName: 'Profile', screenName: 'ProfileScreen' });
+const ResilientSettingsScreen = withRecoverableBoundary(SettingsScreen, { featureName: 'Settings', screenName: 'SettingsScreen' });
+const ResilientChatbotScreen = withRecoverableBoundary(ChatbotScreen, { featureName: 'Chatbot', screenName: 'ChatbotScreen' });
+
+// Resilient Companion Wrapped Screens
+const ResilientCompanionHomeScreen = withRecoverableBoundary(CompanionHomeScreen, { featureName: 'CompanionHome', screenName: 'CompanionHomeScreen' });
+const ResilientCompanionDashboardScreen = withRecoverableBoundary(CompanionDashboardScreen, { featureName: 'CompanionDashboard', screenName: 'CompanionDashboardScreen' });
+const ResilientCompanionAlertsScreen = withRecoverableBoundary(CompanionAlertsScreen, { featureName: 'CompanionAlerts', screenName: 'CompanionAlertsScreen' });
+const ResilientCompanionProfileScreen = withRecoverableBoundary(CompanionProfileScreen, { featureName: 'CompanionProfile', screenName: 'CompanionProfileScreen' });
+const ResilientCompanionAnalyticsScreen = withRecoverableBoundary(CompanionAnalyticsScreen, { featureName: 'CompanionAnalytics', screenName: 'CompanionAnalyticsScreen' });
+const ResilientCareCircleScreen = withRecoverableBoundary(CareCircleScreen, { featureName: 'CareCircle', screenName: 'CareCircleScreen' });
+const ResilientInterventionCenterScreen = withRecoverableBoundary(InterventionCenterScreen, { featureName: 'InterventionCenter', screenName: 'InterventionCenterScreen' });
+const ResilientCompanionChatListScreen = withRecoverableBoundary(CompanionChatListScreen, { featureName: 'CompanionChatList', screenName: 'CompanionChatListScreen' });
+const ResilientChatHistoryScreen = withRecoverableBoundary(ChatHistoryScreen, { featureName: 'ChatHistory', screenName: 'ChatHistoryScreen' });
 
 export const TAB_BAR_HEIGHT = layout.TAB_BAR_HEIGHT;
 export const TAB_BAR_BOTTOM = layout.TAB_BAR_BOTTOM;
@@ -94,11 +120,24 @@ function isStaleNotification(response) {
 function CustomTabBar({ state, descriptors, navigation }) {
     const insets = useSafeAreaInsets();
     const dynamicBottom = insets.bottom > 0 ? insets.bottom : layout.TAB_BAR_BOTTOM;
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const { currentStepId } = useGuide();
+
+    useEffect(() => {
+        const sub = DeviceEventEmitter.addListener('FORM_MODAL_VISIBLE', (visible) => {
+            setIsModalVisible(visible);
+        });
+        return () => sub.remove();
+    }, []);
+
+    if (isModalVisible) return null;
+
     return (
         <View style={[styles.tabBarContainer, { bottom: dynamicBottom }]}>
             {state.routes.map((route, index) => {
                 const { options } = descriptors[route.key];
                 const focused = state.index === index;
+                const isHighlighted = (currentStepId === 'care_team_tab' || currentStepId === 'care_team_contacts') && route.name === 'MyCaller';
                 const onPress = () => {
                     const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
                     if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
@@ -109,7 +148,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
                         key={route.key} onPress={onPress} style={styles.tabItem}
                         activeOpacity={0.7} testID={`tab-${route.name}`} accessibilityLabel={route.name}
                     >
-                        <TabSlot focused={focused} IconConfig={IconComponent} />
+                        <TabSlot focused={focused} isHighlighted={isHighlighted} IconConfig={IconComponent} />
                     </TouchableOpacity>
                 );
             })}
@@ -117,14 +156,22 @@ function CustomTabBar({ state, descriptors, navigation }) {
     );
 }
 
-function TabSlot({ focused, IconConfig }) {
+function TabSlot({ focused, isHighlighted = false, IconConfig }) {
     const scaleAnim = useRef(new Animated.Value(focused ? 1 : 0.9)).current;
     useEffect(() => {
-        Animated.spring(scaleAnim, { toValue: focused ? 1 : 0.9, friction: 6, useNativeDriver: true }).start();
-    }, [focused]);
+        Animated.spring(scaleAnim, { toValue: isHighlighted ? 1.1 : focused ? 1 : 0.9, friction: 6, useNativeDriver: true }).start();
+    }, [focused, isHighlighted]);
+
     return (
-        <Animated.View style={[styles.tabSlot, focused && styles.tabSlotActive, { transform: [{ scale: scaleAnim }] }]}>
-            <IconConfig color={focused ? "#FFFFFF" : "#94A3B8"} size={20} strokeWidth={focused ? 2.5 : 2} />
+        <Animated.View style={[
+            styles.tabSlot, 
+            focused && styles.tabSlotActive, 
+            isHighlighted && { borderWidth: 2, borderColor: '#7C3AED', shadowColor: '#7C3AED', shadowOpacity: 0.5, shadowRadius: 8, elevation: 6 },
+            { transform: [{ scale: scaleAnim }] }
+        ]}>
+            {IconConfig ? (
+                <IconConfig color={focused || isHighlighted ? "#FFFFFF" : "#A8A29E"} size={20} strokeWidth={focused || isHighlighted ? 2.2 : 2.0} />
+            ) : null}
         </Animated.View>
     );
 }
@@ -135,12 +182,12 @@ function PatientTabNavigator() {
     const fabBottom = dynamicBottom + layout.TAB_BAR_HEIGHT + 16;
     return (
         <View style={{ flex: 1 }}>
-            <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false }}>
-                <Tab.Screen name="PatientHome" component={PatientHomeScreen} options={{ tabBarIconComponent: LayoutDashboard }} />
-                <Tab.Screen name="MyCaller" component={MyCallerScreen} options={{ tabBarIconComponent: Users }} />
-                <Tab.Screen name="Medications" component={MedicationsScreen} options={{ tabBarIconComponent: Pill }} />
-                <Tab.Screen name="HealthProfile" component={HealthProfileScreen} options={{ tabBarIconComponent: ShieldPlus }} />
-                <Tab.Screen name="Profile" component={PatientProfileScreen} options={{ tabBarIconComponent: UserCircle }} />
+            <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, sceneContainerStyle: { backgroundColor: colors.background } }}>
+                <Tab.Screen name="PatientHome" component={ResilientHomeScreen} options={{ tabBarIconComponent: LayoutDashboard }} />
+                <Tab.Screen name="MyCaller" component={ResilientMyCallerScreen} options={{ tabBarIconComponent: Users }} />
+                <Tab.Screen name="Medications" component={ResilientMedicationsScreen} options={{ tabBarIconComponent: Pill }} />
+                <Tab.Screen name="HealthProfile" component={ResilientHealthProfileScreen} options={{ tabBarIconComponent: ShieldPlus }} />
+                <Tab.Screen name="Profile" component={ResilientProfileScreen} options={{ tabBarIconComponent: CircleUser }} />
             </Tab.Navigator>
             <ChatFAB onPress={() => navigate('ChatHistory')} bottomOffset={fabBottom} />
         </View>
@@ -149,29 +196,29 @@ function PatientTabNavigator() {
 
 function CompanionTabNavigator() {
     return (
-        <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false }}>
-            <Tab.Screen name="CompanionDashboard" component={CompanionDashboardScreen} options={{ tabBarIconComponent: LayoutDashboard }} />
-            <Tab.Screen name="CompanionAlerts" component={CompanionAlertsScreen} options={{ tabBarIconComponent: Bell }} />
-            <Tab.Screen name="CompanionChatList" component={CompanionChatListScreen} options={{ tabBarIconComponent: MessageSquare }} />
-            <Tab.Screen name="Profile" component={CompanionProfileScreen} options={{ tabBarIconComponent: UserCircle }} />
+        <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, sceneContainerStyle: { backgroundColor: colors.background } }}>
+            <Tab.Screen name="CompanionDashboard" component={ResilientCompanionDashboardScreen} options={{ tabBarIconComponent: LayoutDashboard }} />
+            <Tab.Screen name="CompanionAlerts" component={ResilientCompanionAlertsScreen} options={{ tabBarIconComponent: Bell }} />
+            <Tab.Screen name="CompanionChatList" component={ResilientCompanionChatListScreen} options={{ tabBarIconComponent: MessageSquare }} />
+            <Tab.Screen name="Profile" component={ResilientCompanionProfileScreen} options={{ tabBarIconComponent: CircleUser }} />
         </Tab.Navigator>
     );
 }
 
 const CompanionMainStack = () => (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
-        <Stack.Screen name="CompanionHome" component={CompanionHomeScreen} />
+    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background }, animation: "fade" }}>
+        <Stack.Screen name="CompanionHome" component={ResilientCompanionHomeScreen} />
         <Stack.Screen name="CompanionTabs" component={CompanionTabNavigator} />
-        <Stack.Screen name="CompanionAnalytics" component={CompanionAnalyticsScreen} />
-        <Stack.Screen name="CareCircle" component={CareCircleScreen} />
-        <Stack.Screen name="ChatHistory" component={ChatHistoryScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
-        <Stack.Screen name="Chatbot" component={ChatbotScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
-        <Stack.Screen name="InterventionCenter" component={InterventionCenterScreen} />
+        <Stack.Screen name="CompanionAnalytics" component={ResilientCompanionAnalyticsScreen} />
+        <Stack.Screen name="CareCircle" component={ResilientCareCircleScreen} />
+        <Stack.Screen name="ChatHistory" component={ResilientChatHistoryScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
+        <Stack.Screen name="Chatbot" component={ResilientChatbotScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
+        <Stack.Screen name="InterventionCenter" component={ResilientInterventionCenterScreen} />
     </Stack.Navigator>
 );
 
 const AuthStack = () => (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade", animationDuration: 300 }} initialRouteName="Login">
+    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background }, animation: "fade", animationDuration: 300 }} initialRouteName="Login">
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="PatientSignup" component={PatientSignupScreen} />
         <Stack.Screen name="CompanionSignup" component={CompanionSignupScreen} />
@@ -182,13 +229,13 @@ const AuthStack = () => (
 );
 
 const PatientOnboardingStack = () => (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background }, animation: "fade" }}>
         <Stack.Screen name="PatientSignupOnboarding" component={PatientSignupScreen} />
     </Stack.Navigator>
 );
 
 const MainAppStack = () => (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: "slide_from_right", animationDuration: 250 }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background }, animation: "slide_from_right", animationDuration: 250 }}>
         <Stack.Screen name="PatientTabs" component={PatientTabNavigator} />
         <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ presentation: "modal" }} />
         <Stack.Screen name="VitalsHistory" component={VitalsHistoryScreen} options={{ animation: "fade_from_bottom" }} />
@@ -197,7 +244,7 @@ const MainAppStack = () => (
         <Stack.Screen name="HealthConnectSetup" component={HealthConnectSetupScreen} options={{ presentation: "modal", animation: "slide_from_bottom" }} />
         <Stack.Screen name="AdherenceDetails" component={AdherenceScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
         <Stack.Screen name="ChatHistory" component={ChatHistoryScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
-        <Stack.Screen name="Chatbot" component={ChatbotScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
+        <Stack.Screen name="Chatbot" component={ResilientChatbotScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
         <Stack.Screen name="PrescriptionVerification" component={PrescriptionVerificationScreen} options={{ presentation: "modal", animation: "slide_from_bottom", headerShown: false }} />
         <Stack.Screen name="CallHistory" component={CallHistoryScreen} />
         <Stack.Screen name="PremiumShowcase" component={PremiumShowcaseScreen} />
@@ -206,6 +253,7 @@ const MainAppStack = () => (
         <Stack.Screen name="DeveloperObservability" component={DeveloperObservabilityScreen} options={{ presentation: "modal", animation: "slide_from_bottom" }} />
         <Stack.Screen name="PatientDiagnostics" component={PatientDiagnosticsScreen} options={{ presentation: "modal", animation: "slide_from_bottom" }} />
         <Stack.Screen name="HealthCopilot" component={HealthCopilotScreen} />
+        <Stack.Screen name="Settings" component={ResilientSettingsScreen} options={{ animation: "slide_from_right" }} />
     </Stack.Navigator>
 );
 
@@ -284,12 +332,12 @@ export default function AppNavigator({ fontsLoaded }) {
     // This is the ONLY place SplashScreen.hideAsync() should be called
     // (App.js has a 12s failsafe but this is the primary controller).
     useEffect(() => {
-        if (!isBootstrapping && fontsLoaded) {
+        if (!isBootstrapping) {
             setTimeout(() => {
                 SplashScreen.hideAsync().catch(() => { });
             }, 100);
         }
-    }, [isBootstrapping, fontsLoaded]);
+    }, [isBootstrapping]);
 
     useEffect(() => {
         let isMounted = true;
@@ -367,20 +415,20 @@ export default function AppNavigator({ fontsLoaded }) {
                 return;
             }
 
-            const screen = content.data?.screen;
-            if (screen) {
-                console.log('📲 Navigate to:', screen);
-                navigate(screen);
+            const data = content.data;
+            if (data) {
+                console.log('📲 Navigate via NotificationRouter:', data);
+                routeNotification(data);
             }
         });
 
         // BUG 12 FIX: reject stale notifications older than STALE_NOTIFICATION_MS.
         Notifications.getLastNotificationResponseAsync().then(response => {
             if (response && !isStaleNotification(response)) {
-                const screen = response.notification.request.content.data?.screen;
-                if (screen) {
-                    console.log('🚀 Launched from notification, routing to:', screen);
-                    setTimeout(() => navigate(screen), 500);
+                const data = response.notification.request.content.data;
+                if (data) {
+                    console.log('🚀 Launched from notification, routing via Router:', data);
+                    setTimeout(() => routeNotification(data), 500);
                 }
             }
         });
@@ -447,74 +495,102 @@ export default function AppNavigator({ fontsLoaded }) {
         setupNotifications();
     }, [onboardingComplete, user, profile]);
 
+    // Flush pending notifications once navigator mounts and auth settles
+    useEffect(() => {
+        if (user) {
+            console.log('[AppNavigator] User authenticated, flushing pending notifications');
+            flushPendingNotifications();
+        }
+    }, [user, onboardingComplete]);
+
     const alertRef = useCallback((ref) => {
         if (ref) AlertManager.setRef(ref);
     }, []);
 
-    // During bootstrapping, render nothing visible — the native splash screen
-    // (configured in app.json) is covering the UI. We still mount CustomAlert
-    // so AlertManager has its ref ready as soon as the app becomes interactive.
-    if (isBootstrapping) return <CustomAlert ref={alertRef} />;
+    const [showSplash, setShowSplash] = useState(true);
 
-    if (isSwitching) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} style={{ marginBottom: 16 }} />
-                <Text style={styles.loadingText}>Switching workspace...</Text>
-                <CustomAlert ref={alertRef} />
-            </View>
-        );
-    }
+    const renderContent = () => {
+        if (isBootstrapping) return <CustomAlert ref={alertRef} />;
 
-    if (!user) return (
-        <>
-            <AuthStack />
-            <CustomAlert ref={alertRef} />
-        </>
-    );
-    if (!onboardingComplete && profile?.role !== 'companion') return (
-        <>
-            <PatientOnboardingStack />
-            <CustomAlert ref={alertRef} />
-        </>
-    );
+        if (isSwitching) {
+            return (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={colors.primary} style={{ marginBottom: 16 }} />
+                    <Text style={styles.loadingText}>Switching workspace...</Text>
+                    <CustomAlert ref={alertRef} />
+                </View>
+            );
+        }
 
-    // Companions bypass subscription check
-    if (profile?.role === 'companion') {
-        return (
-            <View style={{ flex: 1 }}>
-                <CompanionMainStack />
-                <CustomAlert ref={alertRef} />
-            </View>
-        );
-    }
-
-    if (subscriptionStatus !== 'active') {
-        return (
+        if (!user) return (
             <>
-                <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
-                    <Stack.Screen name="Payment" component={PremiumShowcaseScreen} />
-                    <Stack.Screen name="WaitingRoom" component={WaitingScreen} />
-                    <Stack.Screen
-                        name="Profile"
-                        component={PatientProfileScreen}
-                        options={{ presentation: "modal" }}
-                    />
-                </Stack.Navigator>
+                <AuthStack />
                 <CustomAlert ref={alertRef} />
             </>
         );
-    }
+        if (!onboardingComplete && profile?.role !== 'companion') return (
+            <>
+                <PatientOnboardingStack />
+                <CustomAlert ref={alertRef} />
+            </>
+        );
+
+        // Companions bypass subscription check
+        if (profile?.role === 'companion') {
+            return (
+                <LivingGlassProvider>
+                    <BottomSheetProvider>
+                        <View style={{ flex: 1 }}>
+                            <GlobalSyncBanner />
+                            <CompanionMainStack />
+                            <CustomAlert ref={alertRef} />
+                        </View>
+                    </BottomSheetProvider>
+                </LivingGlassProvider>
+            );
+        }
+
+        if (subscriptionStatus !== 'active') {
+            return (
+                <>
+                    <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
+                        <Stack.Screen name="Payment" component={PremiumShowcaseScreen} />
+                        <Stack.Screen name="WaitingRoom" component={WaitingScreen} />
+                        <Stack.Screen
+                            name="Profile"
+                            component={PatientProfileScreen}
+                            options={{ presentation: "modal" }}
+                        />
+                    </Stack.Navigator>
+                    <CustomAlert ref={alertRef} />
+                </>
+            );
+        }
+
+        return (
+            <LivingGlassProvider>
+                <BottomSheetProvider>
+                    <View style={{ flex: 1 }}>
+                        <GlobalSyncBanner />
+                        <MainAppStack />
+                        <CustomAlert ref={alertRef} />
+                        <AchievementCelebration />
+                    </View>
+                </BottomSheetProvider>
+            </LivingGlassProvider>
+        );
+    };
 
     return (
-        <BottomSheetProvider>
-            <View style={{ flex: 1 }}>
-                <GlobalSyncBanner />
-                <MainAppStack />
-                <CustomAlert ref={alertRef} />
-                <AchievementCelebration />
-            </View>
-        </BottomSheetProvider>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+            {renderContent()}
+            {showSplash && (
+                <BrandedSplashScreen
+                    isReady={!isBootstrapping}
+                    onFinish={() => setShowSplash(false)}
+                />
+            )}
+        </View>
     );
 }
 

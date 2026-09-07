@@ -13,10 +13,8 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
  */
 export default function BottomSheetProvider({ children }) {
     return (
-        <GestureHandlerRootView style={{ flex: 1 }}>
-            <BottomSheetModalProvider>
-                {children}
-            </BottomSheetModalProvider>
-        </GestureHandlerRootView>
+        <BottomSheetModalProvider>
+            {children}
+        </BottomSheetModalProvider>
     );
 }

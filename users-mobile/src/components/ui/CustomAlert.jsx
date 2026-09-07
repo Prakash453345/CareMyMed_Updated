@@ -1,13 +1,4 @@
-/**
- * CustomAlert — Premium CareMyMed alert modal
- *
- * A beautiful, animated replacement for React Native's native Alert.alert().
- * Supports success, error, warning, and info variants with matching icons
- * and color accents.
- *
- * This component is mounted ONCE at the app root and controlled via AlertManager.
- */
-import React, { useState, useCallback, useImperativeHandle, forwardRef, useEffect } from 'react';
+import React, { useState, useCallback, useImperativeHandle, forwardRef, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,20 +6,57 @@ import {
   Pressable,
   StyleSheet,
   Dimensions,
-  Platform,
+  Animated,
 } from 'react-native';
-import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
+import { CircleCheckBig, TriangleAlert, Info, CircleX, Check, Trash2, LogOut } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import { useMotion } from '../../theme/MotionProvider';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 44, 340);
 
-const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 48, 340);
+function sanitizeText(str) {
+  if (!str || typeof str !== 'string') return '';
+  return str
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{1F1E0}-\u{1F1FF}]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 const THEME = {
-  success: { accent: '#10B981', bg: '#ECFDF5', icon: '✓', iconBg: '#D1FAE5' },
-  error:   { accent: '#EF4444', bg: '#FEF2F2', icon: '!', iconBg: '#FEE2E2' },
-  warning: { accent: '#F59E0B', bg: '#FFFBEB', icon: '⚠', iconBg: '#FEF3C7' },
-  info:    { accent: '#6366F1', bg: '#EEF2FF', icon: 'i', iconBg: '#E0E7FF' },
+  success: {
+    accent: '#059669',
+    gradient: ['#10B981', '#059669'],
+    topBarGradient: ['#34D399', '#059669'],
+    haloBg: '#ECFDF5',
+    haloBorder: '#A7F3D0',
+    Icon: Check,
+  },
+  error: {
+    accent: '#E11D48',
+    gradient: ['#F43F5E', '#E11D48'],
+    topBarGradient: ['#FB7185', '#E11D48'],
+    haloBg: '#FFF1F2',
+    haloBorder: '#FECDD3',
+    Icon: CircleX,
+  },
+  warning: {
+    accent: '#D97706',
+    gradient: ['#F59E0B', '#D97706'],
+    topBarGradient: ['#FBBF24', '#F59E0B'],
+    haloBg: '#FEF3C7',
+    haloBorder: '#FDE68A',
+    Icon: TriangleAlert,
+  },
+  info: {
+    accent: '#6366F1',
+    gradient: ['#6366F1', '#4F46E5'],
+    topBarGradient: ['#818CF8', '#4F46E5'],
+    haloBg: '#EEF2FF',
+    haloBorder: '#C7D2FE',
+    Icon: Info,
+  },
 };
 
 const CustomAlert = forwardRef((_, ref) => {
@@ -38,56 +66,90 @@ const CustomAlert = forwardRef((_, ref) => {
   const [buttons, setButtons] = useState([]);
   const [type, setType] = useState('info');
 
-  const { getSpring, getDuration } = useMotion();
+  const { reduceMotion } = useMotion();
 
-  const scale = useSharedValue(0.85);
-  const opacity = useSharedValue(0);
+  const scaleAnim = useRef(new Animated.Value(0.85)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
 
   const show = useCallback((t, msg, btns, options) => {
-    setTitle(t || '');
-    setMessage(msg || '');
-    setType(options?.type || inferType(t, btns));
+    setTitle(sanitizeText(t));
+    setMessage(sanitizeText(msg));
+    const resolvedType = options?.type || inferType(t, btns);
+    setType(resolvedType);
     setButtons(btns && btns.length > 0 ? btns : [{ text: 'OK' }]);
     setVisible(true);
-  }, []);
 
-  useImperativeHandle(ref, () => ({ show }), [show]);
-
-  useEffect(() => {
-    if (visible) {
-      scale.value = 0.85;
-      opacity.value = 0;
-      scale.value = withSpring(1, getSpring('default'));
-      opacity.value = withTiming(1, { duration: getDuration('fast') });
-    }
-  }, [visible, getSpring, getDuration]);
-
-  const dismiss = useCallback((callback) => {
-    scale.value = withSpring(0.85, getSpring('default'));
-    opacity.value = withTiming(0, { duration: getDuration('fast') }, (finished) => {
-      if (finished) {
-        runOnJS(setVisible)(false);
-        if (callback) {
-          runOnJS(callback)();
-        }
+    // Tactile Haptic Feedback based on alert type
+    try {
+      if (resolvedType === 'success') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      } else if (resolvedType === 'error') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      } else if (resolvedType === 'warning') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      } else {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       }
-    });
-  }, [scale, opacity, getSpring, getDuration]);
+    } catch (e) {}
 
-  const handleButtonPress = useCallback((btn) => {
-    dismiss(btn.onPress);
-  }, [dismiss]);
+    if (reduceMotion) {
+      scaleAnim.setValue(1);
+      opacityAnim.setValue(1);
+      return;
+    }
+
+    scaleAnim.setValue(0.88);
+    opacityAnim.setValue(0);
+
+    Animated.parallel([
+      Animated.spring(scaleAnim, { toValue: 1, speed: 22, bounciness: 6, useNativeDriver: true }),
+      Animated.timing(opacityAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
+    ]).start();
+  }, [reduceMotion, scaleAnim, opacityAnim]);
+
+  const dismiss = useCallback((onDismissCallback) => {
+    if (reduceMotion) {
+      setVisible(false);
+      if (onDismissCallback) onDismissCallback();
+      return;
+    }
+
+    Animated.parallel([
+      Animated.timing(scaleAnim, { toValue: 0.94, duration: 130, useNativeDriver: true }),
+      Animated.timing(opacityAnim, { toValue: 0, duration: 130, useNativeDriver: true }),
+    ]).start(() => {
+      setVisible(false);
+      if (onDismissCallback) onDismissCallback();
+    });
+  }, [reduceMotion, scaleAnim, opacityAnim]);
+
+  useImperativeHandle(ref, () => ({ show, dismiss }), [show, dismiss]);
+
+  if (!visible) return null;
 
   const theme = THEME[type] || THEME.info;
+  const titleLower = (title || '').toLowerCase();
+  const isLogout = titleLower.includes('sign out') || titleLower.includes('log out') || titleLower.includes('logout');
+  const isDestructive = buttons.some(b => b.style === 'destructive') || titleLower.includes('delete') || titleLower.includes('remove');
+  
+  let IconComponent = theme.Icon;
+  let haloBgColor = theme.haloBg;
+  let haloBorderColor = theme.haloBorder;
+  let accentColor = theme.accent;
+
+  if (isLogout) {
+    IconComponent = LogOut;
+    haloBgColor = '#FFF1F2';
+    haloBorderColor = '#FECDD3';
+    accentColor = '#E11D48';
+  } else if (isDestructive) {
+    IconComponent = Trash2;
+    haloBgColor = '#FFF1F2';
+    haloBorderColor = '#FECDD3';
+    accentColor = '#E11D48';
+  }
+
   const shouldStack = buttons.length > 2 || buttons.some(b => (b.text || '').length > 12);
-
-  const overlayStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
-
-  const containerStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
 
   return (
     <Modal
@@ -97,141 +159,172 @@ const CustomAlert = forwardRef((_, ref) => {
       statusBarTranslucent
       onRequestClose={() => dismiss()}
     >
-      {visible ? (
-        <Reanimated.View style={[styles.overlay, overlayStyle]}>
-          <Pressable 
-            style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent' }]} 
-            onPress={() => dismiss()} 
-          />
-          <Reanimated.View
-            style={[
-              styles.container,
-              containerStyle,
-            ]}
-          >
-            {/* Icon badge */}
-            <View style={[styles.iconCircle, { backgroundColor: theme.iconBg }]}>
-              <Text style={[styles.iconText, { color: theme.accent }]}>
-                {theme.icon}
-              </Text>
+      <Animated.View style={[styles.overlay, { opacity: opacityAnim }]}>
+        <Pressable 
+          style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent' }]} 
+          onPress={() => dismiss()} 
+        />
+
+        <Animated.View 
+          style={[
+            styles.alertBox, 
+            { transform: [{ scale: scaleAnim }] },
+          ]}
+        >
+          <View style={styles.contentContainer}>
+            {/* Dual-ring Icon Halo */}
+            <View style={styles.iconWrapper}>
+              <View style={[styles.iconHaloOuter, { backgroundColor: haloBgColor, borderColor: haloBorderColor }]}>
+                <View style={[styles.iconHaloInner, { backgroundColor: accentColor }]}>
+                  <IconComponent size={24} color="#FFFFFF" strokeWidth={2.8} />
+                </View>
+              </View>
             </View>
 
-            {/* Title */}
-            {title ? <Text style={styles.title}>{title}</Text> : null}
+            <Text style={styles.titleText}>{title}</Text>
+            {message ? <Text style={styles.messageText}>{message}</Text> : null}
+          </View>
 
-            {/* Message */}
-            {message ? <Text style={styles.message}>{message}</Text> : null}
+          <View style={[styles.buttonContainer, shouldStack && styles.buttonContainerStacked]}>
+            {buttons.map((btn, idx) => {
+              const isPrimary = buttons.length === 1 || (idx === buttons.length - 1 && btn.style !== 'cancel');
+              const isDestructiveBtn = btn.style === 'destructive' || isLogout || isDestructive;
+              const isCancel = btn.style === 'cancel';
 
-            {/* Buttons */}
-            <View style={[
-              styles.buttonRow,
-              buttons.length === 1 && styles.buttonRowSingle,
-              shouldStack && { flexDirection: 'column-reverse', gap: 8 },
-            ]}>
-              {buttons.map((btn, idx) => {
-                const isDestructive = btn.style === 'destructive';
-                const isCancel = btn.style === 'cancel';
-                const isPrimary = !isCancel && !isDestructive && (buttons.length === 1 || idx === buttons.length - 1);
-
-                let buttonStyle = styles.btnDefault;
-                let textStyle = styles.btnTextDefault;
-
-                if (isDestructive) {
-                  buttonStyle = styles.btnDestructive;
-                  textStyle = styles.btnTextDestructive;
-                } else if (isCancel) {
-                  buttonStyle = styles.btnCancel;
-                  textStyle = styles.btnTextCancel;
-                } else if (isPrimary) {
-                  buttonStyle = [styles.btnPrimary, { backgroundColor: theme.accent }];
-                  textStyle = styles.btnTextPrimary;
-                }
-
-                return (
-                  <Pressable
-                    key={idx}
-                    style={({ pressed }) => [
-                      styles.btn,
-                      buttonStyle,
-                      (buttons.length === 1 || shouldStack) && styles.btnFull,
-                      pressed && styles.btnPressed,
-                    ]}
-                    onPress={() => handleButtonPress(btn)}
-                  >
-                    <Text 
-                      style={[styles.btnText, textStyle]}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.7}
+              return (
+                <Pressable
+                  key={idx}
+                  style={({ pressed }) => [
+                    styles.button,
+                    shouldStack && styles.buttonStacked,
+                    isPrimary && styles.buttonPrimary,
+                    isDestructiveBtn && isPrimary && styles.buttonDestructive,
+                    isCancel && styles.buttonCancel,
+                    pressed && styles.buttonPressed,
+                  ]}
+                  onPress={() => {
+                    dismiss(() => {
+                      if (btn.onPress) btn.onPress();
+                    });
+                  }}
+                >
+                  {isPrimary ? (
+                    <LinearGradient
+                      colors={isDestructiveBtn ? ['#F43F5E', '#E11D48'] : theme.gradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.primaryGradient}
                     >
-                      {btn.text || 'OK'}
+                      <Text style={styles.buttonTextPrimary}>
+                        {btn.text}
+                      </Text>
+                    </LinearGradient>
+                  ) : (
+                    <Text
+                      style={[
+                        styles.buttonText,
+                        isCancel && styles.buttonTextCancelLabel,
+                      ]}
+                    >
+                      {btn.text}
                     </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </Reanimated.View>
-        </Reanimated.View>
-      ) : null}
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 });
 
-/**
- * Infer alert type from title keywords when no explicit type is provided.
- */
-function inferType(title, buttons) {
-  const t = (title || '').toLowerCase();
-  if (t.includes('success') || t.includes('updated') || t.includes('saved') || t.includes('copied')) return 'success';
-  if (t.includes('error') || t.includes('failed') || t.includes('invalid')) return 'error';
-  if (t.includes('warning') || t.includes('slow') || t.includes('caution')) return 'warning';
-  if (buttons?.some(b => b.style === 'destructive')) return 'warning';
+function inferType(title = '', buttons = []) {
+  const t = title.toLowerCase();
+  if (buttons.some(b => b.style === 'destructive') || t.includes('delete') || t.includes('remove') || t.includes('erase') || t.includes('clear')) return 'error';
+  if (t.includes('error') || t.includes('failed') || t.includes('wrong') || t.includes('cannot') || t.includes('rate') || t.includes('too many')) return 'error';
+  if (t.includes('success') || t.includes('done') || t.includes('saved') || t.includes('updated')) return 'success';
+  if (t.includes('warning') || t.includes('caution') || t.includes('careful') || t.includes('not yet') || t.includes('patience')) return 'warning';
   return 'info';
 }
-
-CustomAlert.displayName = 'CustomAlert';
-
-export default CustomAlert;
 
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    backgroundColor: 'rgba(15, 23, 42, 0.60)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24,
+    padding: 20,
   },
-  container: {
+  alertBox: {
     width: ALERT_WIDTH,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    paddingTop: 28,
-    paddingBottom: 20,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.15,
-        shadowRadius: 24,
-      },
-      android: { elevation: 24 },
-    }),
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.8)',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.16,
+    shadowRadius: 28,
+    elevation: 16,
+    position: 'relative',
   },
-  iconCircle: {
+  dotGridTopRight: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    gap: 4,
+    opacity: 0.35,
+  },
+  dotGridBottomLeft: {
+    position: 'absolute',
+    bottom: 60,
+    left: 14,
+    gap: 4,
+    opacity: 0.35,
+  },
+  dotRow: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  dot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#94A3B8',
+  },
+  contentContainer: {
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 18,
+    alignItems: 'center',
+  },
+  iconWrapper: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  sparkleParticle: {
+    position: 'absolute',
+    zIndex: 10,
+  },
+  iconHaloOuter: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconHaloInner: {
     width: 52,
     height: 52,
     borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
   },
-  iconText: {
-    fontSize: 22,
-    fontWeight: '900',
-  },
-  title: {
+  titleText: {
     fontSize: 18,
     fontWeight: '800',
     color: '#0F172A',
@@ -239,68 +332,78 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     letterSpacing: -0.3,
   },
-  message: {
+  messageText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '400',
     color: '#64748B',
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-    paddingHorizontal: 4,
+    lineHeight: 21,
   },
-  buttonRow: {
+  buttonContainer: {
     flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
     gap: 10,
-    width: '100%',
   },
-  buttonRowSingle: {
-    justifyContent: 'center',
+  buttonContainerStacked: {
+    flexDirection: 'column',
   },
-  btn: {
+  button: {
     flex: 1,
-    height: 46,
-    borderRadius: 14,
-    justifyContent: 'center',
+    height: 48,
+    borderRadius: 16,
+    overflow: 'hidden',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  btnFull: {
-    flex: undefined,
+  buttonStacked: {
+    flex: 0,
     width: '100%',
   },
-  btnPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.97 }],
+  buttonPrimary: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
   },
-  btnPrimary: {
-    backgroundColor: '#6366F1',
+  buttonDestructive: {
+    backgroundColor: '#E11D48',
+    borderWidth: 0,
   },
-  btnTextPrimary: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+  buttonCancel: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  btnCancel: {
-    backgroundColor: '#F1F5F9',
+  primaryGradient: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
   },
-  btnTextCancel: {
-    color: '#64748B',
-    fontWeight: '600',
+  buttonPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.98 }],
   },
-  btnDestructive: {
-    backgroundColor: '#FEF2F2',
-  },
-  btnTextDestructive: {
-    color: '#EF4444',
-    fontWeight: '700',
-  },
-  btnDefault: {
-    backgroundColor: '#F1F5F9',
-  },
-  btnTextDefault: {
-    color: '#334155',
-    fontWeight: '600',
-  },
-  btnText: {
+  buttonText: {
     fontSize: 15,
-    letterSpacing: -0.2,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  buttonTextPrimary: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
+  buttonTextDestructive: {
+    color: '#FFFFFF',
+  },
+  buttonTextCancelLabel: {
+    color: '#64748B',
   },
 });
+
+export default CustomAlert;

@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiService } from '../../lib/api';
 import { colors } from '../../theme';
-import { ArrowLeft, MoreHorizontal, Plus, User, Edit2, Bell, AlertTriangle, FileText, Trash2, X, ShieldAlert } from 'lucide-react-native';
+import { ArrowLeft, Ellipsis, Plus, User, Pencil, Bell, TriangleAlert, FileText, Trash2, X, ShieldAlert } from 'lucide-react-native';
 import AlertManager from '../../utils/AlertManager';
 
 const FONT = {
@@ -119,18 +119,19 @@ export default function CareCircleScreen() {
 
             {/* List */}
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                {relationships.map((rel) => {
-                    const patient = rel.patient_id;
+                {(Array.isArray(relationships) ? relationships : []).map((rel) => {
+                    const patient = rel?.patient_id;
                     if (!patient) return null;
-                    const initials = patient.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                    const safeName = (patient?.name || 'Patient').trim();
+                    const initials = safeName.split(' ').map(n => n[0]).filter(Boolean).join('').toUpperCase().substring(0, 2);
                     
                     return (
-                        <View key={rel._id} style={styles.patientCard}>
+                        <View key={rel._id || rel.id || Math.random().toString()} style={styles.patientCard}>
                             <View style={styles.avatar}>
                                 <Text style={styles.avatarText}>{initials}</Text>
                             </View>
                             <View style={styles.info}>
-                                <Text style={styles.patientName}>{patient.name}</Text>
+                                <Text style={styles.patientName}>{safeName}</Text>
                                 <Text style={styles.relationshipText}>
                                     {rel.relationship_type || 'Family Member'}
                                 </Text>
@@ -145,7 +146,7 @@ export default function CareCircleScreen() {
                                     setShowMenu(true);
                                 }}
                             >
-                                <MoreHorizontal color="#64748B" size={20} />
+                                <Ellipsis color="#64748B" size={20} />
                             </Pressable>
                         </View>
                     );
@@ -187,7 +188,11 @@ export default function CareCircleScreen() {
                             style={styles.menuItem} 
                             onPress={() => {
                                 setShowMenu(false);
-                                navigation.navigate('CompanionTabs');
+                                const targetId = menuTarget?.patient_id?._id || menuTarget?.patient_id?.id || menuTarget?.patient_id;
+                                if (targetId) {
+                                    usePatientStore.getState().setCompanionSelectedPatientId(targetId);
+                                }
+                                navigation.navigate('CompanionTabs', { patientId: targetId });
                             }}
                         >
                             <User size={18} color="#475569" />
@@ -201,7 +206,7 @@ export default function CareCircleScreen() {
                                 setShowRename(true);
                             }}
                         >
-                            <Edit2 size={18} color="#475569" />
+                            <Pencil size={18} color="#475569" />
                             <Text style={styles.menuItemText}>Rename Relationship</Text>
                         </Pressable>
 
@@ -294,7 +299,7 @@ export default function CareCircleScreen() {
                     <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
                         <View style={styles.confirmHeader}>
                             <View style={styles.warnIconBg}>
-                                <AlertTriangle color="#EF4444" size={24} />
+                                <TriangleAlert color="#EF4444" size={24} />
                             </View>
                             <Text style={styles.confirmTitle}>Remove {menuTarget?.patient_id?.name}?</Text>
                             <Text style={styles.confirmDesc}>

@@ -305,10 +305,14 @@ class AndroidHealthAdapter {
                     const { Pedometer } = require('expo-sensors');
                     const isPedometerAvailable = await Pedometer.isAvailableAsync();
                     if (isPedometerAvailable) {
-                        const { status } = await Pedometer.getPermissionsAsync();
+                        let { status } = await Pedometer.getPermissionsAsync();
+                        if (status !== 'granted') {
+                            const req = await Pedometer.requestPermissionsAsync();
+                            status = req.status;
+                        }
                         if (status === 'granted') {
                             const pedometerResult = await Pedometer.getStepCountAsync(startOfToday, endTime);
-                            if (pedometerResult && typeof pedometerResult.steps === 'number' && pedometerResult.steps > 0) {
+                            if (pedometerResult && typeof pedometerResult.steps === 'number') {
                                 activity.steps = pedometerResult.steps;
                                 // Estimate distance and calories from step count when Health Connect has no data
                                 if (activity.distance_meters === 0) {

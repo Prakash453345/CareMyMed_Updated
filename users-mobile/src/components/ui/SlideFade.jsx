@@ -1,46 +1,33 @@
-import React, { useEffect } from 'react';
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withSpring,
-} from 'react-native-reanimated';
-import { reanimatedMotion } from '../../theme/reanimatedMotion';
+import React, { useEffect, useRef } from 'react';
+import { Animated } from 'react-native';
 
 export default function SlideFade({
     children,
     visible = true,
-    slideDistance = 15,
-    direction = 'up', // 'up' | 'down' | 'left' | 'right'
+    direction = 'up',
+    distance = 16,
+    duration = 250,
     style,
 }) {
-    const progress = useSharedValue(visible ? 1 : 0);
+    const animValue = useRef(new Animated.Value(visible ? 1 : 0)).current;
 
     useEffect(() => {
-        progress.value = withSpring(
-            visible ? 1 : 0,
-            reanimatedMotion.springs.default
-        );
-    }, [visible, progress]);
+        Animated.timing(animValue, {
+            toValue: visible ? 1 : 0,
+            duration,
+            useNativeDriver: true,
+        }).start();
+    }, [visible, duration, animValue]);
 
-    const animatedStyle = useAnimatedStyle(() => {
-        let translateX = 0;
-        let translateY = 0;
+    const offset = direction === 'up' ? distance : direction === 'down' ? -distance : 0;
 
-        const offset = (1 - progress.value) * slideDistance;
-
-        if (direction === 'up') translateY = offset;
-        else if (direction === 'down') translateY = -offset;
-        else if (direction === 'left') translateX = offset;
-        else if (direction === 'right') translateX = -offset;
-
-        return {
-            opacity: progress.value,
-            transform: [{ translateX }, { translateY }],
-        };
+    const translateY = animValue.interpolate({
+        inputRange: [0, 1],
+        outputRange: [offset, 0],
     });
 
     return (
-        <Animated.View style={[style, animatedStyle]}>
+        <Animated.View style={[{ opacity: animValue, transform: [{ translateY }] }, style]}>
             {children}
         </Animated.View>
     );

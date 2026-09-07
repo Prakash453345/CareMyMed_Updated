@@ -311,6 +311,7 @@ export const apiService = {
         markNotificationRead: (id) => api.patch(`/users/patients/notifications/${id}/read`),
         markAllNotificationsRead: () => api.patch('/users/patients/notifications/read-all'),
         getAIPrediction: () => api.get('/users/patients/me/ai-prediction'),
+        getVitalsForecast: () => api.get('/users/patients/me/vitals/forecast'),
         syncVitals: (data) => api.post('/vitals/sync', data),
         getSyncStatus: () => api.get('/vitals/sync/status'),
         syncHealthData: (data) => api.post('/health/sync', data),
@@ -381,7 +382,14 @@ export const apiService = {
         getMonthlyAdherence: () => api.get('/users/medicines/adherence/monthly'),
         getAdherenceDetails: () => api.get('/users/medicines/adherence/details'),
         getAdherenceRecap: (period) => api.get('/users/medicines/adherence/recap', { params: { period } }),
-        refill: (name, purchasedDoses) => api.post(`/users/medicines/${encodeURIComponent(name)}/refill`, { purchasedDoses }),
+        refill: (identifier, purchasedDoses, medicineId) => {
+            const param = identifier || medicineId;
+            return api.post(`/users/medicines/${encodeURIComponent(String(param).trim())}/refill`, { 
+                purchasedDoses, 
+                medicineId, 
+                name: identifier 
+            });
+        },
         getWeeklySummary: () => api.get('/users/medicines/adherence/weekly-summary'),
         getTempMeds: () => api.get('/users/medicines/temp-meds'),
         addTempMed: (data) => api.post('/users/medicines/temp-meds', data),

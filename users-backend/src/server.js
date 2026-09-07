@@ -140,10 +140,18 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+// Persistent chat attachments & media directory initialization
+const path = require('path');
+const fs = require('fs');
+const uploadsDir = path.join(__dirname, '../uploads/chat_attachments');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000, // limit each IP to 1000 requests per windowMs
   message: 'Too many requests from this IP, please try again later.',
 });
 app.use('/api/', limiter);
@@ -273,6 +281,8 @@ app.use(
 
 // Companion Routes
 app.use('/api/companion', companionRoutes);
+
+
 
 // ─── Chatbot API ───────────────────────────────
 const chatbotRoutes = require('./routes/chatbotRoutes');

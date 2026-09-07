@@ -17,7 +17,10 @@ class AssignmentService {
     try {
       const patient = await Patient.findById(patientId);
       if (!patient) {
-        logger.warn('[AssignmentService] Patient not found for manager assignment', { patientId });
+        logger.warn(
+          '[AssignmentService] Patient not found for manager assignment',
+          { patientId }
+        );
         return null;
       }
 
@@ -30,7 +33,10 @@ class AssignmentService {
 
       // Fallback: search across all organizations if none found locally
       if (managers.length === 0) {
-        logger.info('[AssignmentService] No managers found in patient organization. Falling back to global managers.', { orgId });
+        logger.info(
+          '[AssignmentService] No managers found in patient organization. Falling back to global managers.',
+          { orgId }
+        );
         managers = await Profile.find({
           role: { $in: ['org_admin', 'care_manager', 'super_admin'] },
           isActive: true,
@@ -38,7 +44,10 @@ class AssignmentService {
       }
 
       if (managers.length === 0) {
-        logger.warn('[AssignmentService] No managers found in the database. Manager assignment skipped.', { patientId });
+        logger.warn(
+          '[AssignmentService] No managers found in the database. Manager assignment skipped.',
+          { patientId }
+        );
         return null;
       }
 

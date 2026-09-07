@@ -1,39 +1,27 @@
-import React, { useEffect } from 'react';
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withSpring,
-    interpolate,
-} from 'react-native-reanimated';
+import React, { useEffect, useRef } from 'react';
+import { Animated } from 'react-native';
 
-export default function StepTransition({ children, trigger, style }) {
-    const progress = useSharedValue(0);
+export default function StepTransition({ children, stepKey, direction = 'forward', duration = 250, style }) {
+    const animValue = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        progress.value = 0;
-        progress.value = withSpring(1, {
-            damping: 18,
-            stiffness: 110,
-            mass: 0.9,
-        });
-    }, [trigger]);
+        animValue.setValue(0);
+        Animated.timing(animValue, {
+            toValue: 1,
+            duration,
+            useNativeDriver: true,
+        }).start();
+    }, [stepKey, duration, animValue]);
 
-    const animatedStyle = useAnimatedStyle(() => {
-        return {
-            opacity: progress.value,
-            transform: [
-                {
-                    translateY: interpolate(progress.value, [0, 1], [15, 0]),
-                },
-                {
-                    scale: interpolate(progress.value, [0, 1], [0.98, 1]),
-                },
-            ],
-        };
+    const offset = direction === 'forward' ? 30 : -30;
+
+    const translateX = animValue.interpolate({
+        inputRange: [0, 1],
+        outputRange: [offset, 0],
     });
 
     return (
-        <Animated.View style={[style, animatedStyle]}>
+        <Animated.View style={[{ opacity: animValue, transform: [{ translateX }] }, style]}>
             {children}
         </Animated.View>
     );

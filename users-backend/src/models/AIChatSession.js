@@ -1,5 +1,21 @@
 const mongoose = require('mongoose');
 
+const AttachmentSchema = new mongoose.Schema(
+  {
+    attachmentId: { type: String, index: true },
+    type: {
+      type: String,
+      enum: ['image', 'document', 'audio'],
+      default: 'image',
+    },
+    url: { type: String },
+    mimeType: { type: String },
+    fileName: { type: String },
+    storagePath: { type: String },
+  },
+  { _id: false }
+);
+
 const ChatMessageSchema = new mongoose.Schema({
   role: {
     type: String,
@@ -12,8 +28,12 @@ const ChatMessageSchema = new mongoose.Schema({
   image: {
     type: String,
   },
+  attachments: [AttachmentSchema],
   audio: {
     type: String,
+  },
+  audioDuration: {
+    type: Number,
   },
   cards: {
     type: Array,

@@ -802,10 +802,15 @@ export default function PatientProfileScreen({ navigation }) {
                             <Text style={s.heroLabel}>{t('profile.care_record_label', { defaultValue: 'CARE RECORD' })}</Text>
                             <Text style={s.headerTitle}>{t('profile.my_profile', { defaultValue: 'My Profile' })}</Text>
                         </View>
-                        <Pressable style={s.headerBtn} onPress={() => navigation.navigate('Notifications')}>
-                            <Bell size={20} color="#475569" strokeWidth={2.5} />
-                            {unreadCount > 0 && <View style={s.bellDot} />}
-                        </Pressable>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Pressable style={s.headerBtn} onPress={() => navigation.navigate('Settings')}>
+                                <Settings size={20} color="#475569" strokeWidth={2.5} />
+                            </Pressable>
+                            <Pressable style={s.headerBtn} onPress={() => navigation.navigate('Notifications')}>
+                                <Bell size={20} color="#475569" strokeWidth={2.5} />
+                                {unreadCount > 0 && <View style={s.bellDot} />}
+                            </Pressable>
+                        </View>
                     </View>
                 </Animated.View>
             </View>
@@ -907,6 +912,7 @@ export default function PatientProfileScreen({ navigation }) {
                 <Animated.View style={anim(7)}>
                     <Text style={s.sectionTitle}>{t('profile.notifications', { defaultValue: 'NOTIFICATIONS & PREFERENCES' })}</Text>
                     <View style={s.card}>
+                        <InfoRow icon={Settings} iconBg="#EEF2FF" iconColor="#6366F1" label="Settings & Preferences" value="Security, alarms & health sync" placeholder="" onPress={() => navigation.navigate('Settings')} />
                         <View style={[s.infoRow]}>
                             <View style={[s.iconBox, { backgroundColor: '#F5F3FF' }]}>
                                 <BellRing size={20} color="#8B5CF6" strokeWidth={2} />
@@ -1371,6 +1377,8 @@ export default function PatientProfileScreen({ navigation }) {
             <PremiumFormModal
                 visible={phoneModalVisible}
                 title={t('profile.phone_number', { defaultValue: 'Phone Number' })}
+                subtitle="Keep your contact number secure and verified"
+                icon={<Phone size={20} color="#8B5CF6" strokeWidth={2.5} />}
                 onClose={() => setPhoneModalVisible(false)}
                 onSave={handleSavePhone}
                 saveText={saving ? t('common.saving', { defaultValue: 'Saving...' }) : t('profile.save_phone', { defaultValue: 'Save Phone' })}
@@ -1391,6 +1399,8 @@ export default function PatientProfileScreen({ navigation }) {
             <PremiumFormModal
                 visible={ecModalVisible}
                 title={t('profile.emergency_contact', { defaultValue: 'Emergency Contact' })}
+                subtitle="Primary person for emergency notifications"
+                icon={<Users size={20} color="#EF4444" strokeWidth={2.5} />}
                 onClose={() => setEcModalVisible(false)}
                 onSave={handleSaveEC}
                 saveText={requestingEcOTP ? t('common.saving', { defaultValue: 'Saving...' }) : t('caller.save_contact', { defaultValue: 'Save Contact' })}
@@ -1443,6 +1453,8 @@ export default function PatientProfileScreen({ navigation }) {
             <PremiumFormModal
                 visible={editAccountModalVisible}
                 title={t('profile.edit_profile', { defaultValue: 'Edit Profile' })}
+                subtitle="Update your full name and city"
+                icon={<User size={20} color="#3B82F6" strokeWidth={2.5} />}
                 onClose={() => setEditAccountModalVisible(false)}
                 onSave={handleSaveAccount}
                 saveText={savingAccount ? t('common.saving', { defaultValue: 'Saving...' }) : t('profile.save_profile', { defaultValue: 'Save Profile' })}
@@ -1456,6 +1468,8 @@ export default function PatientProfileScreen({ navigation }) {
             <PremiumFormModal
                 visible={cpModalVisible}
                 title="Change Password"
+                subtitle="Protect your account with a secure password"
+                icon={<LockIcon size={20} color="#10B981" strokeWidth={2.5} />}
                 onClose={() => setCpModalVisible(false)}
                 onSave={handleChangePassword}
                 saveText={savingCp ? t('common.changing', { defaultValue: 'Changing...' }) : t('profile.change_password', { defaultValue: 'Change Password' })}
@@ -1470,6 +1484,8 @@ export default function PatientProfileScreen({ navigation }) {
             <PremiumFormModal
                 visible={setPassModalVisible}
                 title={t('profile.set_password', { defaultValue: 'Set Password' })}
+                subtitle="Create a password to enable direct credentials login"
+                icon={<LockIcon size={20} color="#F59E0B" strokeWidth={2.5} />}
                 onClose={() => setSetPassModalVisible(false)}
                 onSave={handleSetPassword}
                 saveText={savingSetPass ? t('common.saving', { defaultValue: 'Saving...' }) : t('profile.set_password', { defaultValue: 'Set Password' })}
@@ -1483,12 +1499,13 @@ export default function PatientProfileScreen({ navigation }) {
             <PremiumFormModal
                 visible={screenshotOTPModalVisible}
                 title={t('profile.security_verification', { defaultValue: 'Security Verification' })}
+                subtitle="Enter verification code to change settings"
                 onClose={() => setScreenshotOTPModalVisible(false)}
                 onSave={handleVerifyScreenshotOTP}
                 saveText={verifyingScreenshotOTP ? t('common.verifying', { defaultValue: 'Verifying...' }) : t('profile.verify_setup', { defaultValue: 'Verify & Setup' })}
                 saving={verifyingScreenshotOTP}
                 centered={true}
-                icon={<ShieldCheck size={20} color="#2563EB" />}
+                icon={<ShieldCheck size={20} color="#8B5CF6" strokeWidth={2.5} />}
             >
                 <Text style={[s.inputLabel, { marginTop: 4, textTransform: 'none' }]}>
                     {pendingScreenshotSetting ? t('profile.screenshot_otp_allow', { defaultValue: 'Enter the 6-digit code sent to your email to allow screenshots.' }) : t('profile.screenshot_otp_block', { defaultValue: 'Enter the 6-digit code sent to your email to block screenshots.' })}
@@ -1507,12 +1524,13 @@ export default function PatientProfileScreen({ navigation }) {
             <PremiumFormModal
                 visible={ecOTPModalVisible}
                 title={t('profile.security_verification', { defaultValue: 'Security Verification' })}
+                subtitle="Enter verification code to save contact"
                 onClose={() => setEcOTPModalVisible(false)}
                 onSave={handleVerifyEcOTP}
                 saveText={verifyingEcOTP ? t('common.verifying', { defaultValue: 'Verifying...' }) : t('profile.verify_setup', { defaultValue: 'Verify & Setup' })}
                 saving={verifyingEcOTP}
                 centered={true}
-                icon={<LockIcon size={20} color="#2563EB" />}
+                icon={<LockIcon size={20} color="#8B5CF6" strokeWidth={2.5} />}
             >
                 <Text style={[s.inputLabel, { marginTop: 4, textTransform: 'none' }]}>
                     Enter the 6-digit code sent to your email to verify the emergency contact change.
@@ -1530,6 +1548,8 @@ export default function PatientProfileScreen({ navigation }) {
             <PremiumFormModal
                 visible={dobModalVisible}
                 title={t('profile.dob', { defaultValue: 'Date of Birth' })}
+                subtitle="Your biological date of birth for age calculation"
+                icon={<Calendar size={20} color="#6366F1" strokeWidth={2.5} />}
                 onClose={() => setDobModalVisible(false)}
                 onSave={handleSaveDob}
                 saveText={saving ? t('common.saving', { defaultValue: 'Saving...' }) : t('profile.save_dob', { defaultValue: 'Save Date of Birth' })}
@@ -1636,82 +1656,73 @@ export default function PatientProfileScreen({ navigation }) {
             </Modal>
 
             {/* ── Add Address ── */}
-            <Modal visible={addAddressModalVisible} animationType="slide" transparent onRequestClose={() => { setAddAddressModalVisible(false); setAddrErrors({}); }}>
-                <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-                    <View style={s.modalOverlay}>
-                        <View style={[s.modalContent, { padding: 0 }]}>
-                            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
-                                <View style={s.modalHeader}>
-                                    <Text style={s.modalTitle}>{t('profile.add_address', { defaultValue: 'Add Address' })}</Text>
-                                    <Pressable onPress={() => { setAddAddressModalVisible(false); setAddrErrors({}); }} hitSlop={10}><X size={24} color="#64748B" /></Pressable>
-                                </View>
+            <PremiumFormModal
+                visible={addAddressModalVisible}
+                title={t('profile.add_address', { defaultValue: 'Add Address' })}
+                subtitle="Add location for medicine deliveries & caregiver visits"
+                icon={<MapPin size={20} color="#3B82F6" strokeWidth={2.5} />}
+                onClose={() => { setAddAddressModalVisible(false); setAddrErrors({}); }}
+                onSave={handleAddAddress}
+                saveText={saving ? t('common.saving', { defaultValue: 'Saving...' }) : t('profile.save_address', { defaultValue: 'Save Address' })}
+                saving={saving}
+            >
+                {/* Label chips */}
+                <Text style={s.inputLabel}>{t('profile.label', { defaultValue: 'Label' })}</Text>
+                <View style={s.labelRow}>
+                    {[t('profile.home', { defaultValue: 'Home' }), t('profile.office', { defaultValue: 'Office' }), t('profile.family', { defaultValue: 'Family' }), t('profile.other', { defaultValue: 'Other' })].map((l, i) => {
+                        const actualLabels = ['Home', 'Office', 'Family', 'Other'];
+                        const key = actualLabels[i];
+                        return (
+                            <Pressable key={key} style={[s.labelChip, addrLabel === key && s.labelChipActive]} onPress={() => setAddrLabel(key)}>
+                                <Text style={[s.labelChipTxt, addrLabel === key && s.labelChipTxtActive]}>{l}</Text>
+                            </Pressable>
+                        );
+                    })}
+                </View>
 
-                                {/* Label chips */}
-                                <Text style={s.inputLabel}>{t('profile.label', { defaultValue: 'Label' })}</Text>
-                                <View style={s.labelRow}>
-                                    {[t('profile.home', { defaultValue: 'Home' }), t('profile.office', { defaultValue: 'Office' }), t('profile.family', { defaultValue: 'Family' }), t('profile.other', { defaultValue: 'Other' })].map((l, i) => {
-                                        const actualLabels = ['Home', 'Office', 'Family', 'Other'];
-                                        const key = actualLabels[i];
-                                        return (
-                                            <Pressable key={key} style={[s.labelChip, addrLabel === key && s.labelChipActive]} onPress={() => setAddrLabel(key)}>
-                                                <Text style={[s.labelChipTxt, addrLabel === key && s.labelChipTxtActive]}>{l}</Text>
-                                            </Pressable>
-                                        );
-                                    })}
-                                </View>
+                {/* Full address */}
+                <SmartInput
+                    label={t('profile.full_address', { defaultValue: 'Full Address *' })}
+                    value={addrLine}
+                    onChangeText={(v) => { setAddrLine(v); if (addrErrors.addrLine) setAddrErrors(e => ({ ...e, addrLine: null })); }}
+                    placeholder={t('profile.full_address_placeholder', { defaultValue: 'e.g. 12-4-82, Flat 301, Banjara Hills' })}
+                    error={addrErrors.addrLine}
+                />
+                {addrErrors.addrLine ? <Text style={s.fieldError}>{addrErrors.addrLine}</Text> : null}
 
-                                {/* Full address */}
-                                <SmartInput
-                                    label={t('profile.full_address', { defaultValue: 'Full Address *' })}
-                                    value={addrLine}
-                                    onChangeText={(v) => { setAddrLine(v); if (addrErrors.addrLine) setAddrErrors(e => ({ ...e, addrLine: null })); }}
-                                    placeholder={t('profile.full_address_placeholder', { defaultValue: 'e.g. 12-4-82, Flat 301, Banjara Hills' })}
-                                    error={addrErrors.addrLine}
-                                />
-                                {addrErrors.addrLine ? <Text style={s.fieldError}>{addrErrors.addrLine}</Text> : null}
-
-                                {/* City + State side by side */}
-                                <View style={s.addrRow}>
-                                    <View style={s.addrCol}>
-                                        <SmartInput
-                                            label={t('common.city', { defaultValue: 'City *' })}
-                                            value={addrCity}
-                                            onChangeText={(v) => { setAddrCity(v); if (addrErrors.addrCity) setAddrErrors(e => ({ ...e, addrCity: null })); }}
-                                            placeholder="Hyderabad"
-                                            error={addrErrors.addrCity}
-                                        />
-                                        {addrErrors.addrCity ? <Text style={s.fieldError}>{addrErrors.addrCity}</Text> : null}
-                                    </View>
-                                    <View style={s.addrCol}>
-                                        <SmartInput
-                                            label={t('common.state', { defaultValue: 'State' })}
-                                            value={addrState}
-                                            onChangeText={setAddrState}
-                                            placeholder="Telangana"
-                                        />
-                                    </View>
-                                </View>
-
-                                {/* Postcode */}
-                                <SmartInput
-                                    label={t('common.postcode', { defaultValue: 'Postcode' })}
-                                    value={addrPostcode}
-                                    onChangeText={(v) => { setAddrPostcode(v.replace(/[^0-9]/g, '')); if (addrErrors.addrPostcode) setAddrErrors(e => ({ ...e, addrPostcode: null })); }}
-                                    placeholder="500034"
-                                    keyboardType="number-pad"
-                                    maxLength={6}
-                                />
-                                {addrErrors.addrPostcode ? <Text style={s.fieldError}>{addrErrors.addrPostcode}</Text> : null}
-
-                                <Pressable style={[s.saveBtn, { marginTop: 20 }]} onPress={handleAddAddress} disabled={saving}>
-                                    <Save size={18} color="#FFFFFF" />
-                                    <Text style={s.saveBtnTxt}>{saving ? t('common.saving', { defaultValue: 'Saving...' }) : t('profile.save_address', { defaultValue: 'Save Address' })}</Text>
-                                </Pressable>
-                            </ScrollView>
-                        </View>
+                {/* City + State side by side */}
+                <View style={s.addrRow}>
+                    <View style={s.addrCol}>
+                        <SmartInput
+                            label={t('common.city', { defaultValue: 'City *' })}
+                            value={addrCity}
+                            onChangeText={(v) => { setAddrCity(v); if (addrErrors.addrCity) setAddrErrors(e => ({ ...e, addrCity: null })); }}
+                            placeholder="Hyderabad"
+                            error={addrErrors.addrCity}
+                        />
+                        {addrErrors.addrCity ? <Text style={s.fieldError}>{addrErrors.addrCity}</Text> : null}
                     </View>
-                </KeyboardAvoidingView>
-            </Modal>
+                    <View style={s.addrCol}>
+                        <SmartInput
+                            label={t('common.state', { defaultValue: 'State' })}
+                            value={addrState}
+                            onChangeText={setAddrState}
+                            placeholder="Telangana"
+                        />
+                    </View>
+                </View>
+
+                {/* Postcode */}
+                <SmartInput
+                    label={t('common.postcode', { defaultValue: 'Postcode' })}
+                    value={addrPostcode}
+                    onChangeText={(v) => { setAddrPostcode(v.replace(/[^0-9]/g, '')); if (addrErrors.addrPostcode) setAddrErrors(e => ({ ...e, addrPostcode: null })); }}
+                    placeholder="500034"
+                    keyboardType="number-pad"
+                    maxLength={6}
+                />
+                {addrErrors.addrPostcode ? <Text style={s.fieldError}>{addrErrors.addrPostcode}</Text> : null}
+            </PremiumFormModal>
 
             {/* ── Family Profiles ── */}
             <Modal visible={familyModalVisible} animationType="slide" transparent onRequestClose={() => { setFamilyModalVisible(false); setInviteCode(null); }}>
@@ -2003,9 +2014,9 @@ const s = StyleSheet.create({
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
     modalTitle: { fontSize: 22, fontWeight: '800', color: colors.textPrimary },
     modalSubTxt: { fontSize: 14, color: colors.textMuted, marginBottom: 20 },
-    inputLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, marginBottom: 8, marginTop: 16, marginLeft: 2 },
+    inputLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, marginBottom: 4, marginTop: 6, marginLeft: 2 },
     input: { backgroundColor: '#FAFBFF', borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: radius.md, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: '#0F172A', fontWeight: '600', height: 48 },
-    saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: colors.primary, borderRadius: radius.button, paddingVertical: 16, marginTop: 32, shadowColor: colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8 },
+    saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: colors.primary, borderRadius: radius.button, paddingVertical: 16, marginTop: 24, shadowColor: colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 8 },
     saveBtnTxt: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
 
     /* Detail Row */
@@ -2050,11 +2061,22 @@ const s = StyleSheet.create({
     addrCardLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 },
     addrLabel: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
     addrLine: { fontSize: 12, color: colors.textMuted, marginTop: 2, fontWeight: '500' },
-    labelRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-    labelChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.md, backgroundColor: colors.background },
-    labelChipActive: { backgroundColor: colors.primarySoft, borderWidth: 1.5, borderColor: colors.primary },
-    labelChipTxt: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
-    labelChipTxtActive: { color: colors.primary, fontWeight: '700' },
+    labelRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4, marginBottom: 8 },
+    labelChip: {
+        paddingHorizontal: 14,
+        paddingVertical: 7,
+        borderRadius: 12,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    labelChipActive: {
+        backgroundColor: '#F3E8FF',
+        borderColor: '#7C3AED',
+        borderWidth: 1.5,
+    },
+    labelChipTxt: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+    labelChipTxtActive: { color: '#7C3AED', fontWeight: '800' },
 
     /* Empty State */
     emptyState: { alignItems: 'center', paddingVertical: 32 },

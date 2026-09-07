@@ -127,13 +127,27 @@ describe('Chatbot Sessions Route Tests', () => {
   });
 
   describe('GET /api/chatbot/sessions/:id', () => {
-    it('returns session details if found and matches patient context', async () => {
+    it('returns session details with structured attachments if found and matches patient context', async () => {
       const mockSession = {
         _id: 'session-1',
         title: 'Existing Chat',
         messages: [
           { role: 'assistant', text: 'Disclaimer' },
-          { role: 'user', text: 'Hello' },
+          {
+            role: 'user',
+            text: "What's this medicine for?",
+            image: '/api/chatbot/attachments/att_123',
+            attachments: [
+              {
+                attachmentId: 'att_123',
+                type: 'image',
+                url: '/api/chatbot/attachments/att_123',
+                mimeType: 'image/jpeg',
+                fileName: 'Bidical.jpg',
+                storagePath: 'chat_123.jpg',
+              },
+            ],
+          },
         ],
       };
       AIChatSession.findOne = jest.fn().mockResolvedValue(mockSession);
@@ -141,6 +155,8 @@ describe('Chatbot Sessions Route Tests', () => {
       const res = await request(app).get('/api/chatbot/sessions/session-1');
       expect(res.status).toBe(200);
       expect(res.body).toEqual(mockSession);
+      expect(res.body.messages[1].attachments[0].url).toContain('/api/chatbot/attachments/');
+      expect(res.body.messages[1].image).not.toContain('base64');
       expect(AIChatSession.findOne).toHaveBeenCalledWith({
         _id: 'session-1',
         patient_id: mockAuthState.profile._id,
@@ -186,6 +202,59 @@ describe('Chatbot Sessions Route Tests', () => {
         '/api/chatbot/sessions/deleted-session'
       );
       expect(res.status).toBe(404);
+    });
+  });
+
+  describe('GET /api/chatbot/attachments/:attachmentId Security', () => {
+    it('denies access (404/403) when user does not own session containing attachment', async () => {
+      AIChatSession.findOne = jest.fn().mockResolvedValue(null);
+
+      const res = await request(app).get('/api/chatbot/attachments/unauthorized_att');
+      expect(res.status).toBe(404);
+      expect(res.body.error).toMatch(/not found|access denied/i);
+    });
+
+    it('rejects path traversal attempts with 400', async () => {
+      const res = await request(app).get('/api/chatbot/attachments/..%2F..%2Fetc%2Fpasswd');
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/invalid/i);
+    });
+
+    it('serves attachment file bytes when user owns session and file exists', async () => {
+      const fs = require('fs');
+      const path = require('path');
+      const uploadsDir = path.resolve(__dirname, '../../src/uploads/chat_attachments');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      const testFilePath = path.join(uploadsDir, 'test_attachment_file.jpg');
+      fs.writeFileSync(testFilePath, 'dummy image content');
+
+      const mockSession = {
+        _id: 'session-att',
+        patient_id: mockAuthState.profile._id,
+        messages: [
+          {
+            role: 'user',
+            attachments: [
+              {
+                attachmentId: 'att_test_123',
+                storagePath: 'test_attachment_file.jpg',
+                url: '/api/chatbot/attachments/att_test_123',
+              },
+            ],
+          },
+        ],
+      };
+      AIChatSession.findOne = jest.fn().mockResolvedValue(mockSession);
+
+      const res = await request(app).get('/api/chatbot/attachments/att_test_123');
+      expect(res.status).toBe(200);
+
+      // Clean up test file
+      if (fs.existsSync(testFilePath)) {
+        fs.unlinkSync(testFilePath);
+      }
     });
   });
 });

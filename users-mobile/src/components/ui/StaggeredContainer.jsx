@@ -1,30 +1,22 @@
-import React, { useEffect } from 'react';
-import { View } from 'react-native';
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withDelay,
-    withSpring,
-} from 'react-native-reanimated';
-import { reanimatedMotion } from '../../theme/reanimatedMotion';
+import React, { useEffect, useRef } from 'react';
+import { View, Animated } from 'react-native';
 
 export default function StaggeredContainer({
     children,
-    staggerDelay = 40,
-    slideDistance = 15,
+    staggerDelay = 60,
+    initialOffsetY = 15,
     style,
-    ...props
 }) {
     const childrenArray = React.Children.toArray(children);
 
     return (
-        <View style={style} {...props}>
+        <View style={style}>
             {childrenArray.map((child, index) => (
                 <StaggeredItem
                     key={child.key || index}
                     index={index}
                     staggerDelay={staggerDelay}
-                    slideDistance={slideDistance}
+                    initialOffsetY={initialOffsetY}
                 >
                     {child}
                 </StaggeredItem>
@@ -33,32 +25,28 @@ export default function StaggeredContainer({
     );
 }
 
-function StaggeredItem({ children, index, staggerDelay, slideDistance }) {
-    const progress = useSharedValue(0);
+function StaggeredItem({ children, index, staggerDelay, initialOffsetY }) {
+    const animValue = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        progress.value = withDelay(
-            index * staggerDelay,
-            withSpring(1, reanimatedMotion.springs.default)
-        );
-    }, [index, staggerDelay, progress]);
+        Animated.sequence([
+            Animated.delay(index * staggerDelay),
+            Animated.spring(animValue, {
+                toValue: 1,
+                speed: 14,
+                bounciness: 4,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    }, [index, staggerDelay, animValue]);
 
-    const animatedStyle = useAnimatedStyle(() => {
-        return {
-            opacity: progress.value,
-            transform: [
-                {
-                    translateY: (1 - progress.value) * slideDistance,
-                },
-                {
-                    scale: 0.98 + 0.02 * progress.value,
-                },
-            ],
-        };
+    const translateY = animValue.interpolate({
+        inputRange: [0, 1],
+        outputRange: [initialOffsetY, 0],
     });
 
     return (
-        <Animated.View style={animatedStyle}>
+        <Animated.View style={{ opacity: animValue, transform: [{ translateY }] }}>
             {children}
         </Animated.View>
     );

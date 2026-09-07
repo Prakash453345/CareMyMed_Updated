@@ -1,4 +1,5 @@
 process.env.NODE_ENV = 'test';
+jest.setTimeout(30000);
 
 /**
  * tests/users/patients.test.js

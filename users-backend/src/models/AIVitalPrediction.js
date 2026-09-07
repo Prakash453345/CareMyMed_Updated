@@ -28,6 +28,25 @@ const AIVitalPredictionSchema = new mongoose.Schema(
       enum: ['Normal', 'Warning', 'Critical'],
       default: 'Normal',
     },
+    status: {
+      type: String,
+      enum: ['building', 'ready', 'stale', 'unavailable'],
+      default: 'building',
+    },
+    trend: {
+      type: String,
+      enum: ['improving', 'stable', 'worsening'],
+      default: 'stable',
+    },
+    explanation: {
+      type: String,
+      default: null,
+    },
+    confidence_label: {
+      type: String,
+      enum: ['High', 'Moderate', 'Low'],
+      default: 'Moderate',
+    },
     consecutive_critical_days: {
       type: Number,
       default: 0,
@@ -36,7 +55,15 @@ const AIVitalPredictionSchema = new mongoose.Schema(
       type: Number,
       min: 0,
       max: 1,
-      default: null,
+      default: 0.85,
+    },
+    metadata: {
+      model: { type: String, default: 'prophet' },
+      version: { type: String, default: '1.2' },
+      generatedBy: { type: String, default: 'forecast-service' },
+      historyWindowDays: { type: Number, default: 14 },
+      predictionWindowDays: { type: Number, default: 3 },
+      trainingSamples: { type: Number, default: 0 },
     },
     predictions: [PredictionSchema],
   },

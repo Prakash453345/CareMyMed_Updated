@@ -2,6 +2,25 @@ import React from 'react';
 import { render, act } from '@testing-library/react-native';
 import HealthProfileScreen from '../../src/screens/patient/HealthProfileScreen';
 
+// Mock heavy UI transition components for fast deterministic test execution
+jest.mock('../../src/components/ui/TabScreenTransition', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return function MockTransition({ children }) {
+    return React.createElement(View, { testID: 'tab-screen-transition' }, children);
+  };
+});
+
+jest.mock('expo-linear-gradient', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    LinearGradient: function MockGradient({ children, style }) {
+      return React.createElement(View, { style }, children);
+    },
+  };
+});
+
 // Mock translation hook
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -86,40 +105,16 @@ jest.mock('../../src/components/ui/PremiumFormModal', () => 'PremiumFormModal');
 jest.mock('lucide-react-native', () => {
   const React = require('react');
   const { View } = require('react-native');
-  return {
-    TriangleAlert: () => React.createElement(View),
-    AlertTriangle: () => React.createElement(View),
-    Lock: () => React.createElement(View),
-    ShieldCheck: () => React.createElement(View),
-    HeartPulse: () => React.createElement(View),
-    Activity: () => React.createElement(View),
-    Droplet: () => React.createElement(View),
-    Phone: () => React.createElement(View),
-    Plus: () => React.createElement(View),
-    Pencil: () => React.createElement(View),
-    X: () => React.createElement(View),
-    Trash2: () => React.createElement(View),
-    CircleCheck: () => React.createElement(View),
-    CheckCircle2: () => React.createElement(View),
-    RefreshCw: () => React.createElement(View),
-    ChevronDown: () => React.createElement(View),
-    Upload: () => React.createElement(View),
-    Siren: () => React.createElement(View),
-    ChevronRight: () => React.createElement(View),
-    TrendingUp: () => React.createElement(View),
-    TrendingDown: () => React.createElement(View),
-    Sparkles: () => React.createElement(View),
-    Bell: () => React.createElement(View),
-    FileText: () => React.createElement(View),
-    Pill: () => React.createElement(View),
-    Syringe: () => React.createElement(View),
-    Link2: () => React.createElement(View),
-    Users: () => React.createElement(View),
-    Calendar: () => React.createElement(View),
-    Info: () => React.createElement(View),
-    Clock: () => React.createElement(View),
-    MapPin: () => React.createElement(View),
-  };
+  return new Proxy(
+    {},
+    {
+      get: (target, prop) => {
+        return function MockLucideIcon(props) {
+          return React.createElement(View, { testID: `lucide-${String(prop)}`, ...props });
+        };
+      },
+    }
+  );
 });
 
 describe('HealthProfileScreen', () => {
@@ -301,4 +296,29 @@ describe('HealthProfileScreen', () => {
       expect(queryByText('Tap to view checklist')).toBeTruthy();
     });
   });
+
+  describe('Vitals Input and formatting safety', () => {
+    it('does not crash and renders successfully with various invalid or suffixed lifestyle string formats', async () => {
+      const testCases = [
+        { height_cm: '180 cm', weight_kg: '80.5 kg' },
+        { height_cm: '180cm', weight_kg: '80kg' },
+        { height_cm: '   180  ', weight_kg: '  80  ' },
+        { height_cm: 'invalid', weight_kg: 'invalid' },
+        { height_cm: '', weight_kg: '' },
+        { height_cm: null, weight_kg: null },
+      ];
+
+      for (const tc of testCases) {
+        const profile = {
+          data: {
+            blood_type: 'O+',
+            lifestyle: tc,
+          },
+        };
+        const { toJSON } = await renderScreen(profile);
+        expect(toJSON()).toBeTruthy();
+      }
+    });
+  });
 });
+

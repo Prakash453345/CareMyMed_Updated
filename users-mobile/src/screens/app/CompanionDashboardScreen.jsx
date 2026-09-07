@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Dimensions, Linking, ActivityIndicator, Image, Animated, Modal, TouchableOpacity } from 'react-native';
 import { apiService } from '../../lib/api';
-import { HeartPulse, Activity, Bell, Phone, ChevronRight, MessageSquare, ShieldCheck, AlertCircle, RefreshCw, Bluetooth, Lightbulb, Sparkles, TrendingUp, Calendar, ChevronDown, ChevronUp, TriangleAlert, Package2, BotMessageSquare, ClipboardCheck, Clock3, BrainCircuit, ChartColumnIncreasing, X } from 'lucide-react-native';
+import { HeartPulse, Activity, Bell, Phone, ChevronRight, MessageSquare, ShieldCheck, CircleAlert, RefreshCw, Bluetooth, Lightbulb, Sparkles, TrendingUp, Calendar, ChevronDown, ChevronUp, TriangleAlert, Package2, BotMessageSquare, ClipboardCheck, Clock3, BrainCircuit, ChartColumnIncreasing, X } from 'lucide-react-native';
 import AlertManager from '../../utils/AlertManager';
 import { colors, radius, spacing, shadows, layout, motion, anim, useReduceMotion } from '../../theme';
 import { useMotion } from '../../theme/MotionProvider';
 import usePatientStore from '../../store/usePatientStore';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import Svg, { Path, Circle as SvgCircle, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Canvas, Circle as SkiaCircle, Blur, RadialGradient, vec } from '@shopify/react-native-skia';
+
 import ReanimatedAnimated, {
     useSharedValue as useReanimatedShared,
     useAnimatedStyle as useReanimatedStyle,
@@ -28,6 +28,7 @@ import AnimatedNumber from '../../components/ui/AnimatedNumber';
 import AnimatedProgressRing from '../../components/ui/AnimatedProgressRing';
 import BreathingOrb from '../../components/ui/BreathingOrb';
 import SkeletonCard from '../../components/ui/SkeletonCard';
+import AnimatedCard from '../../components/ui/AnimatedCard';
 
 const { width } = Dimensions.get('window');
 
@@ -93,9 +94,12 @@ export default function CompanionDashboardScreen() {
     const pendingInterventionsCount = usePatientStore(s => s.pendingInterventionsCount);
     const setPendingInterventionsCount = usePatientStore(s => s.setPendingInterventionsCount);
     const [expandedBriefing, setExpandedBriefing] = useState(false);
-    const [entranceAnimationFinished, setEntranceAnimationFinished] = useState(false);
     
-    const selectedPatientId = usePatientStore(s => s.companionSelectedPatientId);
+    const route = useRoute();
+    const rawRoutePatientId = route?.params?.patientId || route?.params?.params?.patientId;
+    const rawStorePatientId = usePatientStore(s => s.companionSelectedPatientId);
+    const rawPatientId = rawRoutePatientId || rawStorePatientId;
+    const selectedPatientId = typeof rawPatientId === 'object' ? (rawPatientId?._id || rawPatientId?.id) : rawPatientId;
     const navigation = useNavigation();
     const reduceMotion = useReduceMotion();
 
@@ -223,7 +227,6 @@ export default function CompanionDashboardScreen() {
             Object.keys(anims).forEach(key => {
                 anims[key].value = 1;
             });
-            setEntranceAnimationFinished(true);
             return;
         }
 
@@ -255,9 +258,7 @@ export default function CompanionDashboardScreen() {
 
         // 6. Timeline list and footer settling
         anims.timeline.value = reanimatedWithDelay(800, reanimatedWithSpring(1, config));
-        anims.refresh.value = reanimatedWithDelay(900, reanimatedWithSpring(1, config, () => {
-            runOnJS(setEntranceAnimationFinished)(true);
-        }));
+        anims.refresh.value = reanimatedWithDelay(900, reanimatedWithSpring(1, config));
     }, [reduceMotion, anims]);
 
     const sectionAnimForKey = (sectionKey) => {
@@ -377,28 +378,30 @@ export default function CompanionDashboardScreen() {
     if (!data || !data.patient) {
         return (
             <View style={styles.container}>
-                {/* Skia Ambient Background Glows */}
+                {/* Ambient Background Glows */}
                 <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                    <Canvas style={{ flex: 1 }}>
-                        {/* Top-left indigo glow */}
-                        <SkiaCircle cx={width * 0.15} cy={120} r={180} opacity={0.12}>
-                            <RadialGradient
-                                c={vec(width * 0.15, 120)}
-                                r={180}
-                                colors={['#818CF8', 'transparent']}
-                            />
-                            <Blur blur={80} />
-                        </SkiaCircle>
-                        {/* Bottom-right purple glow */}
-                        <SkiaCircle cx={width * 0.85} cy={600} r={200} opacity={0.08}>
-                            <RadialGradient
-                                c={vec(width * 0.85, 600)}
-                                r={200}
-                                colors={['#C084FC', 'transparent']}
-                            />
-                            <Blur blur={100} />
-                        </SkiaCircle>
-                    </Canvas>
+                    {/* Top-left indigo glow */}
+                    <View style={{
+                        position: 'absolute',
+                        left: -50,
+                        top: 20,
+                        width: 250,
+                        height: 250,
+                        borderRadius: 125,
+                        backgroundColor: '#818CF8',
+                        opacity: 0.06,
+                    }} />
+                    {/* Bottom-right purple glow */}
+                    <View style={{
+                        position: 'absolute',
+                        right: -70,
+                        top: 450,
+                        width: 300,
+                        height: 300,
+                        borderRadius: 150,
+                        backgroundColor: '#C084FC',
+                        opacity: 0.04,
+                    }} />
                 </View>
 
                 <CompanionHeader
@@ -428,7 +431,15 @@ export default function CompanionDashboardScreen() {
         );
     }
 
-    const adherence = data.patient.adherence_rate !== null ? data.patient.adherence_rate : 0;
+    const patient = data?.patient ?? {};
+    const patientName = typeof patient.name === 'string' && patient.name.trim()
+        ? patient.name.trim()
+        : 'Patient';
+    const patientFirstName = patientName.split(/\s+/)[0];
+
+    const adherenceRate = Number.isFinite(patient.adherence_rate) ? patient.adherence_rate : null;
+    const currentStreak = Number.isFinite(patient.current_streak) ? patient.current_streak : 0;
+    const adherence = adherenceRate !== null ? adherenceRate : 0;
     
     // BP validation: handle empty BP readings gracefully
     const hasVitals = data.latest_vital && 
@@ -460,32 +471,36 @@ export default function CompanionDashboardScreen() {
     return (
         <TabScreenTransition>
             <View style={styles.container}>
-            {/* Skia Ambient Background Glows */}
+            {/* Ambient Background Glows */}
             <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                <Canvas style={{ flex: 1 }}>
-                    <SkiaCircle cx={width * 0.15} cy={120} r={180} opacity={0.12}>
-                        <RadialGradient
-                            c={vec(width * 0.15, 120)}
-                            r={180}
-                            colors={['#818CF8', 'transparent']}
-                        />
-                        <Blur blur={80} />
-                    </SkiaCircle>
-                    <SkiaCircle cx={width * 0.85} cy={600} r={200} opacity={0.08}>
-                        <RadialGradient
-                            c={vec(width * 0.85, 600)}
-                            r={200}
-                            colors={['#C084FC', 'transparent']}
-                        />
-                        <Blur blur={100} />
-                    </SkiaCircle>
-                </Canvas>
+                {/* Top-left indigo glow */}
+                <View style={{
+                    position: 'absolute',
+                    left: -50,
+                    top: 20,
+                    width: 250,
+                    height: 250,
+                    borderRadius: 125,
+                    backgroundColor: '#818CF8',
+                    opacity: 0.06,
+                }} />
+                {/* Bottom-right purple glow */}
+                <View style={{
+                    position: 'absolute',
+                    right: -70,
+                    top: 450,
+                    width: 300,
+                    height: 300,
+                    borderRadius: 150,
+                    backgroundColor: '#C084FC',
+                    opacity: 0.04,
+                }} />
             </View>
 
             <CompanionHeader
                 style={{ backgroundColor: 'transparent', borderBottomWidth: 0, shadowColor: 'transparent', elevation: 0 }}
                 subtitle="Family Care Portal"
-                title={`${data.patient.name}'s Health`}
+                title={`${patientName}'s Health`}
                 onBack={() => navigation.goBack()}
                 right={(
                     <ScalePressable style={styles.bellButton} onPress={() => navigation.navigate('CompanionAlerts')}>
@@ -502,11 +517,11 @@ export default function CompanionDashboardScreen() {
                 {isLowVisibility && (
                     <View style={styles.lowVisibilityBanner}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <AlertCircle color="#B45309" size={18} />
+                            <CircleAlert color="#B45309" size={18} />
                             <Text style={styles.lowVisibilityBannerTitle}>Low Care Visibility</Text>
                         </View>
                         <Text style={styles.lowVisibilityBannerText}>
-                            {data.patient.name} has not logged any medications or vitals recently. Health indicators may be inaccurate until tracking resumes.
+                            {patientName} has not logged any medications or vitals recently. Health indicators may be inaccurate until tracking resumes.
                         </Text>
                     </View>
                 )}
@@ -527,8 +542,8 @@ export default function CompanionDashboardScreen() {
                                 </View>
 
                                 <View style={styles.alertsList}>
-                                    {data.recent_alerts.map(a => (
-                                        <View key={a._id} style={styles.alertItem}>
+                                    {(Array.isArray(data?.recent_alerts) ? data.recent_alerts : []).map((a, idx) => (
+                                        <View key={a._id || a.id || idx.toString()} style={styles.alertItem}>
                                             <View style={styles.alertDot} />
                                             <Text style={styles.alertDescription}>{a.description}</Text>
                                         </View>
@@ -555,8 +570,8 @@ export default function CompanionDashboardScreen() {
                                 <Text style={styles.refillBannerTitle}>Low Medication Stock Alert</Text>
                             </View>
                             <ScrollView style={styles.refillList} nestedScrollEnabled={true}>
-                                {data.refill_alerts.map((alert) => (
-                                    <View key={alert.medication_id} style={styles.refillItem}>
+                                {(Array.isArray(data?.refill_alerts) ? data.refill_alerts : []).map((alert, idx) => (
+                                    <View key={alert.medication_id || alert._id || idx.toString()} style={styles.refillItem}>
                                         <Text style={styles.refillMedName}>{alert.name}</Text>
                                         <Text style={styles.refillMedStock}>
                                             Only <Text style={{ color: colors.danger, ...FONT.bold }}>{alert.remaining_doses}</Text> doses left!
@@ -596,9 +611,9 @@ export default function CompanionDashboardScreen() {
 
                             <View style={styles.meterRow}>
                                 <View style={{ flex: 1 }}>
-                                    {data.patient.adherence_rate !== null ? (
+                                    {adherenceRate !== null ? (
                                         <AnimatedNumber 
-                                            value={data.patient.adherence_rate} 
+                                            value={adherenceRate} 
                                             suffix="%" 
                                             style={styles.largeValue} 
                                         />
@@ -609,7 +624,7 @@ export default function CompanionDashboardScreen() {
                                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                             <Text style={styles.streakText}>🔥 </Text>
                                             <AnimatedNumber 
-                                                value={data.patient.current_streak} 
+                                                value={currentStreak} 
                                                 suffix=" Day Streak"
                                                 style={styles.streakText} 
                                             />
@@ -724,7 +739,7 @@ export default function CompanionDashboardScreen() {
                                         </View>
                                         
                                         <Text style={styles.vitalsEmptyDesc}>
-                                            No BP logs recorded today. Vitals sync when {data.patient.name.split(' ')[0]} connects a BP monitor.
+                                            No BP logs recorded today. Vitals sync when {patientFirstName} connects a BP monitor.
                                         </Text>
 
                                         <ScalePressable style={styles.vitalsSyncBtnContainer} onPress={() => loadData()}>
@@ -752,60 +767,61 @@ export default function CompanionDashboardScreen() {
 
                 {/* 8. 🧠 Health Intelligence Center CTA Card */}
                 {visibleSections.includes('intelligence_center') && (
-                    <AnimatedCard 
-                        onPress={() => navigation.navigate('CompanionAnalytics')}
-                        style={sectionAnimForKey('intelligence_center')}
-                    >
-                        <View style={styles.ctaCardHeader}>
-                            <View style={[styles.iconBox, { backgroundColor: '#F5F3FF' }]}>
-                                <BrainCircuit color="#7C3AED" size={20} />
+                    <ReanimatedAnimated.View style={sectionAnimForKey('intelligence_center')}>
+                        <AnimatedCard 
+                            onPress={() => navigation.navigate('CompanionAnalytics')}
+                        >
+                            <View style={styles.ctaCardHeader}>
+                                <View style={[styles.iconBox, { backgroundColor: '#F5F3FF' }]}>
+                                    <BrainCircuit color="#7C3AED" size={20} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.ctaTitle}>Health Intelligence Center</Text>
+                                    <Text style={styles.ctaSubtitle}>Forecasts • Trends • AI Insights</Text>
+                                </View>
+                                <ChevronRight color={colors.primary} size={20} />
                             </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.ctaTitle}>Health Intelligence Center</Text>
-                                <Text style={styles.ctaSubtitle}>Forecasts • Trends • AI Insights</Text>
-                            </View>
-                            <ChevronRight color={colors.primary} size={20} />
-                        </View>
 
-                        {/* Preview Chips */}
-                        <View style={styles.ctaChipsRow}>
-                            <View style={[
-                                styles.ctaChip,
-                                riskLevel === 'high' ? styles.chipHigh :
-                                riskLevel === 'medium' ? styles.chipMedium :
-                                riskLevel === 'low' ? styles.chipLow : styles.chipUnknown
-                            ]}>
-                                <Text style={[
-                                    styles.ctaChipText,
-                                    { color: riskLevel === 'high' ? colors.danger :
-                                             riskLevel === 'medium' ? colors.warning :
-                                             riskLevel === 'low' ? colors.success : '#64748B' }
+                            {/* Preview Chips */}
+                            <View style={styles.ctaChipsRow}>
+                                <View style={[
+                                    styles.ctaChip,
+                                    riskLevel === 'high' ? styles.chipHigh :
+                                    riskLevel === 'medium' ? styles.chipMedium :
+                                    riskLevel === 'low' ? styles.chipLow : styles.chipUnknown
                                 ]}>
-                                    Risk: {riskLevel === 'high' ? 'High' : riskLevel === 'medium' ? 'Medium' : riskLevel === 'low' ? 'Low' : 'Unknown'}
-                                </Text>
-                            </View>
+                                    <Text style={[
+                                        styles.ctaChipText,
+                                        { color: riskLevel === 'high' ? colors.danger :
+                                                 riskLevel === 'medium' ? colors.warning :
+                                                 riskLevel === 'low' ? colors.success : '#64748B' }
+                                    ]}>
+                                        Risk: {riskLevel === 'high' ? 'High' : riskLevel === 'medium' ? 'Medium' : riskLevel === 'low' ? 'Low' : 'Unknown'}
+                                    </Text>
+                                </View>
 
-                            <View style={[styles.ctaChip, { backgroundColor: '#E0F2FE' }]}>
-                                <Text style={[styles.ctaChipText, { color: colors.primary }]}>
-                                    Forecast: {trendDirection === 'improving' ? 'Improving' : trendDirection === 'worsening' ? 'Declining' : 'Stable'}
-                                </Text>
-                            </View>
+                                <View style={[styles.ctaChip, { backgroundColor: '#E0F2FE' }]}>
+                                    <Text style={[styles.ctaChipText, { color: colors.primary }]}>
+                                        Forecast: {trendDirection === 'improving' ? 'Improving' : trendDirection === 'worsening' ? 'Declining' : 'Stable'}
+                                    </Text>
+                                </View>
 
-                            <View style={[styles.ctaChip, { backgroundColor: '#F1F5F9', flexDirection: 'row', alignItems: 'center' }]}>
-                                <Text style={[styles.ctaChipText, { color: '#475569' }]}>Confidence: </Text>
-                                <AnimatedNumber 
-                                    value={confidenceScore} 
-                                    suffix="%" 
-                                    style={{ fontSize: 11, ...FONT.bold, color: '#475569' }} 
-                                />
+                                <View style={[styles.ctaChip, { backgroundColor: '#F1F5F9', flexDirection: 'row', alignItems: 'center' }]}>
+                                    <Text style={[styles.ctaChipText, { color: '#475569' }]}>Confidence: </Text>
+                                    <AnimatedNumber 
+                                        value={confidenceScore} 
+                                        suffix="%" 
+                                        style={{ fontSize: 11, ...FONT.bold, color: '#475569' }} 
+                                    />
+                                </View>
                             </View>
-                        </View>
 
                             <View style={styles.ctaViewDetailsRow}>
                                 <Text style={styles.ctaViewDetailsText}>View Details</Text>
                                 <ChevronRight size={14} color={colors.primary} />
                             </View>
-                    </AnimatedCard>
+                        </AnimatedCard>
+                    </ReanimatedAnimated.View>
                 )}
                 {/* 3. AI Companion Briefing (Mascot Overlapping Speech Bubble) */}
                 {visibleSections.includes('briefing') && (
@@ -873,9 +889,9 @@ export default function CompanionDashboardScreen() {
                     
                     <View style={styles.summaryColCenter}>
                         <Text style={styles.summaryColLabel}>Adherence</Text>
-                        {data.patient.adherence_rate !== null ? (
+                        {adherenceRate !== null ? (
                             <AnimatedNumber 
-                                value={data.patient.adherence_rate} 
+                                value={adherenceRate} 
                                 suffix="%" 
                                 style={[
                                     styles.summaryColValue, 
@@ -908,34 +924,35 @@ export default function CompanionDashboardScreen() {
 
                 {/* 5. ⚡ Proactive Intervention Center CTA Card */}
                 {visibleSections.includes('intervention_center') && (
-                    <AnimatedCard 
-                        onPress={() => navigation.navigate('InterventionCenter')}
-                        style={[{ marginTop: 12 }, sectionAnimForKey('intervention_center')]}
-                    >
-                        <View style={styles.ctaCardHeader}>
-                            <View style={[styles.iconBox, { backgroundColor: '#ECFDF5' }]}>
-                                <ClipboardCheck color="#059669" size={20} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.ctaTitle}>Proactive Intervention Center</Text>
-                                <Text style={styles.ctaSubtitle}>
-                                    {pendingInterventionsCount > 0 
-                                        ? `${pendingInterventionsCount} care intervention${pendingInterventionsCount > 1 ? 's' : ''} recommended`
-                                        : 'No immediate actions needed today'}
-                                </Text>
-                            </View>
-                            {pendingInterventionsCount > 0 && (
-                                <View style={styles.activeBadgeContainer}>
-                                    <Text style={styles.activeBadgeText}>{pendingInterventionsCount}</Text>
+                    <ReanimatedAnimated.View style={[{ marginTop: 12 }, sectionAnimForKey('intervention_center')]}>
+                        <AnimatedCard 
+                            onPress={() => navigation.navigate('InterventionCenter')}
+                        >
+                            <View style={styles.ctaCardHeader}>
+                                <View style={[styles.iconBox, { backgroundColor: '#ECFDF5' }]}>
+                                    <ClipboardCheck color="#059669" size={20} />
                                 </View>
-                            )}
-                            <ChevronRight color={colors.primary} size={20} />
-                        </View>
-                        <View style={styles.ctaViewDetailsRow}>
-                            <Text style={styles.ctaViewDetailsText}>Open Action Center</Text>
-                            <ChevronRight size={14} color={colors.primary} />
-                        </View>
-                    </AnimatedCard>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.ctaTitle}>Proactive Intervention Center</Text>
+                                    <Text style={styles.ctaSubtitle}>
+                                        {pendingInterventionsCount > 0 
+                                            ? `${pendingInterventionsCount} care intervention${pendingInterventionsCount > 1 ? 's' : ''} recommended`
+                                            : 'No immediate actions needed today'}
+                                    </Text>
+                                </View>
+                                {pendingInterventionsCount > 0 && (
+                                    <View style={styles.activeBadgeContainer}>
+                                        <Text style={styles.activeBadgeText}>{pendingInterventionsCount}</Text>
+                                    </View>
+                                )}
+                                <ChevronRight color={colors.primary} size={20} />
+                            </View>
+                            <View style={styles.ctaViewDetailsRow}>
+                                <Text style={styles.ctaViewDetailsText}>Open Action Center</Text>
+                                <ChevronRight size={14} color={colors.primary} />
+                            </View>
+                        </AnimatedCard>
+                    </ReanimatedAnimated.View>
                 )}
 
                 {/* 6. Daily Medication Timeline Checklist */}

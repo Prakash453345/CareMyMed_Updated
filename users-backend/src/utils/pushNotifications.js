@@ -55,16 +55,29 @@ class PushNotificationService {
 
       if (ticket?.status === 'error') {
         console.error(`❌ Push notification failed:`, ticket.message);
-        if (ticket.details?.error === 'DeviceNotRegistered' || ticket.message?.includes('DeviceNotRegistered')) {
+        if (
+          ticket.details?.error === 'DeviceNotRegistered' ||
+          ticket.message?.includes('DeviceNotRegistered')
+        ) {
           try {
             const Patient = require('../models/Patient');
             await Patient.updateOne(
               { expo_push_token: expoPushToken },
-              { $set: { expo_push_token: '', push_notifications_enabled: false } }
+              {
+                $set: {
+                  expo_push_token: '',
+                  push_notifications_enabled: false,
+                },
+              }
             );
-            console.log(`🧹 Cleaned up unregistered token ${expoPushToken.substring(0, 20)}...`);
+            console.log(
+              `🧹 Cleaned up unregistered token ${expoPushToken.substring(0, 20)}...`
+            );
           } catch (cleanErr) {
-            console.error('Failed to cleanup unregistered push token:', cleanErr.message);
+            console.error(
+              'Failed to cleanup unregistered push token:',
+              cleanErr.message
+            );
           }
         }
         return {
@@ -76,13 +89,21 @@ class PushNotificationService {
 
       const ticketId = ticket?.id;
       console.log(
-        `✅ Push notification sent to token: ${expoPushToken.substring(0, 30)}...`
+        `Push notification sent to token: ${expoPushToken.substring(0, 30)}...`
       );
       return { success: true, ticketId };
     } catch (error) {
-      console.error('❌ Push notification network error:', error.message);
+      console.error('Push notification network error:', error.message);
       return { success: false, reason: 'network_error', error: error.message };
     }
+  }
+
+  /**
+   * Helper wrapper to map sendPushNotification calls to the base sendPush implementation.
+   * Resolves issues where weekly summaries and medicine supply warnings were failing.
+   */
+  static async sendPushNotification(expoPushToken, { title, body, data = {} }) {
+    return this.sendPush(expoPushToken, title, body, data);
   }
 
   /**

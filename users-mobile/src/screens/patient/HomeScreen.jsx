@@ -23,13 +23,25 @@ import {
   AppState,
   RefreshControl,
   Alert,
+  Image,
 } from "react-native";
+import * as Haptics from 'expo-haptics';
 import { getStreakState } from "../../utils/streakHelper";
 import StreakCompanion from "../../components/ui/StreakCompanion";
 import CelebrationOverlay from "../../components/ui/CelebrationOverlay";
 import { LinearGradient } from "expo-linear-gradient";
+
+import SupplyUpdateModal from "../../components/ui/SupplyUpdateModal";
+import { useMedicationCompletionAnimation } from "../../hooks/useMedicationCompletionAnimation";
+
+const triggerHapticSelection = async () => {
+  try {
+    await Haptics.selectionAsync();
+  } catch (e) {}
+};
 import {
   Pill,
+  Package,
   Sparkles,
   ChevronRight,
   TrendingUp,
@@ -52,7 +64,7 @@ import {
   MessageSquare,
   Trophy,
   ChevronDown,
-  HelpCircle,
+  AlertCircle,
 } from "lucide-react-native";
 import { handleAxiosError } from "../../lib/axiosInstance";
 import {
@@ -64,9 +76,18 @@ import {
   motion,
   anim,
   useReduceMotion,
+  FONT,
+  METRIC_FONT,
+  TYPOGRAPHY,
+  TEXT,
+  TEXT_SIZE,
+  ICON_SIZE,
+  SPACING,
+  RADIUS,
 } from "../../theme";
 import { useAuth } from "../../context/AuthContext";
 import TabScreenTransition from "../../components/ui/TabScreenTransition";
+import RecoverableBoundary from "../../components/RecoverableBoundary";
 import { apiService } from "../../lib/api";
 import { useFocusEffect } from "@react-navigation/native";
 import HealthSyncService from "../../services/HealthSyncService";
@@ -80,8 +101,12 @@ import AlertManager from "../../utils/AlertManager";
 import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { HapticPatterns } from "../../utils/haptics";
-import GuidedTour from "../../components/ui/GuidedTour";
-import { TourService } from "../../lib/TourService";
+import SectionContainer from "../../components/ui/SectionContainer";
+import SectionErrorCard from "../../components/ui/SectionErrorCard";
+import { useSectionQuery } from "../../hooks/useSectionQuery";
+import TurnByTurnBanner from "../../components/ui/TurnByTurnBanner";
+import ProgressiveMedCard from "../../components/ui/ProgressiveMedCard";
+import { NextActionEngine } from "../../lib/NextActionEngine";
 import BottomSheetWrapper from "../../components/ui/BottomSheetWrapper";
 import Svg, {
   Path,
@@ -338,54 +363,124 @@ const VitalsCard = ({
 };
 
 // ── Mini medication card ───────────────────────────────────────────────────
-const MedicationCard = ({ med, onPress }) => {
+const MedicationCard = ({ med, onPress, onOpenSupplyModal }) => {
   const { t } = useTranslation();
   const accentColor = ACCENT_MAP[med.type] || "#8B5CF6";
+  const {
+    cardLiftAnim,
+    cardBgColor,
+    cardBorderColor,
+    iconBgColor,
+    titleColor,
+  } = useMedicationCompletionAnimation(med.taken, accentColor + "18", "#F1F5F9");
+
+  const hasRefillInfo =
+    med.refillInfo &&
+    (typeof med.refillInfo.remainingDoses === "number" ||
+      typeof med.refillInfo.totalDoses === "number");
+  const displayDoses =
+    med.refillInfo?.remainingDoses ?? med.refillInfo?.totalDoses ?? 0;
+  const isLowSupply =
+    hasRefillInfo && displayDoses <= (med.refillInfo.alertThreshold || 5);
+  const displayUnit = med.unit || med.dosage_form || 'Supply';
+
   return (
-    <Pressable
-      onPress={() => onPress && onPress()}
-      style={[styles.medCard, med.taken && styles.medCardTaken]}
+    <Animated.View
+      style={{
+        transform: [{ translateY: cardLiftAnim }],
+      }}
     >
-      <View
+      <Animated.View
         style={[
-          styles.medAccentBar,
-          { backgroundColor: med.taken ? colors.success : accentColor },
+          styles.medCard,
+          {
+            backgroundColor: cardBgColor,
+            borderColor: cardBorderColor,
+          },
         ]}
-      />
-      <View style={styles.medCardContent}>
-        <View
-          style={[
-            styles.medIconBox,
-            { backgroundColor: med.taken ? "#ECFDF5" : accentColor + "18" },
-          ]}
+      >
+        <Pressable
+          onPress={() => onPress && onPress()}
+          style={{ flex: 1 }}
         >
-          {med.taken ? (
-            <CheckCircle2 size={20} color={colors.success} strokeWidth={2.5} />
-          ) : (
-            <Pill size={20} color={accentColor} strokeWidth={2.5} />
-          )}
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text
-            style={[styles.medName, med.taken && { color: colors.success }]}
-          >
-            {med.name}
-          </Text>
-          <Text style={styles.medDose}>
-            {med.dosage}
-            {med.instructions ? ` · ${med.instructions}` : ""}
-          </Text>
-        </View>
-        {med.taken && (
-          <View style={styles.takenBadge}>
-            <CheckCircle2 size={10} color={colors.success} />
-            <Text style={styles.takenBadgeText}>
-              {t("home.done", { defaultValue: "Done" })}
-            </Text>
+          <View style={styles.medCardContent}>
+            <Animated.View
+              style={[
+                styles.medIconBox,
+                { backgroundColor: iconBgColor, borderColor: cardBorderColor },
+              ]}
+            >
+              {med.taken ? (
+                <CheckCircle2 size={20} color={colors.success} strokeWidth={2.5} />
+              ) : (
+                <Pill size={20} color={accentColor} strokeWidth={2.5} />
+              )}
+            </Animated.View>
+            <View style={{ flex: 1 }}>
+              <Animated.Text
+                style={[styles.medName, { color: titleColor }]}
+              >
+                {med.name}
+              </Animated.Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
+                <Text style={styles.medDose}>
+                  {med.dosage}
+                  {med.instructions ? ` · ${med.instructions}` : ""}
+                </Text>
+                {hasRefillInfo && (
+                  <Pressable
+                    onPress={(e) => {
+                      e?.stopPropagation?.();
+                      onOpenSupplyModal?.(med);
+                    }}
+                    hitSlop={6}
+                    style={({ pressed }) => [
+                      {
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                        paddingHorizontal: 8,
+                        paddingVertical: 2.5,
+                        borderRadius: 8,
+                        backgroundColor: isLowSupply ? "#FEF2F2" : "#F1F5F9",
+                        borderWidth: 1,
+                        borderColor: isLowSupply ? "#FECACA" : "#E2E8F0",
+                        opacity: pressed ? 0.75 : 1,
+                      },
+                    ]}
+                  >
+                    {isLowSupply ? (
+                      <AlertCircle size={10} color="#EF4444" strokeWidth={3} />
+                    ) : (
+                      <Package size={10} color="#64748B" strokeWidth={2.5} />
+                    )}
+                    <Text
+                      style={{
+                        fontSize: 9,
+                        fontWeight: "800",
+                        color: isLowSupply ? "#EF4444" : "#64748B",
+                        letterSpacing: 0.3,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {displayDoses} {isLowSupply ? "Left (Update)" : "Left"}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            </View>
+            {med.taken && (
+              <View style={styles.takenBadge}>
+                <CheckCircle2 size={10} color={colors.success} />
+                <Text style={styles.takenBadgeText}>
+                  {t("home.done", { defaultValue: "Done" })}
+                </Text>
+              </View>
+            )}
           </View>
-        )}
-      </View>
-    </Pressable>
+        </Pressable>
+      </Animated.View>
+    </Animated.View>
   );
 };
 
@@ -399,73 +494,40 @@ export default function PatientHomeScreen({ navigation }) {
   const heartRateInputRef = useRef(null);
   const vitalsSectionY = useRef(0);
   const vitalsCardRef = useRef(null);
+  const vitalsHeaderRef = useRef(null);
+  const orbRef = useRef(null);
+  const insightCardRef = useRef(null);
+  const aiCoachHeaderRef = useRef(null);
+  const medsCardRef = useRef(null);
+  const todaysPlanHeaderRef = useRef(null);
 
-  const [showVitalsTour, setShowVitalsTour] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const vitalsTourTriggeredRef = useRef(false);
-
-  const getVitalsTourSteps = () => {
-    return [
-      {
-        title: t("home.guide_dashboard_title", {
-          defaultValue: "👋 Welcome to your Dashboard",
-        }),
-        desc: t("home.guide_dashboard_desc", {
-          defaultValue:
-            "This page is your daily health tracker. Here, you can monitor your health vitals, track your medication plan, review AI insights, and easily call your care companion.",
-        }),
-        icon: Sparkles,
-        iconColor: "#8B5CF6",
-        ref: vitalsCardRef,
-        visible: true,
-      },
-    ];
-  };
+  const [supplyModalMed, setSupplyModalMed] = useState(null);
+  const updateMedSupply = usePatientStore((s) => s.updateMedSupply);
 
   const patient = usePatientStore((s) => s.patient);
   const vitals = usePatientStore((s) => s.vitals);
   const vitalsHistory = usePatientStore((s) => s.vitalsHistory);
   const aiPrediction = usePatientStore((s) => s.aiPrediction);
   const meds = usePatientStore((s) => s.dashboardMeds);
+  const medicationSchedule = usePatientStore((s) => s.medicationSchedule);
   const adherenceDetails = usePatientStore((s) => s.adherenceDetails);
   const healthHistory = usePatientStore((s) => s.healthHistory);
   const isCached = usePatientStore((s) => s.isCached);
+  const storeLoading = usePatientStore((s) => s.loading);
   const storeFetchDashboard = usePatientStore((s) => s.fetchDashboard);
   const storeFetchMedications = usePatientStore((s) => s.fetchMedications);
-  const storeLoading = usePatientStore((s) => s.loading);
   const setPatient = usePatientStore((s) => s.setPatient);
 
-  useEffect(() => {
-    // Only run if the patient dashboard loading is done
-    // Guard: only trigger once per mount to prevent re-showing after dismiss
-    if (!storeLoading && patient && !vitalsTourTriggeredRef.current) {
-      vitalsTourTriggeredRef.current = true;
-      const initVitalsTour = async () => {
-        const vitalsHeuristic = async () => {
-          const hasVitalsHistory =
-            (vitalsHistory && vitalsHistory.length > 0) ||
-            vitals?.heart_rate ||
-            vitals?.blood_pressure?.systolic ||
-            (vitals?.oxygen_saturation != null &&
-              vitals?.oxygen_saturation !== undefined) ||
-            (vitals?.hydration != null && vitals?.hydration !== undefined);
-          const isExistingAccount =
-            patient?.created_at &&
-            new Date(patient.created_at) < new Date("2026-06-27T00:00:00Z");
-          return !!(hasVitalsHistory || isExistingAccount);
-        };
-
-        await TourService.evaluateMigration("vitals_log", vitalsHeuristic);
-        const seen = await TourService.isTourSeen("vitals_log");
-        if (!seen) {
-          setTimeout(() => {
-            setShowVitalsTour(true);
-          }, 800);
-        }
-      };
-      initVitalsTour();
-    }
-  }, [storeLoading, patient, vitalsHistory, vitals]);
+  const nextAction = useMemo(() => {
+    return NextActionEngine.evaluatePriority({
+      patient,
+      meds,
+      vitals,
+      alerts: profile?.alerts || [],
+      completionPct: profile?.completion_pct || 100,
+    });
+  }, [patient, meds, vitals, profile]);
 
   const activeInsights = useMemo(() => {
     const list = [];
@@ -609,6 +671,76 @@ export default function PatientHomeScreen({ navigation }) {
   const medsCardScaleAnim = useRef(new Animated.Value(1)).current;
   const prevMedsCompletedRef = useRef(null);
 
+  // Dynamic layout measurement for True Shared Morphing Card
+  const [inlineCardAnchorY, setInlineCardAnchorY] = useState(185);
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Calculate dynamic docking target & distance based on status bar / inset layout
+  const dockTargetY = Platform.OS === "ios" ? 56 : (StatusBar.currentHeight ? StatusBar.currentHeight + 12 : 44);
+  const dockDistance = Math.max(10, inlineCardAnchorY - dockTargetY);
+
+  // Native GPU-Accelerated Y Translation (Inline <-> Docked)
+  // At scrollY = 0: translateY = inlineCardAnchorY - dockTargetY (positioned at inline location)
+  // At scrollY = dockDistance: translateY = 0 (docked at top)
+  const cardTranslateY = scrollY.interpolate({
+    inputRange: [0, Math.max(1, dockDistance)],
+    outputRange: [Math.max(0, inlineCardAnchorY - dockTargetY), 0],
+    extrapolate: "clamp",
+  });
+
+  // Internal Content Cross-Morphing (Inline <-> Docked)
+  // Clean cross-fade with 10% safety gap to eliminate double text overlap
+  const eyebrowInlineOpacity = scrollY.interpolate({
+    inputRange: [0, Math.max(1, dockDistance * 0.45)],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+
+  const eyebrowDockedOpacity = scrollY.interpolate({
+    inputRange: [Math.max(1, dockDistance * 0.55), Math.max(1, dockDistance)],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
+
+  // Inline CTA arrow circle fades out cleanly
+  const ctaInlineOpacity = scrollY.interpolate({
+    inputRange: [0, Math.max(1, dockDistance * 0.45)],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+
+  // Docked CTA View pill fades in cleanly
+  const ctaDockedOpacity = scrollY.interpolate({
+    inputRange: [Math.max(1, dockDistance * 0.55), Math.max(1, dockDistance)],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
+
+  // Hero Greeting Section Smooth Progressive Collapse
+  const heroTitleOpacity = scrollY.interpolate({
+    inputRange: [0, Math.max(1, dockDistance * 0.7)],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+
+  const heroTitleTranslateY = scrollY.interpolate({
+    inputRange: [0, Math.max(1, dockDistance * 0.7)],
+    outputRange: [0, -18],
+    extrapolate: "clamp",
+  });
+
+  const heroSubtextOpacity = scrollY.interpolate({
+    inputRange: [0, Math.max(1, dockDistance * 0.8)],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+
+  const heroSubtextTranslateY = scrollY.interpolate({
+    inputRange: [0, Math.max(1, dockDistance * 0.8)],
+    outputRange: [0, -14],
+    extrapolate: "clamp",
+  });
+
   // Coach card insight cross-fade & slide
   const coachFadeAnim = useRef(new Animated.Value(1)).current;
   const coachSlideAnim = useRef(new Animated.Value(0)).current;
@@ -659,12 +791,14 @@ export default function PatientHomeScreen({ navigation }) {
         setMoodLogged(true);
         setSelectedMood(loggedToday.value || loggedToday.mood);
         thanksFadeAnim.setValue(1);
+        moodFadeAnim.setValue(0);
       } else {
         // Don't reset optimistic mood state while a save is in-flight or settling
         if (!moodSaveSettlingRef.current) {
           setMoodLogged(false);
           setSelectedMood(null);
           moodFadeAnim.setValue(1);
+          thanksFadeAnim.setValue(0);
         }
       }
     } catch (e) {
@@ -743,9 +877,15 @@ export default function PatientHomeScreen({ navigation }) {
     });
   };
 
+  const getSleepPromptKey = () => {
+    const pUid = patient?.id || patient?._id || user?.id;
+    return pUid ? `last_sleep_prompt_date_${pUid}` : "last_sleep_prompt_date";
+  };
+
   const checkEstimatedSleep = async () => {
     try {
-      const result = await sleepEstimation.estimateSleep();
+      const pUid = patient?.id || patient?._id || user?.id;
+      const result = await sleepEstimation.estimateSleep(pUid);
       if (result && result.estimate) {
         setEstimatedSleep({
           ...result.estimate,
@@ -787,7 +927,7 @@ export default function PatientHomeScreen({ navigation }) {
         source: apiSource,
       });
       await AsyncStorage.setItem(
-        "last_sleep_prompt_date",
+        getSleepPromptKey(),
         estimatedSleep.dateStr,
       );
       setEstimatedSleep(null);
@@ -805,7 +945,7 @@ export default function PatientHomeScreen({ navigation }) {
     if (!estimatedSleep) return;
     try {
       const dateStr = estimatedSleep.dateStr || new Date().toDateString();
-      await AsyncStorage.setItem("last_sleep_prompt_date", dateStr);
+      await AsyncStorage.setItem(getSleepPromptKey(), dateStr);
       setEstimatedSleep(null);
     } catch (e) {
       console.warn("Failed to dismiss sleep prompt:", e.message);
@@ -852,7 +992,7 @@ export default function PatientHomeScreen({ navigation }) {
         quality: "good",
         source: apiSource,
       });
-      await AsyncStorage.setItem("last_sleep_prompt_date", dateStr);
+      await AsyncStorage.setItem(getSleepPromptKey(), dateStr);
       setEstimatedSleep(null);
       AlertManager.alert(
         "Success",
@@ -922,7 +1062,12 @@ export default function PatientHomeScreen({ navigation }) {
                   (1000 * 60 * 60 * 24),
               );
             }
-            syncAllSchedules(medsToSync, medPrefs, daysLeft, !!result.vitals);
+            // Defer notification sync slightly off the main UI loop to prevent JNI lock contention / ANRs
+            setTimeout(() => {
+              syncAllSchedules(medsToSync, medPrefs, daysLeft, !!result.vitals).catch(err => {
+                console.warn("Async syncAllSchedules warning:", err.message);
+              });
+            }, 300);
           } catch (notifErr) {
             console.warn("Notification scheduling error:", notifErr.message);
           }
@@ -998,10 +1143,9 @@ export default function PatientHomeScreen({ navigation }) {
 
   useEffect(() => {
     const initSync = async () => {
+      await HealthSyncService.initialize();
       const status = await HealthSyncService.getStatus();
       setSyncStatus(status);
-      if (status.enabled && status.connected)
-        await HealthSyncService.initialize();
     };
     initSync();
     const unsub = HealthSyncService.addListener((update) => {
@@ -1388,7 +1532,8 @@ export default function PatientHomeScreen({ navigation }) {
       !prevMedsCompletedRef.current
     ) {
       HapticPatterns.allDone();
-      setShowCelebration(true);
+      setShowCelebration(false);
+      setTimeout(() => setShowCelebration(true), 10);
       if (reduceMotion) return;
       Animated.sequence([
         Animated.spring(medsCardScaleAnim, {
@@ -1734,8 +1879,8 @@ export default function PatientHomeScreen({ navigation }) {
   // ── Loading skeleton ─────────────────────────────────────────────────────
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
-        <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
         <View style={styles.skeletonHeader}>
           <View style={{ paddingHorizontal: spacing.heroScreen }}>
             <SkeletonItem
@@ -1771,7 +1916,7 @@ export default function PatientHomeScreen({ navigation }) {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
           <StatusBar
             barStyle="dark-content"
             backgroundColor="transparent"
@@ -1940,43 +2085,121 @@ export default function PatientHomeScreen({ navigation }) {
             </Svg>
           </View>
 
-          {/* ── HEADER ── */}
-          <View style={styles.header}>
-            <View style={styles.mainHeaderRow}>
-              <View style={{ flex: 1, paddingRight: 16 }}>
-                <Text style={styles.greetingName}>{adaptiveGreeting}</Text>
-                <Text style={styles.headerSubtext}>{headerSubtitle}</Text>
+          {/* ── SINGLE CONTINUOUS SHARED MORPHING CARD SURFACE ── */}
+          <Animated.View
+            pointerEvents="box-none"
+            style={[
+              styles.singleSharedCardContainer,
+              {
+                top: dockTargetY,
+                transform: [{ translateY: cardTranslateY }],
+              },
+            ]}
+          >
+            <Pressable
+              style={styles.cardInternalPressable}
+              onPress={() => navigation.navigate(nextAction.targetScreen)}
+            >
+              <View style={styles.cardIconBadge}>
+                {nextAction.iconType === "medication" ? (
+                  <Pill size={16} color="#7C3AED" />
+                ) : nextAction.iconType === "vital" ? (
+                  <Heart size={16} color="#7C3AED" />
+                ) : nextAction.iconType === "alert" ? (
+                  <AlertTriangle size={16} color="#EF4444" />
+                ) : (
+                  <Sparkles size={16} color="#7C3AED" />
+                )}
               </View>
-              <View style={styles.headerActions}>
-                <Pressable
-                  style={styles.headerIconBtn}
-                  onPress={() => navigation.navigate("Notifications")}
+
+              <View style={{ flex: 1, paddingRight: 8, justifyContent: "center" }}>
+                <View style={{ height: 16, justifyContent: "center", position: "relative" }}>
+                  <Animated.View
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      top: 0,
+                      opacity: eyebrowInlineOpacity,
+                    }}
+                  >
+                    <View style={styles.eyebrowCapsule}>
+                      <Text style={styles.eyebrowText}>
+                        {(nextAction.bannerTitle || "WHAT'S NEXT?").toUpperCase()}
+                      </Text>
+                    </View>
+                  </Animated.View>
+
+                  <Animated.View
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      top: 0,
+                      opacity: eyebrowDockedOpacity,
+                    }}
+                  >
+                    <Text style={styles.dockedEyebrowText}>NEXT STEP</Text>
+                  </Animated.View>
+                </View>
+
+                <Text
+                  style={styles.cardMainText}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
                 >
-                  <Bell size={20} color="#475569" strokeWidth={2.5} />
-                  {(unreadCount > 0 || hasContextualAlerts) && (
-                    <View style={styles.bellDot} />
-                  )}
-                </Pressable>
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  style={styles.avatarBtn}
-                  onPress={() => navigation.navigate("Profile")}
-                >
-                  <Text style={styles.avatarText}>
-                    {displayName?.charAt(0) || "U"}
-                  </Text>
-                </TouchableOpacity>
+                  {nextAction.actionPayload?.name
+                    ? `Take ${nextAction.actionPayload.name}`
+                    : nextAction.bannerDescription?.split("•")[0]?.trim() ||
+                      nextAction.bannerDescription}
+                </Text>
               </View>
-            </View>
-          </View>
+
+              <View style={{ width: 56, height: 32, alignItems: "flex-end", justifyContent: "center", position: "relative" }}>
+                <Animated.View
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    opacity: ctaInlineOpacity,
+                  }}
+                >
+                  <View style={styles.arrowCircle}>
+                    <ChevronRight size={15} color="#64748B" />
+                  </View>
+                </Animated.View>
+
+                <Animated.View
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    opacity: ctaDockedOpacity,
+                  }}
+                >
+                  <View style={styles.dockedCtaBadge}>
+                    <Text style={styles.dockedCtaText}>View</Text>
+                    <ChevronRight size={13} color="#7C3AED" />
+                  </View>
+                </Animated.View>
+              </View>
+            </Pressable>
+          </Animated.View>
 
           {/* ── SCROLLABLE CONTAINER ── */}
-          <ScrollView
+          <Animated.ScrollView
             ref={scrollViewRef}
             style={{ flex: 1 }}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {
+                paddingTop: Platform.OS === "ios" ? 56 : (StatusBar.currentHeight ? StatusBar.currentHeight + 12 : 44),
+                paddingBottom: 130,
+              },
+            ]}
             keyboardShouldPersistTaps="handled"
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: true }
+            )}
+            scrollEventThrottle={16}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -1985,6 +2208,78 @@ export default function PatientHomeScreen({ navigation }) {
               />
             }
           >
+            {/* ── HEADER ── */}
+            <View style={[styles.header, { paddingTop: 0, paddingBottom: 16 }]}>
+              {/* Top Row: Brand & Header Actions */}
+              <View style={styles.headerTopRow}>
+                <View style={styles.brandBadge}>
+                  <Image
+                    source={require("../../../assets/logo.png")}
+                    style={styles.brandLogo}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.brandText}>CareMyMed</Text>
+                </View>
+                <View style={styles.headerActions}>
+                  <Pressable
+                    style={styles.headerIconBtn}
+                    onPress={() => navigation.navigate("Notifications")}
+                  >
+                    <Bell size={20} color="#475569" strokeWidth={2.5} />
+                    {(unreadCount > 0 || hasContextualAlerts) && (
+                      <View style={styles.bellDot} />
+                    )}
+                  </Pressable>
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    style={styles.avatarBtn}
+                    onPress={() => navigation.navigate("Profile")}
+                  >
+                    <Text style={styles.avatarText}>
+                      {displayName?.charAt(0) || "U"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Spacious Full-Width Hero Greeting */}
+              <Animated.View
+                style={[
+                  styles.heroGreetingBlock,
+                  {
+                    opacity: heroTitleOpacity,
+                    transform: [{ translateY: heroTitleTranslateY }],
+                  },
+                ]}
+              >
+                <Text style={styles.greetingName}>
+                  {adaptiveGreeting}
+                </Text>
+                <Animated.Text
+                  style={[
+                    styles.headerSubtext,
+                    {
+                      opacity: heroSubtextOpacity,
+                      transform: [{ translateY: heroSubtextTranslateY }],
+                    },
+                  ]}
+                >
+                  {headerSubtitle}
+                </Animated.Text>
+              </Animated.View>
+            </View>
+
+            {/* ── Inline Placeholder Anchor for Shared Card Layout & Dynamic Alignment ── */}
+            <View
+              onLayout={(e) => {
+                const y = e.nativeEvent.layout.y;
+                if (y > 0 && Math.abs(y - inlineCardAnchorY) > 2) {
+                  setInlineCardAnchorY(y);
+                }
+              }}
+              style={{ height: 68, marginBottom: 14 }}
+            />
+
             {/* Pills Row */}
             <Animated.View
               style={[
@@ -2240,7 +2535,7 @@ export default function PatientHomeScreen({ navigation }) {
                         <>
                           Your watch or phone logged{" "}
                           <Text style={{ fontWeight: "800", color: "#1E1B4B" }}>
-                            {estimatedSleep.hours} hours
+                            {estimatedSleep.durationText || `${estimatedSleep.hours} hours`}
                           </Text>{" "}
                           of sleep last night ({estimatedSleep.startTime} to{" "}
                           {estimatedSleep.endTime}).
@@ -2249,7 +2544,7 @@ export default function PatientHomeScreen({ navigation }) {
                         <>
                           Your phone was quiet for{" "}
                           <Text style={{ fontWeight: "800", color: "#1E1B4B" }}>
-                            {estimatedSleep.hours} hours
+                            {estimatedSleep.durationText || `${estimatedSleep.hours} hours`}
                           </Text>{" "}
                           last night ({estimatedSleep.startTime} to{" "}
                           {estimatedSleep.endTime}).
@@ -2274,7 +2569,7 @@ export default function PatientHomeScreen({ navigation }) {
                         <Text style={styles.sleepPromptBtnYesText}>
                           {sleepLogging
                             ? "Logging..."
-                            : `Yes, log ${estimatedSleep.hours}h`}
+                            : `Yes, log ${estimatedSleep.durationText || estimatedSleep.hours + 'h'}`}
                         </Text>
                       </Pressable>
                       <Pressable
@@ -2352,8 +2647,15 @@ export default function PatientHomeScreen({ navigation }) {
               </Pressable>
             </Animated.View>
 
-            {/* ── 1. GLASS HEALTH ORB (Brand Focus, 60% Width) ── */}
-            <Animated.View style={[entranceStyle(1), styles.orbContainer]}>
+            {/* ── 1. HEALTH SNAPSHOT (Hero Ambient Composition) ── */}
+            <Text style={styles.sectionTitle}>HEALTH SNAPSHOT</Text>
+            <RecoverableBoundary
+              featureName="Health Score"
+              screenName="HomeScreen"
+              resetKeys={[patient?._id]}
+            >
+            <View ref={orbRef} collapsable={false}>
+              <Animated.View style={[entranceStyle(1), styles.orbContainer]}>
               <Animated.View
                 style={[
                   styles.orbWrapper,
@@ -2511,103 +2813,124 @@ export default function PatientHomeScreen({ navigation }) {
                     })}
               </Text>
             </Animated.View>
+            </View>
+            </RecoverableBoundary>
 
             {/* ── 2. DAILY CHECK-IN (Directly under the Orb) ── */}
             <Animated.View style={[entranceStyle(2), styles.section]}>
-              <View style={styles.checkinCard}>
-                {!moodLogged ? (
-                  <Animated.View style={{ opacity: moodFadeAnim }}>
-                    <Text style={styles.checkinTitle}>
-                      {t("home.how_are_feeling", {
-                        defaultValue: "How are you feeling today?",
-                      })}
-                    </Text>
-                    <View style={styles.moodEmojiRow}>
-                      <Pressable
-                        style={styles.moodEmojiPill}
-                        onPress={() => saveDailyMood("sad")}
-                      >
-                        <LottieView
-                          source={require("../../assets/lottie/sad.json")}
-                          autoPlay
-                          loop
-                          style={styles.moodLottie}
-                        />
-                        <Text style={styles.moodLabel}>Low</Text>
-                      </Pressable>
-                      <Pressable
-                        style={styles.moodEmojiPill}
-                        onPress={() => saveDailyMood("okay")}
-                      >
-                        <LottieView
-                          source={require("../../assets/lottie/okay.json")}
-                          autoPlay
-                          loop
-                          style={styles.moodLottie}
-                        />
-                        <Text style={styles.moodLabel}>Okay</Text>
-                      </Pressable>
-                      <Pressable
-                        style={styles.moodEmojiPill}
-                        onPress={() => saveDailyMood("good")}
-                      >
-                        <LottieView
-                          source={require("../../assets/lottie/good.json")}
-                          autoPlay
-                          loop
-                          style={styles.moodLottie}
-                        />
-                        <Text style={styles.moodLabel}>Good</Text>
-                      </Pressable>
-                      <Pressable
-                        style={styles.moodEmojiPill}
-                        onPress={() => saveDailyMood("great")}
-                      >
-                        <LottieView
-                          source={require("../../assets/lottie/great.json")}
-                          autoPlay
-                          loop
-                          style={styles.moodLottie}
-                        />
-                        <Text style={styles.moodLabel}>Great</Text>
-                      </Pressable>
-                    </View>
-                  </Animated.View>
-                ) : (
-                  <Animated.View
-                    style={{ opacity: thanksFadeAnim, width: "100%" }}
-                  >
-                    <View style={styles.checkinCompleteView}>
-                      <Sparkles
-                        size={16}
-                        color="#8B5CF6"
-                        style={{ marginRight: 8 }}
+              <View style={[styles.checkinCard, { minHeight: moodLogged ? 70 : 130, justifyContent: 'center' }]}>
+                {/* 1. Mood Picker (fades out) */}
+                <Animated.View
+                  style={{
+                    opacity: moodFadeAnim,
+                    position: moodLogged ? "absolute" : "relative",
+                    left: moodLogged ? 24 : 0,
+                    right: moodLogged ? 24 : 0,
+                    top: moodLogged ? 24 : 0,
+                  }}
+                  pointerEvents={moodLogged ? "none" : "auto"}
+                >
+                  <Text style={styles.checkinTitle}>
+                    {t("home.how_are_feeling", {
+                      defaultValue: "How are you feeling today?",
+                    })}
+                  </Text>
+                  <View style={styles.moodEmojiRow}>
+                    <Pressable
+                      style={styles.moodEmojiPill}
+                      onPress={() => saveDailyMood("sad")}
+                    >
+                      <LottieView
+                        source={require("../../assets/lottie/sad.json")}
+                        autoPlay
+                        loop
+                        style={styles.moodLottie}
                       />
-                      <Text style={styles.checkinCompleteText}>
-                        ✨ Thanks for checking in. Today's insight has been
-                        updated.
-                      </Text>
-                      <Text style={styles.selectedMoodBadge}>
-                        {selectedMood === "sad"
-                          ? "😞 Low"
-                          : selectedMood === "okay"
-                            ? "😐 Okay"
-                            : selectedMood === "good"
-                              ? "🙂 Good"
-                              : "😄 Great"}
-                      </Text>
-                    </View>
-                  </Animated.View>
-                )}
+                      <Text style={styles.moodLabel}>Low</Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.moodEmojiPill}
+                      onPress={() => saveDailyMood("okay")}
+                    >
+                      <LottieView
+                        source={require("../../assets/lottie/okay.json")}
+                        autoPlay
+                        loop
+                        style={styles.moodLottie}
+                      />
+                      <Text style={styles.moodLabel}>Okay</Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.moodEmojiPill}
+                      onPress={() => saveDailyMood("good")}
+                    >
+                      <LottieView
+                        source={require("../../assets/lottie/good.json")}
+                        autoPlay
+                        loop
+                        style={styles.moodLottie}
+                      />
+                      <Text style={styles.moodLabel}>Good</Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.moodEmojiPill}
+                      onPress={() => saveDailyMood("great")}
+                    >
+                      <LottieView
+                        source={require("../../assets/lottie/great.json")}
+                        autoPlay
+                        loop
+                        style={styles.moodLottie}
+                      />
+                      <Text style={styles.moodLabel}>Great</Text>
+                    </Pressable>
+                  </View>
+                </Animated.View>
+
+                {/* 2. Thanks View (fades in) */}
+                <Animated.View
+                  style={{
+                    opacity: thanksFadeAnim,
+                    position: moodLogged ? "relative" : "absolute",
+                    left: moodLogged ? 0 : 24,
+                    right: moodLogged ? 0 : 24,
+                    top: moodLogged ? 0 : 24,
+                    width: "100%",
+                  }}
+                  pointerEvents={moodLogged ? "auto" : "none"}
+                >
+                  <View style={styles.checkinCompleteView}>
+                    <Sparkles
+                      size={16}
+                      color="#8B5CF6"
+                      style={{ marginRight: 8 }}
+                    />
+                    <Text style={styles.checkinCompleteText}>
+                      ✨ Thanks for checking in. Today's insight has been
+                      updated.
+                    </Text>
+                    <Text style={styles.selectedMoodBadge}>
+                      {selectedMood === "sad"
+                        ? "😞 Low"
+                        : selectedMood === "okay"
+                          ? "😐 Okay"
+                          : selectedMood === "good"
+                            ? "🙂 Good"
+                            : "😄 Great"}
+                    </Text>
+                  </View>
+                </Animated.View>
               </View>
             </Animated.View>
 
             {/* Removed Health Pulse - combined with Vitals below */}
 
-            {/* ── 4. TODAY'S INSIGHT (AI Coach Guidance sliding carousel) ── */}
-            <Animated.View style={[entranceStyle(4), styles.section]}>
+            {/* ── 4. CARE INSIGHT (AI Live Coach Guidance Carousel) ── */}
+            <View ref={insightCardRef} collapsable={false}>
+              <Animated.View style={[entranceStyle(4), styles.section]}>
+              <Text style={styles.sectionTitle}>CARE INSIGHT</Text>
               <View style={styles.insightCard}>
-                <View style={styles.insightHeaderRow}>
+                <View ref={aiCoachHeaderRef} collapsable={false} style={styles.insightHeaderRow}>
                   <View style={styles.insightHeaderLeft}>
                     <View style={styles.insightIconBox}>
                       <Sparkles size={16} color="#A855F7" />
@@ -2700,12 +3023,14 @@ export default function PatientHomeScreen({ navigation }) {
                 </View>
               </View>
             </Animated.View>
+            </View>
 
             {/* ── 6. MEDICATIONS ── */}
-            <Animated.View style={[entranceStyle(6), styles.section]}>
-              <View style={styles.sectionTitleRow}>
+            <View ref={medsCardRef} collapsable={false}>
+              <Animated.View style={[entranceStyle(6), styles.section]}>
+              <View ref={todaysPlanHeaderRef} collapsable={false} style={styles.sectionTitleRow}>
                 <Text style={styles.sectionTitle}>
-                  {t("home.todays_plan", { defaultValue: "TODAY'S PLAN" })}
+                  {t("home.todays_plan", { defaultValue: "TODAY'S MEDICATIONS" })}
                 </Text>
                 <Pressable
                   style={styles.viewAllBtn}
@@ -2891,9 +3216,19 @@ export default function PatientHomeScreen({ navigation }) {
                     key={med.id}
                     med={med}
                     onPress={() => navigation.navigate("Medications")}
+                    onOpenSupplyModal={setSupplyModalMed}
                   />
                 ))}
             </Animated.View>
+            </View>
+
+            <SupplyUpdateModal
+              visible={!!supplyModalMed}
+              onClose={() => setSupplyModalMed(null)}
+              med={supplyModalMed}
+              schedule={medicationSchedule}
+              onConfirm={(medItem, qty) => updateMedSupply(medItem, qty)}
+            />
 
             {/* ── 7. VITALS (Apple Health Style) ── */}
             <Animated.View
@@ -2903,9 +3238,9 @@ export default function PatientHomeScreen({ navigation }) {
               }}
             >
               <View ref={vitalsCardRef} collapsable={false}>
-                <View style={styles.sectionTitleRow}>
+                <View ref={vitalsHeaderRef} collapsable={false} style={styles.sectionTitleRow}>
                   <Text style={styles.sectionTitle}>
-                    {t("home.vitals", { defaultValue: "VITALS" })}
+                    {t("home.vitals", { defaultValue: "HEALTH SIGNALS" })}
                   </Text>
                   <Pressable
                     style={styles.viewAllBtn}
@@ -3153,14 +3488,29 @@ export default function PatientHomeScreen({ navigation }) {
               </View>
             </Animated.View>
 
-            {/* ── 8. HEALTH JOURNEY & NEXT GOAL ── */}
+            {/* ── 8. YOUR JOURNEY & NEXT GOAL ── */}
             <Animated.View style={[entranceStyle(8), styles.section]}>
+              <Text style={styles.sectionTitle}>YOUR JOURNEY</Text>
               <Pressable
                 onPress={() => navigation.navigate("AdherenceDetails")}
                 style={styles.journeyCard}
               >
                 <View style={styles.journeyHeader}>
-                  <Text style={styles.journeyTitle}>HEALTH JOURNEY</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+                    <StreakCompanion
+                      streak={medicationStreak}
+                      dailyLog={adherenceDetails?.daily_log || []}
+                      size={40}
+                      animate={true}
+                      showEffects={true}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.journeyTitle}>HEALTH JOURNEY</Text>
+                      <Text style={{ fontSize: 12, fontWeight: "800", color: "#7C3AED", marginTop: 2 }}>
+                        {medicationStreak > 0 ? `${medicationStreak} Day Streak 🔥` : "Building Streak 🌱"}
+                      </Text>
+                    </View>
+                  </View>
                   {hasHistory ? (
                     scoreDiff > 0 ? (
                       <View style={styles.journeyImprovementBadge}>
@@ -3320,12 +3670,31 @@ export default function PatientHomeScreen({ navigation }) {
               </View>
             </Animated.View>
 
-            {/* ── 9. QUICK ACTIONS (Visually De-emphasized Utility Chips) ── */}
+            {/* ── 9. QUICK ACTIONS (Compact Control Chips) ── */}
             <Animated.View style={[entranceStyle(9), styles.section]}>
               <Text style={styles.sectionTitle}>
                 {t("common.quick_actions", { defaultValue: "QUICK ACTIONS" })}
               </Text>
               <View style={styles.deemphasizedActionsRow}>
+                <Pressable
+                  style={[styles.actionChip, { backgroundColor: "#F3E8FF", borderColor: "#E9D5FF" }]}
+                  onPress={() => {
+                    setIsLogging(true);
+                    if (vitalsCardRef.current && scrollViewRef.current) {
+                      vitalsCardRef.current.measureLayout(
+                        scrollViewRef.current,
+                        (x, y) => {
+                          scrollViewRef.current?.scrollTo({ y: Math.max(0, y - 20), animated: true });
+                        },
+                        () => {}
+                      );
+                    }
+                  }}
+                >
+                  <Activity size={13} color="#7C3AED" />
+                  <Text style={[styles.actionChipText, { color: "#7C3AED", fontWeight: "800" }]}>Log Vitals</Text>
+                </Pressable>
+
                 <Pressable
                   style={styles.actionChip}
                   onPress={() => navigation.navigate("AdherenceDetails")}
@@ -3388,15 +3757,7 @@ export default function PatientHomeScreen({ navigation }) {
                 </LinearGradient>
               </Pressable>
             </Animated.View>
-          </ScrollView>
-
-          <GuidedTour
-            visible={showVitalsTour}
-            steps={getVitalsTourSteps()}
-            scrollRef={scrollViewRef}
-            tourKey="vitals_log"
-            onClose={() => setShowVitalsTour(false)}
-          />
+          </Animated.ScrollView>
 
           {/* Daily Health Tip Bottom Sheet */}
           <BottomSheetWrapper
@@ -3471,7 +3832,6 @@ export default function PatientHomeScreen({ navigation }) {
             })()}
           </BottomSheetWrapper>
         </View>
-        <CelebrationOverlay active={showCelebration} onComplete={() => setShowCelebration(false)} />
       </KeyboardAvoidingView>
     </TabScreenTransition>
   );
@@ -3559,31 +3919,61 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: Platform.OS === "ios" ? 60 : 56,
     paddingHorizontal: spacing.heroScreen,
-    paddingBottom: 14,
+    paddingBottom: 16,
     backgroundColor: "transparent",
   },
-  mainHeaderRow: {
+  headerTopRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    marginBottom: 16,
+    gap: 16,
+  },
+  brandBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#F3E8FF",
+    paddingHorizontal: 9,
+    paddingVertical: 4.5,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E9D5FF",
+  },
+  brandLogo: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+  },
+  brandText: {
+    fontSize: 12,
+    ...FONT.heavy,
+    color: "#7C3AED",
+    letterSpacing: 0.4,
+  },
+  heroGreetingBlock: {
+    marginTop: 4,
+    marginBottom: 4,
   },
   greetingName: {
-    fontSize: 28,
-    fontWeight: "900",
+    fontSize: 30,
+    ...FONT.heavy,
     color: "#7C3AED",
     letterSpacing: -1,
+    lineHeight: 38,
   },
   headerSubtext: {
-    fontSize: 13,
-    color: "#94A3B8",
-    marginTop: 2,
-    fontWeight: "600",
+    fontSize: 14,
+    color: "#64748B",
+    marginTop: 4,
+    ...FONT.medium,
+    lineHeight: 20,
   },
-  headerActions: { flexDirection: "row", alignItems: "center", gap: 10 },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 7 },
   headerIconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#E2E8F0",
@@ -3592,8 +3982,8 @@ const styles = StyleSheet.create({
   },
   bellDot: {
     position: "absolute",
-    top: 10,
-    right: 10,
+    top: 8,
+    right: 8,
     width: 7,
     height: 7,
     borderRadius: 3.5,
@@ -3602,9 +3992,9 @@ const styles = StyleSheet.create({
     borderColor: "#FFFFFF",
   },
   avatarBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: "#7C3AED",
     borderWidth: 2,
     borderColor: "#E9D5FF",
@@ -4343,8 +4733,8 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#94A3B8",
-    letterSpacing: 1.8,
+    color: "#7C3AED",
+    letterSpacing: 1.2,
     textTransform: "uppercase",
     marginBottom: 12,
   },
@@ -4385,7 +4775,6 @@ const styles = StyleSheet.create({
     borderColor: "#F1F5F9",
   },
   medCardTaken: { backgroundColor: "#F0FDF4", borderColor: "#DCFCE7" },
-  medAccentBar: { width: 5, flexShrink: 0 },
   medCardContent: {
     flex: 1,
     flexDirection: "row",
@@ -4770,5 +5159,89 @@ const styles = StyleSheet.create({
     color: "#D97706",
     fontSize: 13,
     fontWeight: "700",
+  },
+  // Frosted Sticky Container Header Morphing Bar
+  // Frosted Sticky Container Header Morphing Floating Dock Capsule
+  // ── SINGLE CONTINUOUS SHARED MORPHING CARD SURFACE ──
+  singleSharedCardContainer: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    zIndex: 120,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(124, 58, 237, 0.15)",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  cardInternalPressable: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  cardIconBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#F3E8FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  eyebrowCapsule: {
+    alignSelf: "flex-start",
+    backgroundColor: "#FAF5FF",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 100,
+    borderWidth: 1,
+    borderColor: "#F3E8FF",
+  },
+  eyebrowText: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#7C3AED",
+    letterSpacing: 0.6,
+  },
+  dockedEyebrowText: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#7C3AED",
+    letterSpacing: 0.8,
+  },
+  cardMainText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginTop: 2,
+  },
+  arrowCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dockedCtaBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FAF5FF",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#F3E8FF",
+  },
+  dockedCtaText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#7C3AED",
   },
 });

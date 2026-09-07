@@ -12,7 +12,6 @@ This is a monorepo for **CareMyMed / CareConnect** — a healthcare management p
 | `users-backend/` | Node.js/Express API server used by `users-mobile` |
 | `backend/` | Older/parallel backend (admin app API gateway); `users-backend` is the primary one |
 | `admin-app/` | React Native admin app for org admins, care managers, caretakers |
-| `users-ai-vitals/` | AI vitals prediction service |
 
 ## Common Commands
 

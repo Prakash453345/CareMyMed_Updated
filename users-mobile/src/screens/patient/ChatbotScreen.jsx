@@ -1,17 +1,17 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TextInput, Pressable, KeyboardAvoidingView,
-    Platform, Animated, ActivityIndicator, StatusBar, Image, PanResponder, Vibration, AppState
+    Platform, Animated, ActivityIndicator, StatusBar, Image, PanResponder, Vibration, AppState, Modal
 } from 'react-native';
 import Reanimated, { 
     FadeIn, FadeInDown, FadeOut, 
     useSharedValue, useAnimatedStyle, 
-    withRepeat, withSequence, withTiming, withDelay, Easing,
+    withRepeat, withSequence, withTiming, withDelay, withSpring, Easing,
     Layout
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Send, Sparkles, Bot, User, Mic, Paperclip, Trash2, Pill, Flame, TrendingUp, CheckCircle2, Activity, Heart, Wind, Calendar, Shield, Plus, Square } from 'lucide-react-native';
+import { ArrowLeft, Send, Sparkles, Bot, User, Mic, Paperclip, Trash2, Pill, Flame, TrendingUp, CheckCircle2, Activity, Heart, Wind, Calendar, Shield, Plus, Square, X, CheckCheck, ArrowRight, ChevronRight, Info } from 'lucide-react-native';
 import { colors } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +24,11 @@ import { apiService, handleApiError } from '../../lib/api';
 import AlertManager from '../../utils/AlertManager';
 import { globalChatCache, removeCachedSession } from './ChatHistoryScreen';
 import TabScreenTransition from '../../components/ui/TabScreenTransition';
+import HeroTransition from '../../livingGlass/components/HeroTransition';
+import { resolveChatAttachmentUrl, AuthenticatedImage } from '../../utils/mediaResolver';
+import useChatStore from '../../store/useChatStore';
+import RecoveryManager, { RecordingResult, RecordingResultStatus } from '../../services/RecoveryManager';
+import RecoverableBoundary from '../../components/RecoverableBoundary';
 
 const INITIAL_SUGGESTIONS = [
     '📋 What should I do today?',
@@ -299,21 +304,25 @@ const getMascotForMessage = (text) => {
 };
 
 // ── Skeleton message loaders ────────────────────────────────────────────────
-export const SKELETON_MESSAGES = [
-    { id: 'sk-1', isSkeleton: true, isUser: false, width: '75%' },
-    { id: 'sk-2', isSkeleton: true, isUser: false, width: '45%' },
-    { id: 'sk-3', isSkeleton: true, isUser: true, width: '60%' },
-    { id: 'sk-4', isSkeleton: true, isUser: false, width: '90%' },
+export const FULL_VIEWPORT_SKELETONS = [
+    { id: 'sk-1', isSkeleton: true, isUser: false, width: '78%' },
+    { id: 'sk-2', isSkeleton: true, isUser: false, width: '48%' },
+    { id: 'sk-3', isSkeleton: true, isUser: true, width: '65%' },
+    { id: 'sk-4', isSkeleton: true, isUser: false, width: '85%' },
+    { id: 'sk-5', isSkeleton: true, isUser: true, width: '55%' },
+    { id: 'sk-6', isSkeleton: true, isUser: false, width: '70%' },
 ];
 
+export const SKELETON_MESSAGES = FULL_VIEWPORT_SKELETONS;
+
 function ChatBubbleSkeleton({ isUser, width }) {
-    const pulseAnim = useRef(new Animated.Value(0.3)).current;
+    const pulseAnim = useRef(new Animated.Value(0.4)).current;
     
     useEffect(() => {
         const anim = Animated.loop(
             Animated.sequence([
-                Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-                Animated.timing(pulseAnim, { toValue: 0.3, duration: 1000, useNativeDriver: true })
+                Animated.timing(pulseAnim, { toValue: 0.9, duration: 800, useNativeDriver: true }),
+                Animated.timing(pulseAnim, { toValue: 0.4, duration: 800, useNativeDriver: true })
             ])
         );
         anim.start();
@@ -321,9 +330,9 @@ function ChatBubbleSkeleton({ isUser, width }) {
     }, [pulseAnim]);
 
     return (
-        <View style={[styles.bubbleRow, isUser && styles.bubbleRowUser]}>
+        <View style={[styles.bubbleRow, isUser ? styles.bubbleRowUser : { justifyContent: 'flex-start' }]}>
             {!isUser && (
-                <View style={[styles.botAvatarCircle, { backgroundColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' }]} />
+                <Animated.View style={[styles.botAvatarCircle, { backgroundColor: '#E2E8F0', opacity: pulseAnim }]} />
             )}
             <Animated.View 
                 style={[
@@ -332,17 +341,87 @@ function ChatBubbleSkeleton({ isUser, width }) {
                     { 
                         opacity: pulseAnim, 
                         width: width || '70%', 
-                        height: 55,
-                        backgroundColor: isUser ? '#E0E7FF' : '#E2E8F0',
-                        borderRadius: 16,
+                        paddingVertical: 14,
+                        paddingHorizontal: 14,
+                        gap: 8,
+                        borderRadius: 20,
+                        backgroundColor: isUser ? '#EEF2FF' : '#F1F5F9',
                         borderWidth: 0,
+                        minHeight: 48,
+                        justifyContent: 'center',
                     }
                 ]}
-            />
+            >
+                {/* Skeleton Text Line 1 */}
+                <View style={{ height: 10, width: '85%', borderRadius: 5, backgroundColor: isUser ? '#C7D2FE' : '#CBD5E1' }} />
+                {/* Skeleton Text Line 2 (shorter line for natural speech bubble appearance) */}
+                {width !== '48%' && width !== '55%' && (
+                    <View style={{ height: 10, width: '55%', borderRadius: 5, backgroundColor: isUser ? '#D9E2FE' : '#E2E8F0' }} />
+                )}
+            </Animated.View>
             {isUser && (
-                <View style={[styles.avatarCircleUser, { backgroundColor: '#E2E8F0' }]} />
+                <Animated.View style={[styles.avatarCircleUser, { backgroundColor: '#E2E8F0', opacity: pulseAnim }]} />
             )}
         </View>
+    );
+}
+
+// ── Centered Care Assistant Preparing State ─────────────────────────────────
+function CenteredCareAssistantPreparing({ isCompanion, patientName }) {
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    
+    useEffect(() => {
+        const animation = Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, { toValue: 1.08, duration: 900, useNativeDriver: true }),
+                Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true })
+            ])
+        );
+        animation.start();
+        return () => animation.stop();
+    }, [pulseAnim]);
+
+    const patientShortName = patientName?.split(' ')[0];
+
+    return (
+        <Reanimated.View 
+            entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(200)}
+            style={styles.centeredPreparingContainer}
+        >
+            <Animated.View style={[styles.preparingAvatarHalo, { transform: [{ scale: pulseAnim }] }]}>
+                <LinearGradient
+                    colors={['#EEF2FF', '#E0E7FF', '#C7D2FE']}
+                    style={styles.preparingAvatarGradient}
+                >
+                    <Image 
+                        source={require('../../../assets/doctor_mascot.jpg')} 
+                        style={styles.preparingAvatarImg} 
+                    />
+                </LinearGradient>
+            </Animated.View>
+
+            <View style={styles.preparingSparkleBadge}>
+                <Sparkles size={14} color="#6366F1" strokeWidth={2.5} />
+                <Text style={styles.preparingSparkleTxt}>Care Assistant</Text>
+            </View>
+
+            <Text style={styles.preparingTitle}>
+                {isCompanion
+                    ? `Preparing ${patientShortName || 'patient'}'s conversation…`
+                    : "Preparing your care conversation…"}
+            </Text>
+            
+            <Text style={styles.preparingSub}>
+                Connecting to secure health records & medications
+            </Text>
+
+            <View style={styles.preparingDotsRow}>
+                <TypingDot delay={0} />
+                <TypingDot delay={200} />
+                <TypingDot delay={400} />
+            </View>
+        </Reanimated.View>
     );
 }
 
@@ -366,8 +445,17 @@ const ScalePressable = ({ children, onPress, style }) => {
     );
 };
 
+function formatDuration(secs) {
+    if (secs == null || isNaN(secs) || secs < 0) secs = 0;
+    secs = Math.round(secs);
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
 // ── Single chat bubble ─────────────────────────────────────────────────────
-function ChatBubble({ message, isUser }) {
+function ChatBubble({ message, onPressImage }) {
+    const isUser = message.isUser;
     const scale = useSharedValue(0.97);
     const borderScale = useSharedValue(1);
     const borderOpacity = useSharedValue(0.2);
@@ -410,6 +498,19 @@ function ChatBubble({ message, isUser }) {
         height: '100%',
     }));
 
+    if (message.isSystem || message.type === 'system') {
+        return (
+            <Reanimated.View 
+                entering={FadeIn.duration(300)}
+                style={styles.systemDividerContainer}
+            >
+                <View style={styles.systemDividerLine} />
+                <Text style={styles.systemDividerText}>{message.text}</Text>
+                <View style={styles.systemDividerLine} />
+            </Reanimated.View>
+        );
+    }
+
     if (!message.text && !message.image && !message.audio && (!message.cards || message.cards.length === 0)) {
         return null;
     }
@@ -418,34 +519,40 @@ function ChatBubble({ message, isUser }) {
         return (
             <Reanimated.View 
                 entering={FadeIn.duration(200)}
-                style={[styles.bubbleRow, styles.bubbleRowUser, userAnimatedStyle]}
+                style={[styles.bubbleRow, styles.bubbleRowUser]}
             >
                 <Reanimated.View 
                     layout={Layout.springify().damping(20).stiffness(150)}
-                    style={[styles.bubble, styles.bubbleUser, message.image && styles.bubbleImageContainer, message.audio && styles.bubbleAudioContainer]}
+                    style={[styles.bubble, styles.bubbleUser, message.image && styles.bubbleImageContainer]}
                 >
-                    {!message.image && !message.audio ? (
-                        <LinearGradient colors={['#6366F1', '#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-                    ) : null}
+                    <LinearGradient colors={['#6366F1', '#4F46E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
                     
                     {message.image ? (
-                        <Image source={{ uri: message.image }} style={styles.chatImage} resizeMode="cover" />
+                        <AuthenticatedImage
+                            source={{ uri: message.image }}
+                            style={[styles.chatImage, message.text && { marginBottom: 10 }]}
+                            resizeMode="contain"
+                            onPress={() => onPressImage && onPressImage(message.image)}
+                        />
                     ) : null}
 
                     {message.audio ? (
-                        <View style={styles.audioBubble}>
-                            <Mic size={16} color="#6366F1" />
-                            <Text style={styles.audioBubbleText}>Voice Message • 0:02</Text>
+                        <View style={[styles.audioBubble, styles.audioBubbleUser, message.text && { marginBottom: 8 }]}>
+                            <Mic size={14} color="#FFFFFF" />
+                            <Text style={[styles.audioBubbleText, { color: '#E0E7FF' }]}>Voice Message • {formatDuration(message.audioDuration)}</Text>
                         </View>
                     ) : null}
 
                     {message.text ? (
-                        <Text style={[styles.bubbleText, styles.bubbleTextUser]}>{message.text}</Text>
+                        <Text style={[styles.bubbleText, styles.bubbleTextUser, (message.image || message.audio) && { paddingHorizontal: 6, paddingTop: 4 }]}>{message.text}</Text>
                     ) : null}
                     
-                    <Text style={[styles.bubbleTime, styles.bubbleTimeUser]}>
-                        {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </Text>
+                    <View style={styles.userTimeRow}>
+                        <Text style={[styles.bubbleTime, styles.bubbleTimeUser]}>
+                            {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                        <CheckCheck size={13} color="rgba(255,255,255,0.75)" style={{ marginLeft: 3 }} />
+                    </View>
                 </Reanimated.View>
                 <View style={styles.avatarCircleUser}>
                     <User size={16} color="#FFFFFF" strokeWidth={2.5} />
@@ -478,7 +585,12 @@ function ChatBubble({ message, isUser }) {
                 )}
 
                 {message.image ? (
-                    <Image source={{ uri: message.image }} style={styles.chatImage} resizeMode="cover" />
+                    <AuthenticatedImage
+                        source={{ uri: message.image }}
+                        style={styles.chatImage}
+                        resizeMode="contain"
+                        onPress={() => onPressImage && onPressImage(message.image)}
+                    />
                 ) : null}
 
                 {message.audio ? (
@@ -596,157 +708,116 @@ function TypingIndicator({ stage }) {
     );
 }
 
-// ── Welcome Snapshot Card ───────────────────────────────────────────────────
-function WelcomeSnapshotCard({ firstName, medsCount, takenCount, vitals, streak, userRole, patientName }) {
+// ── Editorial Care Assistant Landing Hero (Apple Health + Medical Concierge Style) ───────
+function CareAssistantLandingHero({ firstName, medsCount, takenCount, vitals, streak, userRole, patientName, onSelectSuggestion }) {
+    const isCompanion = userRole === 'companion';
     const remaining = medsCount - takenCount;
-    
-    // Determine BP text
-    let bpText = 'BP not logged';
+    const hr = new Date().getHours();
+    const greetingTime = hr < 12 ? 'GOOD MORNING' : hr < 17 ? 'GOOD AFTERNOON' : 'GOOD EVENING';
+    const displayNameText = firstName || 'there';
+
+    let bpStatusText = 'Not logged';
     if (vitals) {
         if (vitals.systolic && vitals.diastolic) {
-            bpText = `BP stable ${vitals.systolic}/${vitals.diastolic} mmHg`;
+            bpStatusText = `${vitals.systolic}/${vitals.diastolic} mmHg`;
         } else if (vitals.blood_pressure) {
-            bpText = `BP stable ${vitals.blood_pressure.systolic}/${vitals.blood_pressure.diastolic} mmHg`;
+            bpStatusText = `${vitals.blood_pressure.systolic}/${vitals.blood_pressure.diastolic} mmHg`;
         }
     }
-    
-    // Determine greeting based on time of day
-    const hr = new Date().getHours();
-    const greeting = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
-    
-    const isCompanion = userRole === 'companion';
-    const subText = isCompanion 
-        ? `Here is ${patientName || 'your family member'}'s health snapshot.`
-        : "Here's your health snapshot for today.";
-        
-    return (
-        <View style={styles.welcomeCard}>
-            <LinearGradient 
-                colors={['#EEF2FF', '#E0E7FF']} 
-                start={{ x: 0, y: 0 }} 
-                end={{ x: 1, y: 1 }} 
-                style={styles.welcomeGradient}
-            >
-                <View style={styles.welcomeContent}>
-                    <Text style={styles.welcomeTitle}>{greeting}, <Text style={{ fontWeight: '800', color: '#4F46E5' }}>{firstName}!</Text> 👋</Text>
-                    <Text style={styles.welcomeSub}>{subText}</Text>
-                    
-                    <View style={styles.snapshotRow}>
-                        <View style={styles.snapshotBadge}>
-                            <CheckCircle2 size={12} color="#22C55E" />
-                            <Text style={styles.snapshotBadgeText}>
-                                {remaining === 0 ? 'All meds taken' : `${remaining} med${remaining > 1 ? 's' : ''} left`}
-                            </Text>
-                        </View>
-                        
-                        <View style={styles.snapshotBadge}>
-                            <Heart size={12} color="#EF4444" fill="#EF4444" />
-                            <Text style={styles.snapshotBadgeText}>{bpText}</Text>
-                        </View>
-                        
-                        <View style={styles.snapshotBadge}>
-                            <Flame size={12} color="#F97316" fill="#F97316" />
-                            <Text style={styles.snapshotBadgeText}>{streak} day streak</Text>
-                        </View>
-                    </View>
-                </View>
-                
-                <Image 
-                    source={require('../../../assets/doctor_mascot.jpg')} 
-                    style={styles.robotMascot} 
-                    resizeMode="contain"
-                />
-            </LinearGradient>
-        </View>
-    );
-}
 
-// ── Quick Actions Dashboard ────────────────────────────────────────────────
-function QuickActionsDashboard({ onPress, userRole, patientName }) {
-    const isCompanion = userRole === 'companion';
-    const patientShortName = patientName?.split(' ')[0] || 'Patient';
-    
+    const adherenceRateText = medsCount > 0 
+        ? (remaining === 0 ? '100% Complete' : `${takenCount}/${medsCount} taken`) 
+        : 'No doses scheduled';
+
     return (
-        <View style={styles.actionsDashboard}>
-            <View style={styles.actionsHeader}>
-                <Sparkles size={16} color="#6366F1" strokeWidth={2.5} />
-                <Text style={styles.actionsHeaderText}>How can I help you today?</Text>
-            </View>
-            
-            <View style={styles.actionsGrid}>
-                {/* Row 1 */}
-                <View style={styles.actionsGridRow}>
-                    <Pressable style={styles.actionGridCard} onPress={() => onPress(isCompanion ? `📋 What should ${patientShortName} do today?` : '📋 What should I do today?')}>
-                        <View style={[styles.actionIconBox, { backgroundColor: '#FFF7ED' }]}>
-                            <Calendar size={18} color="#EA580C" />
-                        </View>
-                        <View style={styles.actionCardContent}>
-                            <Text style={styles.actionCardTitle}>{isCompanion ? `What should ${patientShortName} do today?` : 'What should I do today?'}</Text>
-                            <Text style={styles.actionCardSub}>{isCompanion ? "See patient's plan" : "See today's plan"}</Text>
-                        </View>
-                    </Pressable>
-                    
-                    <Pressable style={styles.actionGridCard} onPress={() => onPress(isCompanion ? `📊 ${patientShortName}'s Weekly Health Summary` : '📊 Weekly Health Summary')}>
-                        <View style={[styles.actionIconBox, { backgroundColor: '#ECFDF5' }]}>
-                            <TrendingUp size={18} color="#059669" />
-                        </View>
-                        <View style={styles.actionCardContent}>
-                            <Text style={styles.actionCardTitle}>{isCompanion ? `${patientShortName}'s Weekly Summary` : 'Weekly Health Summary'}</Text>
-                            <Text style={styles.actionCardSub}>{isCompanion ? "Patient's progress this week" : "Your progress this week"}</Text>
-                        </View>
-                    </Pressable>
-                </View>
-                
-                {/* Row 2 */}
-                <View style={styles.actionsGridRow}>
-                    <Pressable style={styles.actionGridCard} onPress={() => onPress(isCompanion ? `💊 ${patientShortName}'s medications list` : '💊 My medications list')}>
-                        <View style={[styles.actionIconBox, { backgroundColor: '#EEF2FF' }]}>
-                            <Pill size={18} color="#4F46E5" />
-                        </View>
-                        <View style={styles.actionCardContent}>
-                            <Text style={styles.actionCardTitle}>{isCompanion ? `${patientShortName}'s meds list` : 'My medications list'}</Text>
-                            <Text style={styles.actionCardSub}>{isCompanion ? "View patient's meds" : "View all your meds"}</Text>
-                        </View>
-                    </Pressable>
-                    
-                    <Pressable style={styles.actionGridCard} onPress={() => onPress(isCompanion ? `📈 ${patientShortName}'s adherence streak` : '📈 My adherence streak')}>
-                        <View style={[styles.actionIconBox, { backgroundColor: '#FFF1F2' }]}>
-                            <Flame size={18} color="#E11D48" />
-                        </View>
-                        <View style={styles.actionCardContent}>
-                            <Text style={styles.actionCardTitle}>{isCompanion ? `${patientShortName}'s adherence streak` : 'My adherence streak'}</Text>
-                            <Text style={styles.actionCardSub}>{isCompanion ? "Track patient's consistency" : "Track your consistency"}</Text>
-                        </View>
-                    </Pressable>
-                </View>
-            </View>
-            
-            {/* Center Card 5 */}
-            <Pressable style={styles.actionCardCenter} onPress={() => onPress(isCompanion ? `🩺 View ${patientShortName}'s vitals status` : '🩺 View vitals status')}>
-                <View style={[styles.actionIconBox, { backgroundColor: '#F0FDF4' }]}>
-                    <Activity size={18} color="#16A34A" />
-                </View>
-                <View style={styles.actionCardContent}>
-                    <Text style={styles.actionCardTitle}>{isCompanion ? `View ${patientShortName}'s vitals status` : 'View vitals status'}</Text>
-                    <Text style={styles.actionCardSub}>Check BP, HR & more</Text>
-                </View>
-            </Pressable>
-            
-            {/* Privacy / Security Banner */}
-            <View style={styles.privacyBanner}>
-                <View style={styles.privacyIconBox}>
-                    <Shield size={18} color="#4F46E5" />
-                </View>
-                <Text style={styles.privacyText}>
-                    {isCompanion 
-                        ? `Patient health data is private, secure, and used only to support their care.`
-                        : `Your health data is private, secure, and used only to support your care.`}
+        <Reanimated.View 
+            entering={FadeInDown.springify().damping(18).stiffness(140)}
+            style={styles.editorialLandingContainer}
+        >
+            {/* Top Editorial Headline */}
+            <View style={styles.editorialHeaderGroup}>
+                <Text style={styles.editorialEyebrow}>{greetingTime}</Text>
+                <Text style={styles.editorialNameTitle}>{displayNameText}</Text>
+                <Text style={styles.editorialStatusSentence}>
+                    {remaining === 0 
+                        ? "You're all caught up with today's medications." 
+                        : `You have ${remaining} medication dose${remaining > 1 ? 's' : ''} remaining today.`}
                 </Text>
-                <Pressable style={styles.privacyLearnBtn}>
-                    <Text style={styles.privacyLearnText}>Learn more</Text>
+            </View>
+
+            {/* Hairline Divider */}
+            <View style={styles.editorialDivider} />
+
+            {/* Editorial Snapshot Summary Rows */}
+            <View style={styles.editorialSnapshotSection}>
+                <Text style={styles.editorialSectionHeading}>TODAY</Text>
+                
+                <View style={styles.editorialSnapshotRow}>
+                    <Text style={styles.editorialSnapshotLabel}>Medication adherence</Text>
+                    <Text style={[styles.editorialSnapshotValue, remaining === 0 && { color: '#10B981' }]}>
+                        {adherenceRateText}
+                    </Text>
+                </View>
+
+                <View style={styles.editorialSnapshotRow}>
+                    <Text style={styles.editorialSnapshotLabel}>Vitals status</Text>
+                    <Text style={styles.editorialSnapshotValue}>{bpStatusText}</Text>
+                </View>
+
+                <View style={styles.editorialSnapshotRow}>
+                    <Text style={styles.editorialSnapshotLabel}>Adherence streak</Text>
+                    <Text style={styles.editorialSnapshotValue}>{streak > 0 ? `${streak} days` : '—'}</Text>
+                </View>
+            </View>
+
+            {/* Hairline Divider */}
+            <View style={styles.editorialDivider} />
+
+            {/* Text-First Conversational Actions */}
+            <View style={styles.editorialActionsSection}>
+                <Text style={styles.editorialSectionHeading}>WHAT CAN I HELP WITH?</Text>
+
+                <Pressable
+                    style={({ pressed }) => [styles.editorialActionRow, pressed && { opacity: 0.7 }]}
+                    onPress={() => onSelectSuggestion(isCompanion ? `📋 What should ${patientName || 'Patient'} take today?` : '💊 What medications do I take today?')}
+                >
+                    <Text style={styles.editorialActionText}>Today's medications</Text>
+                    <ChevronRight size={18} color="#94A3B8" />
+                </Pressable>
+
+                <Pressable
+                    style={({ pressed }) => [styles.editorialActionRow, pressed && { opacity: 0.7 }]}
+                    onPress={() => onSelectSuggestion(isCompanion ? `📊 Show ${patientName || 'Patient'}'s weekly health report` : '📊 How is my weekly health summary?')}
+                >
+                    <Text style={styles.editorialActionText}>Weekly health progress</Text>
+                    <ChevronRight size={18} color="#94A3B8" />
+                </Pressable>
+
+                <Pressable
+                    style={({ pressed }) => [styles.editorialActionRow, pressed && { opacity: 0.7 }]}
+                    onPress={() => onSelectSuggestion(isCompanion ? `🩺 View ${patientName || 'Patient'}'s vitals status` : '🩺 Check my vitals status')}
+                >
+                    <Text style={styles.editorialActionText}>Check my vitals</Text>
+                    <ChevronRight size={18} color="#94A3B8" />
+                </Pressable>
+
+                <Pressable
+                    style={({ pressed }) => [styles.editorialActionRow, pressed && { opacity: 0.7 }]}
+                    onPress={() => onSelectSuggestion('📷 Identify a medicine packaging or blister strip from photo')}
+                >
+                    <Text style={styles.editorialActionText}>Identify a medicine photo</Text>
+                    <ChevronRight size={18} color="#94A3B8" />
                 </Pressable>
             </View>
-        </View>
+
+            {/* Tiny Muted Legal & Privacy Footnote */}
+            <View style={styles.editorialFooterRow}>
+                <Info size={12} color="#94A3B8" />
+                <Text style={styles.editorialFooterText}>
+                    AI guidance · Not a substitute for professional medical care
+                </Text>
+            </View>
+        </Reanimated.View>
     );
 }
 
@@ -775,6 +846,7 @@ export default function ChatbotScreen({ navigation, route }) {
     const [isCompanionLoading, setIsCompanionLoading] = useState(isCompanion);
 
     const [isHydrating, setIsHydrating] = useState(false);
+    const [isPreparingNewSession, setIsPreparingNewSession] = useState(!routeSessionId);
     const [lastSyncedAt, setLastSyncedAt] = useState(null);
 
     const sessionCreationPromiseRef = useRef(null);
@@ -783,6 +855,7 @@ export default function ChatbotScreen({ navigation, route }) {
     // Auto-create chat session in the background if no sessionId is provided
     useEffect(() => {
         if (!activeSessionId && targetPatientId) {
+            setIsPreparingNewSession(true);
             const initBackgroundCreation = async () => {
                 const data = isCompanion ? { patientId: targetPatientId } : {};
                 
@@ -827,9 +900,12 @@ export default function ChatbotScreen({ navigation, route }) {
                     console.warn('[ChatbotScreen] Background session creation failed/timed out:', err.message);
                 } finally {
                     sessionCreationPromiseRef.current = null;
+                    setIsPreparingNewSession(false);
                 }
             };
             initBackgroundCreation();
+        } else {
+            setIsPreparingNewSession(false);
         }
     }, [activeSessionId, targetPatientId, isCompanion]);
 
@@ -887,26 +963,70 @@ export default function ChatbotScreen({ navigation, route }) {
     const [isStreaming, setIsStreaming] = useState(false);
     const [typingStages, setTypingStages] = useState(['🧠 Understanding...', '💬 Preparing response...']);
     
+    // Attachments pipeline state
+    const [attachments, setAttachments] = useState([]);
+
     // Follow-up suggestions from the last bot response
     const [followUpSuggestions, setFollowUpSuggestions] = useState([]);
     
-    // Audio recording state
+    // State Machine-driven Audio Recording state
     const [recording, setRecording] = useState(null);
-    const [recordingMode, setRecordingMode] = useState('idle'); // 'idle', 'holding', 'locked'
-    const [isCancelling, setIsCancelling] = useState(false);
-    
+    const [voiceState, setVoiceState] = useState('idle'); // 'idle' | 'recording' | 'review'
     const recordingModeRef = useRef('idle');
-    const isCancellingRef = useRef(false);
-    const pan = useRef(new Animated.ValueXY()).current;
+    const [recordingDuration, setRecordingDuration] = useState(0);
+    const [recordedAudioUri, setRecordedAudioUri] = useState(null);
+    const timerIntervalRef = useRef(null);
 
-    const setRecMode = useCallback((mode) => {
-        setRecordingMode(mode);
-        recordingModeRef.current = mode;
-    }, []);
+    // Keep recordingModeRef in sync with voiceState for background AppState listener
+    useEffect(() => {
+        recordingModeRef.current = voiceState;
+    }, [voiceState]);
 
-    const setCancelMode = useCallback((val) => {
-        setIsCancelling(val);
-        isCancellingRef.current = val;
+    // Telegram Live Waveform Animated Drivers
+    const waveAnim1 = useRef(new Animated.Value(6)).current;
+    const waveAnim2 = useRef(new Animated.Value(14)).current;
+    const waveAnim3 = useRef(new Animated.Value(22)).current;
+    const waveAnim4 = useRef(new Animated.Value(10)).current;
+
+    useEffect(() => {
+        let waveAnimation = null;
+        if (voiceState === 'recording') {
+            waveAnimation = Animated.loop(
+                Animated.parallel([
+                    Animated.sequence([
+                        Animated.timing(waveAnim1, { toValue: 24, duration: 400, useNativeDriver: false }),
+                        Animated.timing(waveAnim1, { toValue: 6, duration: 400, useNativeDriver: false }),
+                    ]),
+                    Animated.sequence([
+                        Animated.timing(waveAnim2, { toValue: 8, duration: 350, useNativeDriver: false }),
+                        Animated.timing(waveAnim2, { toValue: 26, duration: 350, useNativeDriver: false }),
+                    ]),
+                    Animated.sequence([
+                        Animated.timing(waveAnim3, { toValue: 28, duration: 450, useNativeDriver: false }),
+                        Animated.timing(waveAnim3, { toValue: 10, duration: 450, useNativeDriver: false }),
+                    ]),
+                    Animated.sequence([
+                        Animated.timing(waveAnim4, { toValue: 12, duration: 300, useNativeDriver: false }),
+                        Animated.timing(waveAnim4, { toValue: 22, duration: 300, useNativeDriver: false }),
+                    ]),
+                ])
+            );
+            waveAnimation.start();
+        } else {
+            waveAnim1.setValue(6);
+            waveAnim2.setValue(14);
+            waveAnim3.setValue(22);
+            waveAnim4.setValue(10);
+        }
+        return () => {
+            if (waveAnimation) waveAnimation.stop();
+        };
+    }, [voiceState]);
+
+    const formatDuration = useCallback((secs) => {
+        const m = Math.floor(secs / 60);
+        const s = secs % 60;
+        return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
     }, []);
 
     const firstName = displayName?.split(' ')[0] || 'there';
@@ -933,6 +1053,7 @@ export default function ChatbotScreen({ navigation, route }) {
 
     const [messages, setMessages] = useState(getInitialMessages);
     const [isLoadingSession, setIsLoadingSession] = useState(false);
+    const [selectedViewerImage, setSelectedViewerImage] = useState(null);
 
     const scrollToBottom = useCallback(() => {
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
@@ -991,16 +1112,22 @@ export default function ChatbotScreen({ navigation, route }) {
                 
                 if (abortController.signal.aborted) return;
 
-                const sessionMessages = (res.data.messages || []).map(m => ({
-                    id: m._id || String(Math.random()),
-                    text: m.text,
-                    isUser: m.role === 'user',
-                    timestamp: new Date(m.timestamp).getTime(),
-                    cards: m.cards || [],
-                    suggestions: m.suggestions || [],
-                    image: m.image,
-                    audio: m.audio
-                }));
+                const sessionMessages = (res.data.messages || []).map(m => {
+                    const rawImg = m.image || (m.attachments && m.attachments.find(a => a.type === 'image')?.url);
+                    const resolvedImg = resolveChatAttachmentUrl(rawImg);
+                    return {
+                        id: m._id || String(Math.random()),
+                        text: m.text,
+                        isUser: m.role === 'user',
+                        timestamp: new Date(m.timestamp).getTime(),
+                        cards: m.cards || [],
+                        suggestions: m.suggestions || [],
+                        image: resolvedImg,
+                        attachments: m.attachments || [],
+                        audio: m.audio,
+                        audioDuration: m.audioDuration || null
+                    };
+                });
 
                 setMessages(sessionMessages);
                 setLastSyncedAt(Date.now());
@@ -1064,6 +1191,32 @@ export default function ChatbotScreen({ navigation, route }) {
         }
     }, [route.params, handleSend]);
 
+    // Helper to safely stop and unload audio recording using RecoveryManager
+    const safeStopAndUnload = async (rec) => {
+        if (!rec) return null;
+        try {
+            return await RecoveryManager.recoverVoiceRecorder(rec);
+        } catch (e) {
+            console.warn('[ChatbotScreen] safeStopAndUnload exception:', e?.message);
+            return null;
+        }
+    };
+
+    // Register Voice Recorder recovery handler with RecoveryManager
+    useEffect(() => {
+        RecoveryManager.registerRecoveryHandler('Voice Recorder', async () => {
+            if (recording) {
+                await RecoveryManager.recoverVoiceRecorder(recording);
+                setRecording(null);
+            }
+            setRecordedAudioUri(null);
+            setVoiceState('idle');
+        });
+        return () => {
+            RecoveryManager.unregisterRecoveryHandler('Voice Recorder');
+        };
+    }, [recording]);
+
     // Cleanup audio and abort active stream on unmount
     useEffect(() => {
         const subscription = AppState.addEventListener('change', nextAppState => {
@@ -1075,11 +1228,11 @@ export default function ChatbotScreen({ navigation, route }) {
         return () => {
             subscription.remove();
             if (recording) {
-                recording.stopAndUnloadAsync();
+                RecoveryManager.recoverVoiceRecorder(recording);
             }
             // Abort any in-flight SSE stream when leaving screen
             if (xhrRef.current) {
-                xhrRef.current.abort();
+                RecoveryManager.recoverChatStream(xhrRef.current);
                 xhrRef.current = null;
             }
         };
@@ -1099,7 +1252,7 @@ export default function ChatbotScreen({ navigation, route }) {
     }, [isTyping, typingStages]);
 
     // ── SSE Streaming API Integration ────────────
-    const streamFromBackend = (userMsg, botMessageId, isAudio = false, recordingUri = null, currentSessionId) => {
+    const streamFromBackend = (userMsg, botMessageId, isAudio = false, recordingUri = null, currentSessionId = null, imageAttachment = null, audioDuration = null) => {
         return new Promise(async (resolve, reject) => {
             try {
                 // Abort any previous in-flight stream
@@ -1127,6 +1280,15 @@ export default function ChatbotScreen({ navigation, route }) {
                     formData.append('sessionId', currentSessionId);
                 }
 
+                if (imageAttachment) {
+                    setTypingStage('📷 Analyzing image...');
+                    formData.append('image', {
+                        uri: imageAttachment.uri,
+                        type: imageAttachment.mime || 'image/jpeg',
+                        name: imageAttachment.name || 'medical_image.jpg'
+                    });
+                }
+
                 if (isAudio && recordingUri) {
                     setTypingStage('📝 Transcribing...');
                     const extension = Platform.OS === 'ios' ? 'm4a' : 'm4a';
@@ -1135,17 +1297,26 @@ export default function ChatbotScreen({ navigation, route }) {
                         type: `audio/${extension}`,
                         name: `voice_note.${extension}`
                     });
-                } else {
-                    setTypingStage('🧠 Thinking...');
+                    if (audioDuration != null) {
+                        formData.append('audioDuration', String(audioDuration));
+                    }
+                }
+
+                if (userMsg && userMsg.trim().length > 0) {
+                    if (!imageAttachment && !isAudio) {
+                        setTypingStage('🧠 Thinking...');
+                    }
                     let finalQuery = userMsg;
                     const healthContext = route.params?.healthContext;
                     if (healthContext && userMsg === route.params?.initialMessage) {
                         finalQuery = `${userMsg}\n\n[Context: Current Health Score is ${healthContext.score} (${healthContext.label}, Grade ${healthContext.grade}). Weakest driver is ${healthContext.weakestDriver} at ${healthContext.weakestScore}%. Suggested action is: ${healthContext.suggestedAction}. Projected boost is +${healthContext.projectedBoost} to ${healthContext.projectedScore}.]`;
                     }
                     formData.append('query', finalQuery);
+                } else if (!isAudio && !imageAttachment) {
+                    setTypingStage('🧠 Thinking...');
                 }
 
-                const baseUrl = process.env.EXPO_PUBLIC_CHATBOT_URL || process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:3001/api';
+                const baseUrl = process.env.EXPO_PUBLIC_CHATBOT_URL || api.defaults.baseURL || process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
                 const url = `${baseUrl}/chatbot/chat`;
 
                 // Use XMLHttpRequest for streaming in React Native
@@ -1164,87 +1335,92 @@ export default function ChatbotScreen({ navigation, route }) {
                 // Don't set Content-Type for FormData — XHR sets the boundary automatically
 
                 xhr.onreadystatechange = () => {
-                    // readyState 3 = LOADING (partial data available)
-                    if (xhr.readyState === 3 || xhr.readyState === 4) {
-                        const newText = xhr.responseText.substring(lastIndex);
-                        lastIndex = xhr.responseText.length;
+                    try {
+                        // readyState 3 = LOADING (partial data available)
+                        if (xhr.readyState === 3 || xhr.readyState === 4) {
+                            const rawResponse = xhr.responseText || '';
+                            const newText = rawResponse.substring(lastIndex);
+                            lastIndex = rawResponse.length;
 
-                        // Parse SSE lines from the new chunk
-                        const lines = newText.split('\n');
-                        for (const line of lines) {
-                            if (!line.startsWith('data: ')) continue;
-                            try {
-                                const event = JSON.parse(line.substring(6));
+                            // Parse SSE lines from the new chunk
+                            const lines = newText.split('\n');
+                            for (const line of lines) {
+                                if (!line.startsWith('data: ')) continue;
+                                try {
+                                    const event = JSON.parse(line.substring(6));
 
-                                if (event.type === 'meta' && event.transcribedText) {
-                                    console.log(`[SSE] Heard: "${event.transcribedText}"`);
+                                    if (event.type === 'meta' && event.transcribedText) {
+                                        console.log(`[SSE] Heard: "${event.transcribedText}"`);
+                                    }
+
+                                    if (event.type === 'chunk' && event.text) {
+                                        setIsTyping(false); // Hide typing indicator, show live text
+                                        setMessages(prev =>
+                                            prev.map(m =>
+                                                m.id === botMessageId
+                                                    ? { ...m, text: (m.text || '') + event.text }
+                                                    : m
+                                            )
+                                        );
+                                    }
+
+                                    if (event.type === 'cards' && event.items) {
+                                        setMessages(prev =>
+                                            prev.map(m =>
+                                                m.id === botMessageId
+                                                    ? { ...m, cards: event.items }
+                                                    : m
+                                            )
+                                        );
+                                    }
+
+                                    if (event.type === 'suggestions' && event.items) {
+                                        setFollowUpSuggestions(event.items.slice(0, 3));
+                                    }
+
+                                    if (event.type === 'done') {
+                                        // Stream finished successfully
+                                    }
+
+                                    if (event.type === 'error') {
+                                        setMessages(prev =>
+                                            prev.map(m =>
+                                                m.id === botMessageId
+                                                    ? { ...m, text: `Sorry, I ran into an issue: ${event.message}. Please try again.` }
+                                                    : m
+                                            )
+                                        );
+                                    }
+                                } catch (e) {
+                                    // Partial JSON line, ignore
                                 }
-
-                                if (event.type === 'chunk' && event.text) {
-                                    setIsTyping(false); // Hide typing indicator, show live text
-                                    setMessages(prev =>
-                                        prev.map(m =>
-                                            m.id === botMessageId
-                                                ? { ...m, text: (m.text || '') + event.text }
-                                                : m
-                                        )
-                                    );
-                                }
-
-                                if (event.type === 'cards' && event.items) {
-                                    setMessages(prev =>
-                                        prev.map(m =>
-                                            m.id === botMessageId
-                                                ? { ...m, cards: event.items }
-                                                : m
-                                        )
-                                    );
-                                }
-
-                                if (event.type === 'suggestions' && event.items) {
-                                    setFollowUpSuggestions(event.items.slice(0, 3));
-                                }
-
-                                if (event.type === 'done') {
-                                    // Stream finished successfully
-                                }
-
-                                if (event.type === 'error') {
-                                    setMessages(prev =>
-                                        prev.map(m =>
-                                            m.id === botMessageId
-                                                ? { ...m, text: `Sorry, I ran into an issue: ${event.message}. Please try again.` }
-                                                : m
-                                        )
-                                    );
-                                }
-                            } catch (e) {
-                                // Partial JSON line, ignore
                             }
                         }
-                    }
 
-                    // readyState 4 = DONE
-                    if (xhr.readyState === 4) {
-                        xhrRef.current = null;
-                        setIsStreaming(false);
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            resolve();
-                        } else if (xhr.status === 0) {
-                            if (wasAborted) {
+                        // readyState 4 = DONE
+                        if (xhr.readyState === 4) {
+                            xhrRef.current = null;
+                            setIsStreaming(false);
+                            if (xhr.status >= 200 && xhr.status < 300) {
                                 resolve();
+                            } else if (xhr.status === 0) {
+                                if (wasAborted) {
+                                    resolve();
+                                } else {
+                                    reject(new Error('Cannot connect to chatbot server. Please check your internet connection or try again later.'));
+                                }
                             } else {
-                                reject(new Error('Cannot connect to chatbot server. Please check your internet connection or try again later.'));
-                            }
-                        } else {
-                            // Non-SSE error (auth failure, validation, etc.)
-                            try {
-                                const errData = JSON.parse(xhr.responseText);
-                                reject(new Error(errData.error || 'Request failed'));
-                            } catch {
-                                reject(new Error(`Request failed with status ${xhr.status}`));
+                                // Non-SSE error (auth failure, validation, etc.)
+                                try {
+                                    const errData = JSON.parse(xhr.responseText || '{}');
+                                    reject(new Error(errData.error || 'Request failed'));
+                                } catch {
+                                    reject(new Error(`Request failed with status ${xhr.status}`));
+                                }
                             }
                         }
+                    } catch (readErr) {
+                        console.warn('[ChatbotScreen] XHR read error:', readErr);
                     }
                 };
 
@@ -1271,8 +1447,12 @@ export default function ChatbotScreen({ navigation, route }) {
     };
 
     const handleSend = useCallback(async (text, imageUri = null, audioUri = null) => {
+        const activeAttachment = attachments[0] || (imageUri ? { uri: imageUri, mime: 'image/jpeg', name: 'medical_image.jpg' } : null);
         const msg = (text || inputText).trim();
-        if (!msg && !imageUri && !audioUri && !recording) return;
+        if (!msg && !activeAttachment && !audioUri && !recording) return;
+
+        // Clear attachments preview bar immediately
+        setAttachments([]);
 
         // Zero-latency Client-side Emergency Interception
         const lowerText = msg.toLowerCase();
@@ -1283,7 +1463,7 @@ export default function ChatbotScreen({ navigation, route }) {
         ];
         const isEmergency = emergencyKeywords.some(keyword => lowerText.includes(keyword));
 
-        if (isEmergency && !imageUri && !audioUri) {
+        if (isEmergency && !activeAttachment && !audioUri) {
             const userMessage = { 
                 id: Date.now().toString(), 
                 text: msg, 
@@ -1307,21 +1487,22 @@ export default function ChatbotScreen({ navigation, route }) {
             return;
         }
 
-        const isAudioMsg = recordingModeRef.current !== 'idle' || !!audioUri;
-        const currentRecordingUri = isAudioMsg ? (audioUri || recording?.getURI()) : null;
+        const targetAudioUri = audioUri || recordedAudioUri;
+        const targetAudioDuration = recordingDuration;
+        const isAudioMsg = !!targetAudioUri;
+        let currentRecordingUri = isAudioMsg ? targetAudioUri : null;
 
-        if (recording) {
-            await recording.stopAndUnloadAsync();
-            setRecording(null);
-            setRecMode('idle');
-            setCancelMode(false);
-        }
+        // Reset voice state machine after send
+        setVoiceState('idle');
+        setRecordedAudioUri(null);
+        setRecordingDuration(0);
 
         const userMessage = { 
             id: Date.now().toString(), 
-            text: isAudioMsg ? '' : msg, 
-            image: imageUri,
+            text: msg, 
+            image: activeAttachment ? activeAttachment.uri : null,
             audio: currentRecordingUri,
+            audioDuration: targetAudioDuration,
             isUser: true, 
             timestamp: Date.now() 
         };
@@ -1342,7 +1523,10 @@ export default function ChatbotScreen({ navigation, route }) {
         let initialStage = '🧠 Understanding...';
         let customStages = ['🧠 Understanding...', '💬 Preparing response...'];
 
-        if (isAudioMsg) {
+        if (activeAttachment) {
+            initialStage = '📷 Analyzing image...';
+            customStages = ['📷 Analyzing image...', '🩺 Classifying medical document...', '🧠 Extracting details...', '💬 Drafting guidance...'];
+        } else if (isAudioMsg) {
             initialStage = '🎤 Listening...';
             customStages = ['🎤 Listening...', '📝 Transcribing...', '🧠 Understanding...', '💬 Preparing response...'];
         } else {
@@ -1392,7 +1576,7 @@ export default function ChatbotScreen({ navigation, route }) {
                 }
             }
 
-            await streamFromBackend(msg, botMessageId, isAudioMsg, currentRecordingUri, currentSessionId);
+            await streamFromBackend(msg, botMessageId, isAudioMsg, currentRecordingUri, currentSessionId, activeAttachment, targetAudioDuration);
         } catch (error) {
             setMessages(prev =>
                 prev.map(m =>
@@ -1468,7 +1652,7 @@ export default function ChatbotScreen({ navigation, route }) {
         if (!activeSessionId) return;
         Vibration.vibrate(50);
         AlertManager.alert(
-            'Delete Conversation 🗑️',
+            'Delete Conversation',
             'Are you sure you want to delete this chat session? This will permanently erase the history and return you to the conversations list.',
             [
                 { text: 'Cancel', style: 'cancel' },
@@ -1477,24 +1661,9 @@ export default function ChatbotScreen({ navigation, route }) {
                     style: 'destructive',
                     onPress: async () => {
                         const targetId = activeSessionId;
-                        
-                        // 1. Optimistically delete local caches
-                        delete globalChatCache[targetId];
-                        AsyncStorage.removeItem(`chatbot_session_${targetId}`).catch(() => {});
-                        
-                        // 2. Optimistically remove from list cache
-                        removeCachedSession(targetId);
-                        
-                        // 3. Navigate back immediately (zero-latency transition)
                         navigation.goBack();
-                        
-                        // 4. Perform network request in background
-                        try {
-                            const params = isCompanion ? { patientId: targetPatientId } : {};
-                            await apiService.chatbot.deleteSession(targetId, params);
-                        } catch (err) {
-                            console.warn('Failed to delete chat session in background:', err);
-                        }
+                        const params = isCompanion ? { patientId: targetPatientId } : {};
+                        await useChatStore.getState().deleteSession(targetId, params);
                     }
                 }
             ],
@@ -1507,11 +1676,18 @@ export default function ChatbotScreen({ navigation, route }) {
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: false,
-                quality: 0.8,
+                quality: 0.6,
             });
 
             if (!result.canceled && result.assets && result.assets[0]) {
-                handleSend('', result.assets[0].uri);
+                const asset = result.assets[0];
+                setAttachments([{
+                    id: Date.now().toString(),
+                    type: 'image',
+                    uri: asset.uri,
+                    name: asset.fileName || 'medical_image.jpg',
+                    mime: asset.mimeType || 'image/jpeg'
+                }]);
             }
         } catch (error) {
             console.warn('Image picker error:', error);
@@ -1521,111 +1697,169 @@ export default function ChatbotScreen({ navigation, route }) {
 
     const startRecording = async () => {
         try {
-            const permission = await Audio.requestPermissionsAsync();
-            if (permission.status === 'granted') {
+            // ── Pre-flight: Request mic permission ──
+            let permission;
+            try {
+                permission = await Audio.requestPermissionsAsync();
+            } catch (permErr) {
+                console.warn('Microphone permission request failed:', permErr);
+                AlertManager.alert(
+                    'Microphone Unavailable',
+                    'Could not access the microphone. Please check your device settings.',
+                    [{ text: 'OK' }],
+                    { type: 'warning' }
+                );
+                return RecordingResult.permissionDenied('Failed to request permission.');
+            }
+
+            if (permission.status !== 'granted') {
+                AlertManager.alert(
+                    'Permission needed',
+                    'Please grant microphone access in your device settings to send voice messages.',
+                    [{ text: 'OK' }],
+                    { type: 'warning' }
+                );
+                setVoiceState('idle');
+                return RecordingResult.permissionDenied();
+            }
+
+            // ── Set audio mode for recording ──
+            try {
                 await Audio.setAudioModeAsync({
                     allowsRecordingIOS: true,
                     playsInSilentModeIOS: true,
                 });
-                const { recording } = await Audio.Recording.createAsync(
+            } catch (modeErr) {
+                console.warn('Failed to set audio mode:', modeErr);
+            }
+
+            // ── Create recording (try HIGH_QUALITY first, fallback to LOW_QUALITY) ──
+            let newRecording;
+            try {
+                const result = await Audio.Recording.createAsync(
                     Audio.RecordingOptionsPresets.HIGH_QUALITY
                 );
-                setRecording(recording);
-            } else {
-                AlertManager.alert('Permission needed', 'Please grant microphone access to send voice messages.', [{ text: 'OK' }], { type: 'warning' });
-                setRecMode('idle');
+                newRecording = result.recording;
+            } catch (highQualityErr) {
+                console.warn('HIGH_QUALITY recording failed, trying LOW_QUALITY:', highQualityErr);
+                try {
+                    const result = await Audio.Recording.createAsync(
+                        Audio.RecordingOptionsPresets.LOW_QUALITY
+                    );
+                    newRecording = result.recording;
+                } catch (lowQualityErr) {
+                    console.error('All recording presets failed:', lowQualityErr);
+                    AlertManager.alert(
+                        'Recording Error',
+                        'Could not start voice recording on this device. Please try again.',
+                        [{ text: 'OK' }],
+                        { type: 'error' }
+                    );
+                    setVoiceState('idle');
+                    return RecordingResult.error('All recording presets failed.');
+                }
             }
+
+            setRecording(newRecording);
+            setRecordedAudioUri(null);
+            setRecordingDuration(0);
+            setVoiceState('recording');
+            Vibration.vibrate(50);
+
+            // Start second timer
+            if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = setInterval(() => {
+                setRecordingDuration(prev => prev + 1);
+            }, 1000);
+            return RecordingResult.success(null);
         } catch (err) {
-            console.error('Failed to start recording', err);
-            setRecMode('idle');
+            console.error('Failed to start recording:', err);
+            AlertManager.alert(
+                'Recording Error',
+                'Something went wrong starting the voice recorder. Please try again.',
+                [{ text: 'OK' }],
+                { type: 'error' }
+            );
+            setVoiceState('idle');
+            return RecordingResult.error(err?.message);
         }
     };
 
-    const stopRecordingAndSend = async () => {
-        if (!recording) return;
+    const stopRecordingAndReview = async () => {
         try {
-            setRecMode('idle');
-            await recording.stopAndUnloadAsync();
-            const uri = recording.getURI();
+            if (timerIntervalRef.current) {
+                clearInterval(timerIntervalRef.current);
+                timerIntervalRef.current = null;
+            }
+            try { Vibration.vibrate(50); } catch (e) {}
+            
+            if (!recording) {
+                setVoiceState('idle');
+                return RecordingResult.alreadyStopped();
+            }
+            const currentRec = recording;
             setRecording(null);
             
+            // Guard against premature native MediaRecorder stop exception on Android/iOS
+            if (recordingDuration < 1) {
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+
+            const uri = await safeStopAndUnload(currentRec);
             if (uri) {
-                handleSend('', null, uri);
+                setRecordedAudioUri(uri);
+                setVoiceState('review');
+                return RecordingResult.success(uri);
+            } else {
+                setRecordedAudioUri(null);
+                setVoiceState('idle');
+                AlertManager.alert(
+                    'Voice Note Too Short',
+                    'Voice recording was too short or could not be processed. Please hold the button or try again.',
+                    [{ text: 'OK' }],
+                    { type: 'warning' }
+                );
+                return RecordingResult.emptyAudio();
             }
         } catch (err) {
-            console.error('Failed to stop recording', err);
-            setRecording(null);
+            console.error('Failed to stop recording cleanly:', err);
+            setRecordedAudioUri(null);
+            setVoiceState('idle');
+            AlertManager.alert(
+                'Recording Error 🎙️',
+                'Could not process voice recording cleanly. Please try again.',
+                [{ text: 'OK' }],
+                { type: 'error' }
+            );
+            return RecordingResult.interrupted(err?.message);
         }
     };
 
     const cancelRecording = async () => {
-        if (!recording) return;
         try {
-            setRecMode('idle');
-            setCancelMode(false);
-            await recording.stopAndUnloadAsync();
-            setRecording(null);
-            Vibration.vibrate([0, 50, 50, 50]); // Quick buzz to indicate cancelled
+            if (timerIntervalRef.current) {
+                clearInterval(timerIntervalRef.current);
+                timerIntervalRef.current = null;
+            }
+            try { Vibration.vibrate([0, 40, 40, 40]); } catch (e) {}
+
+            if (recording) {
+                const currentRec = recording;
+                setRecording(null);
+                await safeStopAndUnload(currentRec);
+            }
         } catch (err) {
-            console.error('Failed to cancel recording', err);
-            setRecording(null);
+            console.warn('[ChatbotScreen] cancelRecording error:', err?.message);
+        } finally {
+            setRecordedAudioUri(null);
+            setRecordingDuration(0);
+            setVoiceState('idle');
         }
+        return RecordingResult.alreadyStopped();
     };
 
-    const panResponder = useRef(
-        PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onPanResponderGrant: async () => {
-                setRecMode('holding');
-                setCancelMode(false);
-                pan.setValue({ x: 0, y: 0 });
-                Vibration.vibrate(50); 
-                await startRecording();
-            },
-            onPanResponderMove: (evt, gestureState) => {
-                if (recordingModeRef.current === 'locked') return;
-
-                if (gestureState.dy < -80) {
-                    // Locked!
-                    setRecMode('locked');
-                    Vibration.vibrate(50);
-                    pan.setValue({ x: 0, y: 0 });
-                } else if (gestureState.dx < -80) {
-                    // Cancel!
-                    setCancelMode(true);
-                    pan.setValue({ x: gestureState.dx, y: 0 });
-                } else {
-                    setCancelMode(false);
-                    // Move the mic visually up/left based on drag
-                    pan.setValue({ 
-                        x: gestureState.dx < 0 ? gestureState.dx : 0, 
-                        y: gestureState.dy < 0 ? gestureState.dy : 0 
-                    });
-                }
-            },
-            onPanResponderRelease: async (evt, gestureState) => {
-                if (isCancellingRef.current) {
-                    pan.setValue({ x: 0, y: 0 });
-                    await cancelRecording();
-                } else if (recordingModeRef.current === 'locked') {
-                    // Doing nothing, wait for tap to stop
-                } else {
-                    pan.setValue({ x: 0, y: 0 });
-                    await stopRecordingAndSend();
-                }
-            },
-            onPanResponderTerminate: async () => {
-                pan.setValue({ x: 0, y: 0 });
-                await cancelRecording();
-            }
-        })
-    ).current;
-
     const renderMessage = useCallback(({ item }) => {
-        if (item.isSkeleton) {
-            return <ChatBubbleSkeleton isUser={item.isUser} width={item.width} />;
-        }
-        return <ChatBubble message={item} isUser={item.isUser} />;
+        return <ChatBubble message={item} isUser={item.isUser} onPressImage={(img) => setSelectedViewerImage(img)} />;
     }, []);
 
     const keyExtractor = useCallback((item) => item.id, []);
@@ -1641,10 +1875,12 @@ export default function ChatbotScreen({ navigation, route }) {
                     <ArrowLeft size={22} color="#0F172A" strokeWidth={2.5} />
                 </Pressable>
                 <View style={styles.headerCenter}>
-                    <Image 
-                        source={require('../../../assets/doctor_mascot.jpg')} 
-                        style={styles.headerMascotAvatar} 
-                    />
+                    <HeroTransition id="chatbot_header_avatar">
+                        <Image 
+                            source={require('../../../assets/doctor_mascot.jpg')} 
+                            style={styles.headerMascotAvatar} 
+                        />
+                    </HeroTransition>
                     <View>
                         <Text style={styles.headerTitle}>Care Assistant</Text>
                         <View style={styles.onlineRow}>
@@ -1653,7 +1889,7 @@ export default function ChatbotScreen({ navigation, route }) {
                             ) : (
                                 <View style={styles.onlineDot} />
                             )}
-                            <Text style={styles.onlineText}>
+                            <Text style={[styles.onlineText, isHydrating && { color: '#6366F1' }]}>
                                 {isHydrating ? 'Syncing...' : lastSyncedAt ? 'Updated just now' : 'Online'}
                             </Text>
                         </View>
@@ -1688,66 +1924,150 @@ export default function ChatbotScreen({ navigation, route }) {
                 </View>
             </View>
 
-            {/* ── Messages ── */}
+            {/* ── Messages Viewport State Machine ── */}
             <KeyboardAvoidingView 
                 style={{ flex: 1 }} 
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
             >
-                <FlatList
-                    ref={flatListRef}
-                    data={messages}
-                    renderItem={renderMessage}
-                    keyExtractor={keyExtractor}
-                    contentContainerStyle={styles.messageList}
-                    showsVerticalScrollIndicator={false}
-                    ListHeaderComponent={
-                        isCompanion && isCompanionLoading ? (
-                            <View style={{ padding: 20, alignItems: 'center' }}>
-                                <ActivityIndicator size="small" color="#6366F1" />
-                            </View>
-                        ) : (
-                            <WelcomeSnapshotCard
-                                firstName={isCompanion ? (displayName || 'there') : (patient?.first_name || displayName || 'there')}
-                                medsCount={medsCount}
-                                takenCount={takenCount}
-                                vitals={activeVitals}
-                                streak={activeStreak}
-                                userRole={userRole}
-                                patientName={companionData?.patient?.name}
-                            />
-                        )
-                    }
-                    ListFooterComponent={
-                        <>
-                            {!messages.some(m => m.isUser) && (
-                                <QuickActionsDashboard 
-                                    onPress={(s) => handleSend(s)} 
-                                    userRole={userRole}
-                                    patientName={companionData?.patient?.name}
-                                />
-                            )}
-                            {isTyping ? <TypingIndicator stage={typingStage} /> : null}
-                            {!isTyping && followUpSuggestions.length > 0 ? (
-                                <FollowUpChips 
-                                    suggestions={followUpSuggestions} 
-                                    onPress={(s) => handleSend(s)} 
-                                />
-                            ) : null}
-                        </>
-                    }
-                />
+                {isPreparingNewSession ? (
+                    <CenteredCareAssistantPreparing 
+                        isCompanion={isCompanion} 
+                        patientName={companionData?.patient?.name} 
+                    />
+                ) : (
+                    <FlatList
+                        ref={flatListRef}
+                        data={messages}
+                        renderItem={renderMessage}
+                        keyExtractor={keyExtractor}
+                        contentContainerStyle={styles.messageList}
+                        showsVerticalScrollIndicator={false}
+                        ListHeaderComponent={
+                            !messages.some(m => m.isUser) ? (
+                                isCompanion && isCompanionLoading ? (
+                                    <View style={{ padding: 20, alignItems: 'center' }}>
+                                        <ActivityIndicator size="small" color="#6366F1" />
+                                    </View>
+                                ) : (
+                                    <CareAssistantLandingHero
+                                        firstName={isCompanion ? (displayName || 'there') : (patient?.first_name || displayName || 'there')}
+                                        medsCount={medsCount}
+                                        takenCount={takenCount}
+                                        vitals={activeVitals}
+                                        streak={activeStreak}
+                                        userRole={userRole}
+                                        patientName={companionData?.patient?.name}
+                                        onSelectSuggestion={(s) => handleSend(s)}
+                                    />
+                                )
+                            ) : null
+                        }
+                        ListFooterComponent={
+                            <>
+                                {isTyping ? <TypingIndicator stage={typingStage} /> : null}
+                                {!isTyping && followUpSuggestions && followUpSuggestions.length > 0 ? (
+                                    <View style={styles.followUpContainer}>
+                                        {followUpSuggestions.map((chip, idx) => (
+                                            <Pressable
+                                                key={idx}
+                                                style={({ pressed }) => [
+                                                    styles.followUpChip,
+                                                    pressed && { opacity: 0.7 }
+                                                ]}
+                                                onPress={() => handleSend(chip)}
+                                            >
+                                                <Text style={styles.followUpText}>{chip}</Text>
+                                            </Pressable>
+                                        ))}
+                                    </View>
+                                ) : null}
+                            </>
+                        }
+                    />
+                )}
 
-                {/* ── Input bar ── */}
-                <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-                    {recordingMode === 'idle' ? (
-                        <>
-                            <Pressable style={styles.inputAction} onPress={handlePickImage}>
-                                <Paperclip size={20} color="#94A3B8" strokeWidth={2} />
+                {/* ── Attachment Preview Bar (Images) ── */}
+                {attachments.length > 0 && (
+                    <View style={styles.attachmentBar}>
+                        <View style={styles.attachmentCard}>
+                            <AuthenticatedImage source={{ uri: attachments[0].uri }} style={styles.attachmentThumb} />
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.attachmentTitle} numberOfLines={1}>{attachments[0].name || 'Medical Attachment'}</Text>
+                                <Text style={styles.attachmentSub}>Ready to send • Add caption below</Text>
+                            </View>
+                            <Pressable onPress={() => setAttachments([])} style={styles.removeAttachmentBtn} hitSlop={10}>
+                                <X size={16} color="#64748B" />
                             </Pressable>
+                        </View>
+                    </View>
+                )}
+
+                {/* ── Voice Note Preview Shelf ── */}
+                {(voiceState === 'review' || recordedAudioUri) && (
+                    <View style={styles.voiceNotePreviewBar}>
+                        <View style={styles.voiceNoteBadge}>
+                            <Mic size={14} color="#6366F1" strokeWidth={2.5} />
+                            <Text style={styles.voiceNoteBadgeTxt}>Voice Note • {formatDuration(recordingDuration)}</Text>
+                        </View>
+                        <Text style={styles.voiceNoteSubtitle} numberOfLines={1}>Voice note attached</Text>
+                        <Pressable onPress={cancelRecording} hitSlop={10} style={styles.clearVoiceBtn}>
+                            <X size={14} color="#64748B" />
+                        </Pressable>
+                    </View>
+                )}
+
+                {/* ── Input Bar State Machine ── */}
+                <RecoverableBoundary
+                    featureName="Voice Recorder"
+                    screenName="ChatbotScreen"
+                    resetKeys={[activeSessionId]}
+                    preset="voice"
+                    compact
+                >
+                <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+                    {voiceState === 'recording' ? (
+                        /* 🎙️ RECORDING STATE (Telegram Visual Polish) */
+                        <View style={styles.recordingOverlayBar}>
+                            <Pressable style={styles.trashCircleBtn} onPress={cancelRecording} hitSlop={8}>
+                                <Trash2 size={18} color="#EF4444" strokeWidth={2} />
+                            </Pressable>
+
+                            <View style={styles.recordingMetaRow}>
+                                <View style={styles.recordingRedDotPulse} />
+                                <Text style={styles.recordingTimerTxt}>{formatDuration(recordingDuration)}</Text>
+                                
+                                {/* Telegram Live Waveform Visualization */}
+                                <View style={styles.waveformContainer}>
+                                    <Animated.View style={[styles.waveBarItem, { height: waveAnim1 }]} />
+                                    <Animated.View style={[styles.waveBarItem, { height: waveAnim2 }]} />
+                                    <Animated.View style={[styles.waveBarItem, { height: waveAnim3 }]} />
+                                    <Animated.View style={[styles.waveBarItem, { height: waveAnim4 }]} />
+                                    <Animated.View style={[styles.waveBarItem, { height: waveAnim2 }]} />
+                                    <Animated.View style={[styles.waveBarItem, { height: waveAnim1 }]} />
+                                </View>
+                            </View>
+
+                            <Pressable style={styles.stopSquareBtn} onPress={stopRecordingAndReview} hitSlop={8}>
+                                <LinearGradient colors={['#EF4444', '#DC2626']} style={styles.sendGradient}>
+                                    <Square size={14} color="#FFF" fill="#FFF" />
+                                </LinearGradient>
+                            </Pressable>
+                        </View>
+                    ) : (
+                        /* 🟣 UNIVERSAL INPUT BAR (Idle or Review with attachments/voice notes) */
+                        <>
                             <View style={styles.inputWrapper}>
                                 <TextInput
                                     style={styles.textInput}
-                                    placeholder="Type your message..."
+                                    placeholder={
+                                        attachments.length > 0 && recordedAudioUri
+                                            ? "Add caption for voice & image..."
+                                            : recordedAudioUri
+                                            ? "Add optional text or question..."
+                                            : attachments.length > 0
+                                            ? "Add optional caption..."
+                                            : "Type your message here..."
+                                    }
                                     placeholderTextColor="#94A3B8"
                                     value={inputText}
                                     onChangeText={setInputText}
@@ -1757,70 +2077,53 @@ export default function ChatbotScreen({ navigation, route }) {
                                     onSubmitEditing={() => handleSend()}
                                     blurOnSubmit={false}
                                 />
-                            </View>
-                        </>
-                    ) : (
-                        <View style={styles.recordingOverlay}>
-                            {recordingMode === 'locked' ? (
-                                <>
-                                    <View style={styles.recordingRow}>
-                                        <View style={styles.recordingDotPulse} />
-                                        <Text style={styles.recordingText}>Recording...</Text>
-                                    </View>
-                                    <Pressable style={styles.cancelRecordingBtn} onPress={cancelRecording}>
-                                        <Text style={styles.cancelRecordingTxt}>Cancel</Text>
+                                
+                                {isGenerating ? (
+                                    <Pressable style={styles.sendInsideBtn} onPress={handleStopGeneration}>
+                                        <LinearGradient colors={['#EF4444', '#DC2626']} style={styles.sendGradient}>
+                                            <Square size={12} color="#FFF" fill="#FFF" />
+                                        </LinearGradient>
                                     </Pressable>
-                                </>
-                            ) : (
-                                <>
-                                    <View style={styles.recordingRow}>
-                                        <View style={[styles.recordingDotPulse, isCancelling && { backgroundColor: '#EF4444' }]} />
-                                        <Text style={[styles.recordingText, isCancelling && { color: '#EF4444' }]}>
-                                            {isCancelling ? 'Release to cancel' : 'Slide up to lock ⬆️'}
-                                        </Text>
-                                    </View>
-                                    <Text style={{ color: '#94A3B8', fontSize: 13, marginRight: 50 }}>Slide left to cancel ⬅️</Text>
-                                </>
-                            )}
-                        </View>
-                    )}
+                                ) : (inputText.trim().length > 0 || attachments.length > 0 || recordedAudioUri != null || voiceState === 'review') ? (
+                                    <Pressable style={styles.sendInsideBtn} onPress={() => handleSend()}>
+                                        <LinearGradient colors={['#6366F1', '#4F46E5']} style={styles.sendGradient}>
+                                            <ArrowRight size={18} color="#FFF" strokeWidth={2.5} />
+                                        </LinearGradient>
+                                    </Pressable>
+                                ) : (
+                                    <Pressable style={styles.sendInsideBtn} onPress={startRecording}>
+                                        <LinearGradient colors={['#6366F1', '#4F46E5']} style={styles.sendGradient}>
+                                            <Mic size={18} color="#FFF" strokeWidth={2.5} />
+                                        </LinearGradient>
+                                    </Pressable>
+                                )}
+                            </View>
 
-                    {/* Primary Button: Stop, Send or Hold-to-Speak */}
-                    {isGenerating ? (
-                        <Pressable style={styles.sendBtn} onPress={handleStopGeneration}>
-                            <LinearGradient colors={['#EF4444', '#DC2626']} style={styles.sendGradient}>
-                                <Square size={14} color="#FFF" fill="#FFF" />
-                            </LinearGradient>
-                        </Pressable>
-                    ) : inputText.trim().length > 0 ? (
-                        <Pressable style={styles.sendBtn} onPress={() => handleSend()}>
-                            <LinearGradient colors={['#818CF8', '#4F46E5']} style={styles.sendGradient}>
-                                <Send size={18} color="#FFF" strokeWidth={2.5} />
-                            </LinearGradient>
-                        </Pressable>
-                    ) : (
-                        <Animated.View 
-                            style={[
-                                styles.micBtnContainer, 
-                                { transform: [{ translateX: pan.x }, { translateY: pan.y }] }
-                            ]} 
-                            {...panResponder.panHandlers}
-                        >
-                            {recordingMode === 'locked' ? (
-                                <Pressable style={styles.sendBtn} onPress={stopRecordingAndSend}>
-                                    <LinearGradient colors={['#10B981', '#059669']} style={styles.sendGradient}>
-                                        <Send size={18} color="#FFF" strokeWidth={2.5} />
-                                    </LinearGradient>
-                                </Pressable>
-                            ) : (
-                                <View style={[styles.micBtnInner, recordingMode === 'holding' ? styles.micBtnHolding : styles.micBtnIdle]}>
-                                    <Mic size={20} color={recordingMode === 'holding' ? '#EF4444' : '#FFF'} strokeWidth={2.5} />
-                                </View>
-                            )}
-                        </Animated.View>
+                            <Pressable style={styles.plusAttachBtn} onPress={handlePickImage}>
+                                <Plus size={22} color={attachments.length > 0 ? "#6366F1" : "#1E293B"} strokeWidth={2.5} />
+                            </Pressable>
+                        </>
                     )}
                 </View>
+                </RecoverableBoundary>
             </KeyboardAvoidingView>
+
+            {/* ── Image Viewer Modal ── */}
+            <Modal
+                visible={!!selectedViewerImage}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setSelectedViewerImage(null)}
+            >
+                <View style={styles.imageViewerBackdrop}>
+                    <Pressable style={styles.imageViewerCloseBtn} onPress={() => setSelectedViewerImage(null)} hitSlop={15}>
+                        <X size={26} color="#FFFFFF" strokeWidth={2.5} />
+                    </Pressable>
+                    {selectedViewerImage ? (
+                        <AuthenticatedImage source={{ uri: selectedViewerImage }} style={styles.imageViewerFullImage} resizeMode="contain" />
+                    ) : null}
+                </View>
+            </Modal>
         </View>
         </TabScreenTransition>
     );
@@ -1829,6 +2132,29 @@ export default function ChatbotScreen({ navigation, route }) {
 // ══════════════════════════════════════════════════════════════════════════════
 const styles = StyleSheet.create({
     screen: { flex: 1, backgroundColor: '#F8FAFC' },
+
+    imageViewerBackdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    imageViewerCloseBtn: {
+        position: 'absolute',
+        top: 50,
+        right: 20,
+        zIndex: 10,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    imageViewerFullImage: {
+        width: '92%',
+        height: '80%',
+    },
 
     // ── Header ──
     header: {
@@ -1846,8 +2172,8 @@ const styles = StyleSheet.create({
     headerMascotAvatar: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' },
     headerTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', letterSpacing: -0.3 },
     onlineRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
-    onlineDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#22C55E' },
-    onlineText: { fontSize: 11, fontWeight: '600', color: '#22C55E' },
+    onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
+    onlineText: { fontSize: 11, fontWeight: '500', color: '#64748B' },
 
     // ── Welcome card ──
     welcomeCard: {
@@ -2057,11 +2383,12 @@ const styles = StyleSheet.create({
     botAvatarCircle: { width: 30, height: 30, borderRadius: 15, marginBottom: 2, overflow: 'hidden' },
     avatarCircleUser: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#6366F1', alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
     bubble: { maxWidth: '75%', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, overflow: 'hidden' },
-    bubbleImageContainer: { paddingHorizontal: 4, paddingVertical: 4, backgroundColor: 'transparent' },
+    bubbleImageContainer: { paddingHorizontal: 6, paddingTop: 6, paddingBottom: 8, backgroundColor: 'transparent' },
     bubbleAudioContainer: { paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#FFFFFF' },
-    chatImage: { width: 200, height: 200, borderRadius: 16 },
-    audioBubble: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    audioBubbleText: { fontSize: 14, color: '#6366F1', fontWeight: '600' },
+    chatImage: { width: 220, height: 220, borderRadius: 16 },
+    audioBubble: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 12 },
+    audioBubbleUser: { backgroundColor: 'rgba(255,255,255,0.15)' },
+    audioBubbleText: { fontSize: 13, color: '#6366F1', fontWeight: '600' },
     bubbleBot: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderBottomLeftRadius: 6 },
     bubbleUser: { borderBottomRightRadius: 6 },
     bubbleText: { fontSize: 14, color: '#1E293B', lineHeight: 20, fontWeight: '500' },
@@ -2104,23 +2431,152 @@ const styles = StyleSheet.create({
     },
     followUpText: { fontSize: 12, fontWeight: '600', color: '#4338CA' },
 
-    // ── Input bar ──
-    inputBar: {
-        flexDirection: 'row', alignItems: 'flex-end', gap: 6,
-        paddingHorizontal: 12, paddingTop: 10,
+    // ── Attachments Bar ──
+    attachmentBar: {
+        paddingHorizontal: 12, paddingTop: 8, paddingBottom: 4,
         backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#F1F5F9',
     },
-    inputAction: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-    inputWrapper: {
-        flex: 1, backgroundColor: '#F1F5F9', borderRadius: 22,
-        borderWidth: 1, borderColor: '#E2E8F0',
-        paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 10 : 4,
-        maxHeight: 100,
+    attachmentCard: {
+        flexDirection: 'row', alignItems: 'center', gap: 10,
+        backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0',
+        borderRadius: 14, padding: 8,
     },
-    textInput: { fontSize: 14, color: '#0F172A', fontWeight: '500', maxHeight: 80 },
+    attachmentThumb: { width: 44, height: 44, borderRadius: 8, backgroundColor: '#CBD5E1' },
+    attachmentTitle: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
+    attachmentSub: { fontSize: 11, fontWeight: '500', color: '#64748B', marginTop: 1 },
+    removeAttachmentBtn: {
+        width: 28, height: 28, borderRadius: 14,
+        backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center',
+    },
+
+    // ── System Status Divider ──
+    systemDividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginVertical: 14,
+        paddingHorizontal: 20,
+    },
+    systemDividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: '#E2E8F0',
+    },
+    systemDividerText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#64748B',
+        paddingHorizontal: 12,
+        textAlign: 'center',
+    },
+    userTimeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        alignSelf: 'flex-end',
+        marginTop: 2,
+    },
+
+    // ── Input bar (Swiggy-Style Impactful Pill Layout) ──
+    inputBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 14,
+        paddingTop: 10,
+        backgroundColor: '#FFFFFF',
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+    },
+    plusAttachBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1.5,
+        borderColor: '#E2E8F0',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    inputWrapper: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 26,
+        borderWidth: 1.5,
+        borderColor: '#0F172A',
+        paddingLeft: 16,
+        paddingRight: 6,
+        paddingVertical: Platform.OS === 'ios' ? 4 : 2,
+        minHeight: 48,
+        maxHeight: 110,
+    },
+    textInput: {
+        flex: 1,
+        fontSize: 15,
+        color: '#0F172A',
+        fontWeight: '500',
+        paddingVertical: 6,
+        maxHeight: 85,
+    },
+    sendInsideBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        overflow: 'hidden',
+        marginLeft: 6,
+    },
     sendBtn: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' },
     sendBtnDisabled: { opacity: 0.6 },
     sendGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+    // ── Telegram Live Waveform & Voice State Machine Styles ──
+    recordingOverlayBar: {
+        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        backgroundColor: '#FEF2F2', borderRadius: 22, borderWidth: 1, borderColor: '#FCA5A5',
+        paddingHorizontal: 10, height: 44,
+    },
+    trashCircleBtn: {
+        width: 34, height: 34, borderRadius: 17, backgroundColor: '#FEE2E2',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    recordingMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    recordingRedDotPulse: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#EF4444' },
+    recordingTimerTxt: { fontSize: 13, fontWeight: '700', color: '#DC2626', letterSpacing: 0.5 },
+    waveformContainer: { flexDirection: 'row', alignItems: 'center', gap: 3, height: 28, paddingHorizontal: 6 },
+    waveBarItem: { width: 3, backgroundColor: '#EF4444', borderRadius: 1.5 },
+    stopSquareBtn: { width: 34, height: 34, borderRadius: 17, overflow: 'hidden' },
+
+    // Review / Transcript State Styles
+    voiceNotePreviewBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#EEF2FF',
+        marginHorizontal: 16,
+        marginBottom: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#C7D2FE',
+    },
+    voiceNoteSubtitle: {
+        flex: 1,
+        fontSize: 12,
+        fontWeight: '500',
+        color: '#6366F1',
+        marginLeft: 10,
+    },
+    reviewInputWrapper: {
+        flex: 1, backgroundColor: '#F8FAFC', borderRadius: 18,
+        borderWidth: 1, borderColor: '#C7D2FE', paddingHorizontal: 12, paddingVertical: 8,
+    },
+    reviewHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+    voiceNoteBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFFFFF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, borderWidth: 0.5, borderColor: '#C7D2FE' },
+    voiceNoteBadgeTxt: { fontSize: 11, fontWeight: '700', color: '#4F46E5' },
+    clearVoiceBtn: { padding: 4 },
 
     // ── Structured Cards ──
     cardsWrapper: { marginTop: 8, gap: 10, width: '100%' },
@@ -2170,4 +2626,166 @@ const styles = StyleSheet.create({
     summaryRowItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: '#F1F5F9' },
     summaryRowLabel: { fontSize: 12, fontWeight: '500', color: '#475569' },
     summaryRowValue: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
+
+    // ── Centered Care Assistant Preparing Loading State ──
+    centeredPreparingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        paddingBottom: 40,
+    },
+    preparingAvatarHalo: {
+        width: 88,
+        height: 88,
+        borderRadius: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 16,
+        elevation: 8,
+        marginBottom: 20,
+    },
+    preparingAvatarGradient: {
+        width: 88,
+        height: 88,
+        borderRadius: 44,
+        padding: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    preparingAvatarImg: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+    },
+    preparingSparkleBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        backgroundColor: '#EEF2FF',
+        borderWidth: 1,
+        borderColor: '#C7D2FE',
+        marginBottom: 14,
+    },
+    preparingSparkleTxt: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#4F46E5',
+    },
+    preparingTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#0F172A',
+        textAlign: 'center',
+        letterSpacing: -0.4,
+        marginBottom: 6,
+    },
+    preparingSub: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: '#64748B',
+        textAlign: 'center',
+        marginBottom: 20,
+        maxWidth: 260,
+    },
+    preparingDotsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+
+    // ── Editorial Care Assistant Landing Styles (Apple Health + Medical Concierge Style) ──
+    editorialLandingContainer: {
+        paddingHorizontal: 20,
+        paddingTop: 28,
+        paddingBottom: 20,
+    },
+    editorialHeaderGroup: {
+        marginBottom: 20,
+    },
+    editorialEyebrow: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#6366F1',
+        letterSpacing: 1.2,
+        marginBottom: 4,
+    },
+    editorialNameTitle: {
+        fontSize: 32,
+        fontWeight: '800',
+        color: '#0F172A',
+        letterSpacing: -0.6,
+        marginBottom: 8,
+    },
+    editorialStatusSentence: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#475569',
+        lineHeight: 22,
+    },
+    editorialDivider: {
+        height: 1,
+        backgroundColor: '#E2E8F0',
+        marginVertical: 20,
+    },
+    editorialSnapshotSection: {
+        gap: 12,
+    },
+    editorialSectionHeading: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#94A3B8',
+        letterSpacing: 1,
+        marginBottom: 6,
+    },
+    editorialSnapshotRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
+    editorialSnapshotLabel: {
+        fontSize: 15,
+        fontWeight: '500',
+        color: '#334155',
+    },
+    editorialSnapshotValue: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#0F172A',
+    },
+    editorialActionsSection: {
+        gap: 12,
+    },
+    editorialActionRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    editorialActionText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#1E293B',
+    },
+    editorialFooterRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        marginTop: 32,
+    },
+    editorialFooterText: {
+        fontSize: 11,
+        fontWeight: '500',
+        color: '#94A3B8',
+    },
 });

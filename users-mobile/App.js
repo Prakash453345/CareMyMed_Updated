@@ -10,15 +10,18 @@ import {
     Inter_400Regular, Inter_500Medium, Inter_600SemiBold,
     Inter_700Bold, Inter_800ExtraBold, Inter_900Black,
 } from '@expo-google-fonts/inter';
+import {
+    PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold,
+} from '@expo-google-fonts/plus-jakarta-sans';
 import * as SplashScreen from 'expo-splash-screen';
 import './src/i18n'; // Initialize i18n
-
 
 // Sentry — must init before anything else
 import sentry from './src/utils/monitoring/sentry';
 sentry.init();
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 LogBox.ignoreLogs([
     'Invalid DOM property `transform-origin`',
@@ -27,7 +30,8 @@ LogBox.ignoreLogs([
 ]);
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { colors } from './src/theme';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/context/AuthContext';
 import { NetworkProvider } from './src/context/NetworkContext';
@@ -38,6 +42,7 @@ import analytics from './src/utils/analytics';
 import * as Linking from 'expo-linking';
 import { navigationRef } from './src/lib/navigationRef';
 import { MotionProvider } from './src/theme/MotionProvider';
+import { GuideProvider } from './src/context/GuideContext';
 
 
 
@@ -60,6 +65,8 @@ export default function App() {
         DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold,
         Inter_400Regular, Inter_500Medium, Inter_600SemiBold,
         Inter_700Bold, Inter_800ExtraBold, Inter_900Black,
+        PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold,
+        PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold,
     });
 
     const [appState, setAppState] = useState(AppState.currentState);
@@ -119,10 +126,26 @@ export default function App() {
                         <SecurityProvider>
                             <NetworkProvider>
                                 <AuthProvider>
-                                    <NavigationContainer linking={linking} ref={navigationRef}>
-                                        <AppNavigator fontsLoaded={fontsLoaded} />
-                                        <StatusBar style="light" />
-                                    </NavigationContainer>
+                                    <GuideProvider>
+                                        <NavigationContainer
+                                            linking={linking}
+                                            ref={navigationRef}
+                                            onReady={() => {
+                                                const { flushPendingNotifications } = require('./src/utils/NotificationRouter');
+                                                flushPendingNotifications();
+                                            }}
+                                            theme={{
+                                                ...DefaultTheme,
+                                                colors: {
+                                                    ...DefaultTheme.colors,
+                                                    background: colors.background,
+                                                },
+                                            }}
+                                        >
+                                            <AppNavigator fontsLoaded={fontsLoaded} />
+                                            <StatusBar style="light" />
+                                        </NavigationContainer>
+                                    </GuideProvider>
                                 </AuthProvider>
                             </NetworkProvider>
                         </SecurityProvider>

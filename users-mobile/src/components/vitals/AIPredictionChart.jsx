@@ -4,126 +4,40 @@ import { LineChart } from 'react-native-chart-kit';
 
 const screenWidth = Dimensions.get('window').width;
 
-export default function AIPredictionChart({ vitalsHistory, predictionData, metricName, unit }) {
+export default function AIPredictionChart({ vitalsHistory, predictionData, metricName, unit, forecastStatus, progress, confidence, explanation, metadata }) {
   const [chartWidth, setChartWidth] = useState(screenWidth - 100);
   const safeHistory = vitalsHistory || [];
-  
-  // ── Client-side fallback prediction (Physiological Mean Reversion) ──
-  // When the backend AI service has no predictions, generate a 3-day
-  // forecast that models homeostasis (reverting towards the patient's
-  // baseline and general physiological averages) rather than linear runaway.
-  const effectivePrediction = (() => {
-    if (predictionData && predictionData.length > 0) return predictionData;
-    if (safeHistory.length < 3) return []; // Need at least 3 points
-    
-    const vals = safeHistory.map(h => h.value).filter(v => v > 0);
-    if (vals.length < 3) return [];
-    
-    const n = vals.length;
-    const xMean = (n - 1) / 2;
-    const yMean = vals.reduce((a, b) => a + b, 0) / n;
-    
-    let num = 0, den = 0;
-    for (let i = 0; i < n; i++) {
-      num += (i - xMean) * (vals[i] - yMean);
-      den += (i - xMean) * (i - xMean);
-    }
-    const slope = den !== 0 ? num / den : 0;
-    const intercept = yMean - slope * xMean;
-    
-    // Determine physiological baseline based on metric name
-    const getBaseline = (name) => {
-      const lower = (name || '').toLowerCase();
-      if (lower.includes('heart')) return 75; // 75 bpm HR average
-      if (lower.includes('pressure') || lower.includes('bp') || lower.includes('systolic')) return 120; // 120 mmHg Systolic
-      if (lower.includes('oxygen') || lower.includes('spo')) return 98; // 98% SpO2 average
-      if (lower.includes('hydration')) return 65; // 65% Hydration baseline
-      return 80;
-    };
 
-    const userAverage = yMean;
-    const baseline = getBaseline(metricName);
-    const target = (userAverage + baseline) / 2; // Blend user history and medical standard
-    
-    const lastVal = vals[vals.length - 1];
-    let current = lastVal;
-    let currentSlope = slope * 0.45; // Dampen the initial trend momentum
-    
-    const forecasts = [];
-    const today = new Date();
-    
-    for (let i = 1; i <= 3; i++) {
-      const futureDate = new Date(today);
-      futureDate.setDate(futureDate.getDate() + i);
-      
-      // Predict using momentum and reversion to baseline
-      const predicted = current + currentSlope + 0.35 * (target - current);
-      
-      // Decay momentum for subsequent days
-      currentSlope *= 0.5;
-      
-      // physiological safety clamps
-      let clamped = predicted;
-      const lowerName = (metricName || '').toLowerCase();
-      if (lowerName.includes('oxygen') || lowerName.includes('spo')) {
-        clamped = Math.max(92, Math.min(predicted, 100)); // Cap SpO2 between 92% and 100%
-      } else if (lowerName.includes('hydration')) {
-        clamped = Math.max(20, Math.min(predicted, 100)); // Cap hydration
-      } else if (lowerName.includes('pressure') || lowerName.includes('bp') || lowerName.includes('systolic')) {
-        clamped = Math.max(85, Math.min(predicted, 180)); // BP limits
-      } else {
-        clamped = Math.max(45, Math.min(predicted, 160)); // HR limits
-      }
-      
-      const rounded = Math.round(clamped);
-      forecasts.push({
-        label: futureDate.toLocaleDateString([], { month: 'short', day: 'numeric' }),
-        value: rounded,
-      });
-      current = clamped;
-    }
-    return forecasts;
-  })();
-  
-  const safePrediction = effectivePrediction;
-  const isBackendAI = predictionData && predictionData.length > 0;
-  
-  const filteredHistory = safeHistory.filter(item => item.value != null && !isNaN(Number(item.value)));
-  const filteredPrediction = safePrediction.filter(item => item.value != null && !isNaN(Number(item.value)));
+  // Render "Building AI Forecast" progress card when status is 'building' or < 7 days logged
+  if (forecastStatus === 'building' || (progress && progress.loggedDays < progress.requiredDays)) {
+    const logged = progress?.loggedDays || 0;
+    const req = progress?.requiredDays || 7;
+    const remaining = Math.max(0, req - logged);
+    const progressPercent = Math.min(100, Math.round((logged / req) * 100));
 
-  const labels = [
-    ...filteredHistory.map((item) => item.label),
-    ...filteredPrediction.map((item) => item.label)
-  ];
-
-  const allValues = [
-    ...filteredHistory.map(item => item.value),
-    ...filteredPrediction.map(item => item.value)
-  ];
-
-  // AI Models need prediction data to exist to render an actual forecast chart
-  if (!safePrediction || safePrediction.length === 0) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Health Outlook</Text>
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>🤖</Text>
-          <Text style={styles.emptyTitle}>AI Model Learning...</Text>
-          <Text style={styles.emptyDesc}>Log at least 3 vitals readings to see your estimated health trends. Our AI improves with more data!</Text>
-        </View>
-      </View>
-    );
-  }
+        <Text style={styles.title}>AI Vitals Outlook</Text>
+        <View style={styles.progressCardContainer}>
+          <View style={styles.progressHeaderRow}>
+            <Text style={styles.progressIcon}>🤖</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.progressTitle}>Building AI Forecast</Text>
+              <Text style={styles.progressSub}>{logged} of {req} days recorded</Text>
+            </View>
+            <View style={styles.progressBadge}>
+              <Text style={styles.progressBadgeTxt}>{progressPercent}%</Text>
+            </View>
+          </View>
 
-  // A line chart needs at least 2 points to draw a path without glitching/forming triangles
-  if (allValues.length < 2) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Health Outlook</Text>
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>📊</Text>
-          <Text style={styles.emptyTitle}>Insufficient Data</Text>
-          <Text style={styles.emptyDesc}>Log at least two vitals readings to activate the AI health forecast.</Text>
+          {/* Progress Bar */}
+          <View style={styles.progressBarTrack}>
+            <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
+          </View>
+
+          <Text style={styles.progressCtaText}>
+            Log vitals for <Text style={{ fontWeight: '800', color: '#6366F1' }}>{remaining} more days</Text> to unlock personalized trend forecasting.
+          </Text>
         </View>
       </View>
     );
@@ -222,6 +136,63 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1E293B',
     marginBottom: 4,
+  },
+  progressCardContainer: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 8,
+  },
+  progressHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 12,
+  },
+  progressIcon: {
+    fontSize: 26,
+  },
+  progressTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  progressSub: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  progressBadge: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  progressBadgeTxt: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#4F46E5',
+  },
+  progressBarTrack: {
+    height: 8,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#6366F1',
+    borderRadius: 4,
+  },
+  progressCtaText: {
+    fontSize: 13,
+    color: '#334155',
+    lineHeight: 18,
   },
   honestyLabel: {
     fontSize: 12,

@@ -21,7 +21,10 @@ import {
   Modal,
   Alert,
   Image,
+  PanResponder,
 } from "react-native";
+import * as Notifications from "expo-notifications";
+import AlertManager from "../../utils/AlertManager";
 import { getStreakState } from "../../utils/streakHelper";
 import StreakCompanion from "../../components/ui/StreakCompanion";
 import { LinearGradient } from "expo-linear-gradient";
@@ -71,6 +74,7 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import usePatientStore from "../../store/usePatientStore";
 import TabScreenTransition from "../../components/ui/TabScreenTransition";
+import RecoverableBoundary from "../../components/RecoverableBoundary";
 import RecapStoryModal from "../../components/adherence/RecapStoryModal";
 import { layout } from "../../theme";
 import {
@@ -549,15 +553,14 @@ const CircularProgress = ({
 
 // ── Animated Number Counter ─────────────────────────────────────
 const AnimatedNumber = ({ value, style, suffix = "%" }) => {
-  const animValue = useRef(new Animated.Value(0)).current;
-  const [displayValue, setDisplayValue] = useState(0);
+  const animValue = useRef(new Animated.Value(value || 0)).current;
+  const [displayValue, setDisplayValue] = useState(value || 0);
 
   useEffect(() => {
-    animValue.setValue(0);
     Animated.timing(animValue, {
       toValue: value,
-      duration: 1100,
-      easing: Easing.out(Easing.cubic),
+      duration: 300,
+      easing: Easing.out(Easing.quad),
       useNativeDriver: false,
     }).start();
     const listener = animValue.addListener(({ value: v }) =>
@@ -782,45 +785,48 @@ function ProgressRing({ percent, size = 84, stroke = 8 }) {
 }
 
 function CategoryHeaderUi({ category, unlockedCount, totalCount }) {
-  const IconComponent = Icons[category.iconName] || Icons.Star;
-  const accent = category.accent || ["#3B82F6", "#60A5FA"];
+  const IconComponent = Icons[category.iconName] || Icons.BarChart2;
+  const accent = category.accent || ["#8B5CF6", "#7C3AED"];
   return (
     <View
       style={{
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        marginBottom: 14,
+        marginBottom: 16,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <LinearGradient
-          colors={accent}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+        <View
           style={{
-            width: 32,
-            height: 32,
+            width: 34,
+            height: 34,
             borderRadius: 10,
+            backgroundColor: "#F3E8FF",
             alignItems: "center",
             justifyContent: "center",
           }}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
         >
-          <IconComponent size={16} color="white" />
-        </LinearGradient>
-        <Text style={{ fontSize: 15, fontWeight: "800", color: "#0F172A" }}>
-          {category.title}
-        </Text>
+          <IconComponent size={18} color="#7C3AED" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 16, fontWeight: "800", color: "#0F172A" }}>
+            {category.title}
+          </Text>
+          <Text style={{ fontSize: 12, fontWeight: "500", color: "#94A3B8", marginTop: 1 }}>
+            Complete activities to unlock achievements
+          </Text>
+        </View>
       </View>
       <View
         style={{
-          backgroundColor: accent[0] + "14",
-          paddingHorizontal: 10,
-          paddingVertical: 4,
-          borderRadius: 999,
+          backgroundColor: "#F3E8FF",
+          paddingHorizontal: 12,
+          paddingVertical: 5,
+          borderRadius: 12,
         }}
       >
-        <Text style={{ fontSize: 12, fontWeight: "700", color: accent[0] }}>
+        <Text style={{ fontSize: 12, fontWeight: "800", color: "#7C3AED" }}>
           {unlockedCount}/{totalCount}
         </Text>
       </View>
@@ -832,53 +838,47 @@ const getUnlockedLabel = (data) => {
   const key = data.key;
   switch (key) {
     case "streak_14":
-      return "2/2 weeks";
+      return "2 Wks";
     case "bp_stabilized":
-      return "14/14 days";
+      return "14 Days";
     case "hydration_hero":
-      return "5/5 days";
+      return "5 Days";
     case "mindful_week":
-      return "7/7 days";
+      return "7 Days";
     case "7_perfect_days":
-      return "7/7 perfect days";
+      return "7 Days";
     case "night_owl":
-      return "5/5 nights";
+      return "5 Nights";
     case "vitals_tracker":
-      return "10/10 days";
+      return "10 Days";
     case "100_doses":
-      return "100/100 doses";
+      return "100 Doses";
     case "profile_complete":
-      return "100% complete";
+      return "100%";
     case "streak_30":
-      return "30/30 days";
+      return "30 Days";
     case "30_perfect_days":
-      return "30/30 perfect days";
+      return "30 Days";
     default:
-      return "Achieved";
+      return "Unlocked";
   }
 };
 
 function PremiumBadge({ data, size = "normal", onPress, style }) {
   const isSmall = size === "small";
-  const dim = isSmall ? 50 : 62;
-  const IconComponent = Icons[data.meta.iconName] || Icons.Award;
-  const colors = data.tierConfig.gradient;
-  const itemWidth = style?.width || badgeWidth;
+  const itemWidth = style?.width || (isSmall ? 70 : (SCREEN_WIDTH - 92) / 2);
 
-  const target = data.meta.target || 1;
-  const current =
-    data.progress >= 1 ? target : Math.floor((data.progress || 0) * target);
-  const pct = Math.min(100, (data.progress || 0) * 100);
-  const tierColor = data.tierConfig.color;
+  const target = data.meta?.target || 1;
+  const current = data.progress >= 1 ? target : Math.floor((data.progress || 0) * target);
+  const pct = Math.min(100, Math.round((data.progress || 0) * 100));
+  const isHiddenLocked = data.meta?.isHidden && !data.unlocked;
 
   const pressScale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
     Animated.spring(pressScale, {
-      toValue: 0.93,
+      toValue: 0.96,
       useNativeDriver: true,
-      tension: 60,
-      friction: 8,
     }).start();
   };
 
@@ -886,253 +886,79 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
     Animated.spring(pressScale, {
       toValue: 1,
       useNativeDriver: true,
-      tension: 60,
-      friction: 8,
     }).start();
   };
 
-  if (!data.unlocked) {
-    const ringSize = dim;
-    const strokeWidth = 3;
-    const r = (ringSize - strokeWidth) / 2;
-    const circumference = 2 * Math.PI * r;
-    const strokeDashoffset = circumference - (pct / 100) * circumference;
+  const IconComponent = isHiddenLocked
+    ? Icons.HelpCircle
+    : Icons[data.meta?.iconName] || Icons.Award;
+  const label = getUnlockedLabel(data);
 
+  const tierKey = data.meta?.tier || "common";
+  const tierConfig = TIER_CONFIG[tierKey] || TIER_CONFIG.common;
+  const gradientColors = tierConfig.gradient || ["#7C3AED", "#C084FC"];
+  const accentColor = tierConfig.color || "#7C3AED";
+  const cardBgColors = data.unlocked
+    ? [tierConfig.bgColor || "#FAF5FF", "#FFFFFF"]
+    : ["#FFFFFF", "#FFFFFF"];
+
+  let rawTitle = isHiddenLocked
+    ? "???"
+    : data.meta?.unlockedTitle || data.meta?.title || data.key;
+  const displayTitle = rawTitle.includes("_") && !data.meta?.title
+    ? rawTitle.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
+    : rawTitle;
+
+  const displayDesc = isHiddenLocked
+    ? "Secret health milestone"
+    : data.meta?.description || "Complete activity to unlock";
+
+  if (isSmall) {
     return (
       <Pressable
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        style={[
-          !isSmall && {
-            width: itemWidth,
-            height: 140,
-            backgroundColor: "rgba(248, 250, 252, 0.65)",
-            borderRadius: 22,
-            borderWidth: 1,
-            borderColor: "#E2E8F0",
-            paddingVertical: 14,
-            paddingHorizontal: 6,
-            alignItems: "center",
-            justifyContent: "space-between",
-          },
-          isSmall && { width: itemWidth, alignItems: "center" },
-          style,
-        ]}
+        style={[{ width: itemWidth, alignItems: "center" }, style]}
       >
-        <Animated.View
-          style={{
-            transform: [{ scale: pressScale }],
-            width: "100%",
-            height: isSmall ? undefined : "100%",
-            alignItems: "center",
-            justifyContent: isSmall ? undefined : "space-between",
-          }}
-        >
-          <View style={{ alignItems: "center", width: "100%" }}>
-            {/* Ringed locked medal container */}
-            <View
-              style={{
-                width: dim,
-                height: dim,
-                borderRadius: dim / 2,
-                alignItems: "center",
-                justifyContent: "center",
-                position: "relative",
-                ...(isSmall
-                  ? {
-                      borderWidth: 1,
-                      borderColor: "#CBD5E1",
-                      backgroundColor: "#FFFFFF",
-                    }
-                  : {}),
-              }}
-            >
-              {/* SVG Progress Ring only for grid/large nodes */}
-              {!isSmall && (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    transform: [{ rotate: "-90deg" }],
-                  }}
-                >
-                  <Svg width={dim} height={dim}>
-                    <Circle
-                      cx={dim / 2}
-                      cy={dim / 2}
-                      r={r}
-                      stroke="#E2E8F0"
-                      strokeWidth={strokeWidth}
-                      fill="none"
-                    />
-                    <Circle
-                      cx={dim / 2}
-                      cy={dim / 2}
-                      r={r}
-                      stroke={tierColor}
-                      strokeWidth={strokeWidth}
-                      fill="none"
-                      strokeDasharray={circumference}
-                      strokeDashoffset={strokeDashoffset}
-                      strokeLinecap="round"
-                    />
-                  </Svg>
-                </View>
-              )}
-
-              <View
-                style={{
-                  width: dim - 6,
-                  height: dim - 6,
-                  borderRadius: (dim - 6) / 2,
-                  backgroundColor: "rgba(148, 163, 184, 0.08)",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {data.meta.iconName === "Shield" ? (
-                  <View
-                    style={{ alignItems: "center", justifyContent: "center" }}
-                  >
-                    <IconComponent
-                      size={isSmall ? 20 : 26}
-                      color="#64748B"
-                      style={{ opacity: 0.65 }}
-                    />
-                    <Icons.Star
-                      size={isSmall ? 8 : 10}
-                      color="#64748B"
-                      fill="#64748B"
-                      style={{
-                        position: "absolute",
-                        top: isSmall ? 5 : 7,
-                        opacity: 0.65,
-                      }}
-                    />
-                  </View>
-                ) : (
-                  <IconComponent
-                    size={isSmall ? 20 : 26}
-                    color="#64748B"
-                    style={{ opacity: 0.65 }}
-                  />
-                )}
-              </View>
-
-              <View
-                style={{
-                  position: "absolute",
-                  top: -2,
-                  right: -2,
-                  backgroundColor: "#94A3B8",
-                  width: 18,
-                  height: 18,
-                  borderRadius: 9,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderWidth: 1.5,
-                  borderColor: "#FFFFFF",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 1,
-                  elevation: 1,
-                  zIndex: 10,
-                }}
-              >
-                <Lock size={8} color="white" />
-              </View>
-            </View>
-
-            <Text
-              style={{
-                fontSize: 11,
-                fontWeight: "750",
-                color: "#64748B",
-                marginTop: 10,
-                textAlign: "center",
-                lineHeight: 14,
-                paddingHorizontal: 2,
-              }}
-              numberOfLines={2}
-            >
-              {data.meta.title || data.key}
-            </Text>
-          </View>
-
-          {!isSmall && (
-            <View style={{ alignItems: "center", width: "100%", marginTop: 8 }}>
-              {target > 1 ? (
-                <View
-                  style={{ width: "80%", alignItems: "center", marginTop: 2 }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 10,
-                      ...FONT.heavy,
-                      color: "#64748B",
-                      marginBottom: 4,
-                    }}
-                  >
-                    {current}/{target}
-                  </Text>
-                  <View
-                    style={{
-                      width: "100%",
-                      height: 4,
-                      borderRadius: 2,
-                      backgroundColor: "#E2E8F0",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: `${pct}%`,
-                        height: "100%",
-                        borderRadius: 2,
-                        backgroundColor: tierColor,
-                      }}
-                    />
-                  </View>
-                </View>
-              ) : (
-                <View
-                  style={{
-                    borderColor: "#E2E8F0",
-                    borderWidth: 1,
-                    backgroundColor: "#F8FAFC",
-                    borderRadius: 12,
-                    paddingHorizontal: 8,
-                    paddingVertical: 2,
-                    marginTop: 4,
-                  }}
-                >
-                  <Text
-                    style={{ fontSize: 9, ...FONT.heavy, color: "#94A3B8" }}
-                  >
-                    LOCKED
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
+        <Animated.View style={{ transform: [{ scale: pressScale }], alignItems: "center" }}>
+          <LinearGradient
+            colors={data.unlocked ? gradientColors : ["#F1F5F9", "#CBD5E1"]}
+            style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" }}
+          >
+            <IconComponent size={20} color={data.unlocked ? "#FFF" : "#64748B"} />
+          </LinearGradient>
+          <Text style={{ fontSize: 10, fontWeight: "700", color: "#64748B", marginTop: 4, textAlign: "center" }} numberOfLines={1}>
+            {displayTitle}
+          </Text>
         </Animated.View>
       </Pressable>
     );
   }
 
-  // Unlocked State
-  const label = getUnlockedLabel(data);
-  const statusColor =
-    label === "Achieved" ||
-    label.endsWith("complete") ||
-    label.endsWith("perfect days")
-      ? "#10B981"
-      : "#64748B";
+  // Themed Watermark Renderer
+  const renderWatermark = () => {
+    const iconName = data.meta?.iconName;
+    if (iconName === "Pill" || iconName === "Sprout") {
+      return (
+        <Svg width="50" height="50" viewBox="0 0 24 24" style={{ position: "absolute", right: -10, top: -10, opacity: 0.05 }}>
+          <Path d="M10.5 20.4l-6.9-6.9c-1.6-1.6-1.6-4.1 0-5.7l6.9-6.9c1.6-1.6 4.1-1.6 5.7 0l6.9 6.9c1.6 1.6 1.6 4.1 0 5.7l-6.9 6.9c-1.6 1.5-4.1 1.5-5.7 0z" stroke={accentColor} strokeWidth="1.5" fill="none" />
+        </Svg>
+      );
+    }
+    if (iconName === "Activity" || iconName === "HeartPulse") {
+      return (
+        <Svg width="50" height="50" viewBox="0 0 24 24" style={{ position: "absolute", right: -10, top: -10, opacity: 0.05 }}>
+          <Path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke={accentColor} strokeWidth="1.5" fill="none" />
+        </Svg>
+      );
+    }
+    return (
+      <Svg width="50" height="50" viewBox="0 0 24 24" style={{ position: "absolute", right: -10, top: -10, opacity: 0.05 }}>
+        <Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke={accentColor} strokeWidth="1.5" fill="none" />
+      </Svg>
+    );
+  };
 
   return (
     <Pressable
@@ -1140,206 +966,388 @@ function PremiumBadge({ data, size = "normal", onPress, style }) {
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       style={[
-        !isSmall && {
-          width: itemWidth,
-          height: 140,
-          backgroundColor: "#FFFFFF",
-          borderRadius: 22,
-          borderWidth: 1,
-          borderColor: tierColor + "25",
-          paddingVertical: 14,
-          paddingHorizontal: 6,
-          alignItems: "center",
-          justifyContent: "space-between",
-          shadowColor: tierColor,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.05,
+        {
+          width: isSmall ? 70 : "48%",
+          height: isSmall ? 100 : 156,
+          borderRadius: 20,
+          borderWidth: 1.5,
+          borderColor: data.unlocked
+            ? accentColor + "40"
+            : "rgba(226, 232, 240, 0.9)",
+          shadowColor: data.unlocked ? accentColor : "#0F172A",
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: data.unlocked ? 0.14 : 0.03,
           shadowRadius: 10,
-          elevation: 2,
+          elevation: data.unlocked ? 4 : 1,
+          marginBottom: 12,
           position: "relative",
+          overflow: "hidden",
         },
-        isSmall && { width: itemWidth, alignItems: "center" },
         style,
       ]}
     >
-      <Animated.View
-        style={{
-          transform: [{ scale: pressScale }],
-          width: "100%",
-          height: isSmall ? undefined : "100%",
-          alignItems: "center",
-          justifyContent: isSmall ? undefined : "space-between",
-        }}
+      <LinearGradient
+        colors={
+          data.unlocked
+            ? [tierConfig.bgColor || "#FAF5FF", "#FFFFFF"]
+            : ["#FFFFFF", "#F8FAFC"]
+        }
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ padding: 12, width: "100%", height: "100%", justifyContent: "space-between" }}
       >
-        <View style={{ alignItems: "center", width: "100%" }}>
-          {/* Metallic Ring - Outer Gradient Circle */}
-          <LinearGradient
-            colors={colors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+        {renderWatermark()}
+        <Animated.View style={{ flex: 1, justifyContent: "space-between", transform: [{ scale: pressScale }] }}>
+          {/* Top Row: Emblem Icon on Left, Status Badge Pill on Right */}
+          <View
             style={{
-              width: dim,
-              height: dim,
-              borderRadius: dim / 2,
-              padding: 3,
+              flexDirection: "row",
               alignItems: "center",
-              justifyContent: "center",
-              shadowColor: tierColor,
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: 0.25,
-              shadowRadius: 6,
-              elevation: 3,
-              position: "relative",
+              justifyContent: "space-between",
+              marginBottom: 6,
             }}
           >
-            {/* Inner Core Gradient */}
-            <LinearGradient
-              colors={colors.slice().reverse()}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <View
               style={{
-                width: "100%",
-                height: "100%",
-                borderRadius: (dim - 6) / 2,
+                width: 38,
+                height: 38,
+                borderRadius: 19,
                 alignItems: "center",
                 justifyContent: "center",
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.45)",
+                position: "relative",
+                borderWidth: 1.5,
+                borderColor: data.unlocked
+                  ? "rgba(255, 255, 255, 0.8)"
+                  : "#E2E8F0",
+                shadowColor: gradientColors[1] || accentColor,
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: data.unlocked ? 0.25 : 0.05,
+                shadowRadius: 5,
+                elevation: data.unlocked ? 3 : 1,
               }}
             >
-              {/* Concentric Dotted Circle Inside Core */}
-              <View
+              <LinearGradient
+                colors={data.unlocked ? gradientColors : ["#F8FAFC", "#E2E8F0"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={{
-                  width: "85%",
-                  height: "85%",
-                  borderRadius: ((dim - 6) * 0.85) / 2,
-                  borderWidth: 0.8,
-                  borderColor: "rgba(255,255,255,0.25)",
-                  borderStyle: "dashed",
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: 19,
                   alignItems: "center",
                   justifyContent: "center",
-                  position: "relative",
                 }}
               >
-                {data.meta.iconName === "Shield" ? (
-                  <View
-                    style={{ alignItems: "center", justifyContent: "center" }}
-                  >
-                    <IconComponent
-                      size={isSmall ? 18 : 24}
-                      color="white"
-                      style={{
-                        textShadowColor: "rgba(0,0,0,0.15)",
-                        textShadowOffset: { width: 0, height: 1 },
-                        textShadowRadius: 2,
-                      }}
-                    />
-                    <Icons.Star
-                      size={isSmall ? 8 : 10}
-                      color="white"
-                      fill="white"
-                      style={{ position: "absolute", top: isSmall ? 4 : 6 }}
-                    />
-                  </View>
-                ) : (
-                  <IconComponent
-                    size={isSmall ? 18 : 24}
-                    color="white"
-                    style={{
-                      textShadowColor: "rgba(0,0,0,0.15)",
-                      textShadowOffset: { width: 0, height: 1 },
-                      textShadowRadius: 2,
-                    }}
-                  />
-                )}
-              </View>
-            </LinearGradient>
+                <IconComponent
+                  size={18}
+                  color={data.unlocked ? "#FFFFFF" : "#94A3B8"}
+                />
+              </LinearGradient>
 
-            {/* Checkmark icon for unlocked items */}
-            {data.meta.tier !== "legendary" && (
-              <View
-                style={{
-                  position: "absolute",
-                  top: -2,
-                  right: -2,
-                  backgroundColor: "#10B981",
-                  width: 18,
-                  height: 18,
-                  borderRadius: 9,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderWidth: 1.5,
-                  borderColor: "#FFFFFF",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 1,
-                  elevation: 2,
-                  zIndex: 10,
-                }}
-              >
-                <Check size={9} color="white" strokeWidth={4} />
-              </View>
-            )}
+              {data.unlocked && (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: -2,
+                    right: -2,
+                    backgroundColor: "#10B981",
+                    borderRadius: 8,
+                    width: 15,
+                    height: 15,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderWidth: 1.5,
+                    borderColor: "#FFFFFF",
+                  }}
+                >
+                  <CheckCircle2 size={9} color="#FFFFFF" strokeWidth={3} />
+                </View>
+              )}
+            </View>
 
-            {/* Crown badge for legendary */}
-            {data.meta.tier === "legendary" && (
+            {/* Unlocked / Locked Status Badge Pill */}
+            {data.unlocked ? (
               <View
                 style={{
-                  position: "absolute",
-                  top: -5,
-                  right: -5,
-                  backgroundColor: "#FBBF24",
-                  borderRadius: 10,
-                  width: 18,
-                  height: 18,
+                  backgroundColor: "#ECFDF5",
+                  borderColor: "#A7F3D0",
+                  borderWidth: 1,
+                  borderRadius: 12,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  maxWidth: "55%",
                   alignItems: "center",
                   justifyContent: "center",
-                  borderWidth: 1.5,
-                  borderColor: "#FFFFFF",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 2,
-                  elevation: 2,
-                  zIndex: 10,
                 }}
               >
-                <Icons.Crown size={9} color="#7C3AED" fill="#7C3AED" />
+                <Text
+                  style={{
+                    fontSize: 9.5,
+                    fontWeight: "800",
+                    color: "#059669",
+                  }}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {label}
+                </Text>
+              </View>
+            ) : (
+              <View
+                style={{
+                  backgroundColor: accentColor + "12",
+                  borderColor: accentColor + "30",
+                  borderWidth: 1,
+                  borderRadius: 12,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 9.5,
+                    fontWeight: "800",
+                    color: accentColor,
+                  }}
+                >
+                  {pct}%
+                </Text>
               </View>
             )}
-          </LinearGradient>
+          </View>
 
+          {/* Content Block: Full Width Title & Subtitle */}
+          <View style={{ width: "100%", flex: 1, justifyContent: "center", marginVertical: 2 }}>
+            <Text
+              style={{
+                fontSize: 12.5,
+                fontWeight: "800",
+                color: data.unlocked ? "#0F172A" : "#334155",
+                lineHeight: 16,
+              }}
+              numberOfLines={2}
+            >
+              {displayTitle}
+            </Text>
+
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: "500",
+                color: "#64748B",
+                marginTop: 3,
+                lineHeight: 13,
+              }}
+              numberOfLines={2}
+              ellipsizeMode="tail"
+            >
+              {displayDesc}
+            </Text>
+          </View>
+
+          {/* Locked Progress Bar Space */}
+          <View style={{ width: "100%", height: 5, justifyContent: "center" }}>
+            {!data.unlocked && (
+              <View
+                style={{
+                  width: "100%",
+                  height: 5,
+                  borderRadius: 2.5,
+                  backgroundColor: "#E2E8F0",
+                  overflow: "hidden",
+                }}
+              >
+                <View
+                  style={{
+                    width: `${pct}%`,
+                    height: "100%",
+                    borderRadius: 2.5,
+                    backgroundColor: accentColor,
+                  }}
+                />
+              </View>
+            )}
+          </View>
+        </Animated.View>
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
+function SmartInsightCard({ insights = [], feedback, t, onSetReminder }) {
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  // Consolidate all insights & feedback into a single clean list
+  const items = useMemo(() => {
+    const list = [];
+    if (insights && insights.length > 0) {
+      insights.forEach((ins) => list.push({ type: "insight", text: ins }));
+    }
+    if (feedback && feedback.text) {
+      list.push({
+        type: "feedback",
+        text: feedback.text,
+        color: feedback.color || "#7C3AED",
+      });
+    }
+    return list;
+  }, [insights, feedback]);
+
+  // Touch Swipe Gesture Handler (PanResponder)
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          Math.abs(gestureState.dx) > 15 && Math.abs(gestureState.dy) < 30,
+        onPanResponderRelease: (_, gestureState) => {
+          if (items.length <= 1) return;
+          if (gestureState.dx < -25) {
+            // Swipe Left -> Next Insight
+            setActiveIdx((prev) => (prev + 1) % items.length);
+          } else if (gestureState.dx > 25) {
+            // Swipe Right -> Prev Insight
+            setActiveIdx((prev) => (prev - 1 + items.length) % items.length);
+          }
+        },
+      }),
+    [items.length]
+  );
+
+  if (items.length === 0) return null;
+
+  const currentItem = items[activeIdx] || items[0];
+
+  const isActionable = currentItem.text.includes("reminder") || currentItem.text.includes("doses");
+
+  return (
+    <View
+      {...panResponder.panHandlers}
+      style={{
+        backgroundColor: "#FFFFFF",
+        borderRadius: 22,
+        borderWidth: 1,
+        borderColor: "rgba(124, 58, 237, 0.12)",
+        padding: 16,
+        minHeight: 120,
+        marginBottom: 16,
+        shadowColor: "#7C3AED",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 2,
+      }}
+    >
+      {/* Header Row */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 10,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
+          <View
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: 12,
+              backgroundColor: "#F3E8FF",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Sparkles size={12} color="#7C3AED" />
+          </View>
           <Text
             style={{
               fontSize: 11,
               fontWeight: "800",
-              color: "#0F172A",
-              marginTop: 10,
-              textAlign: "center",
-              lineHeight: 14,
-              paddingHorizontal: 2,
+              color: "#7C3AED",
+              letterSpacing: 0.6,
+              textTransform: "uppercase",
             }}
-            numberOfLines={2}
           >
-            {data.meta.title || data.key}
+            {t("adherence.ai_health_coach", { defaultValue: "AI Health Coach" })}
           </Text>
         </View>
 
-        {!isSmall && (
-          <View
-            style={{
-              marginTop: 8,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontSize: 10, ...FONT.bold, color: statusColor }}>
-              {label}
-            </Text>
+        {/* Carousel Dots & Touch Targets */}
+        {items.length > 1 && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+            {items.map((_, i) => (
+              <Pressable
+                key={i}
+                onPress={() => setActiveIdx(i)}
+                hitSlop={6}
+                style={{
+                  width: activeIdx === i ? 14 : 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: activeIdx === i ? "#7C3AED" : "#CBD5E1",
+                }}
+              />
+            ))}
           </View>
         )}
-      </Animated.View>
-    </Pressable>
+      </View>
+
+      {/* Main Text Content — flex so CTA stays at bottom */}
+      <View style={{ flex: 1, justifyContent: "space-between" }}>
+        <Text
+          style={{
+            fontSize: 13,
+            fontWeight: "600",
+            color: "#1E293B",
+            lineHeight: 19,
+          }}
+        >
+          {currentItem.text}
+        </Text>
+
+        {/* CTA Button — always rendered for consistent card height */}
+        <Pressable
+          style={{
+            marginTop: 12,
+            alignSelf: "flex-start",
+            backgroundColor: isActionable ? "#7C3AED" : "#F3E8FF",
+            paddingHorizontal: 14,
+            paddingVertical: 7,
+            borderRadius: 12,
+            ...(isActionable
+              ? {
+                  shadowColor: "#7C3AED",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }
+              : {}),
+          }}
+          onPress={() => {
+            if (isActionable && onSetReminder) {
+              onSetReminder(currentItem);
+            }
+            // Non-actionable slides: could navigate to chatbot, but for now just visual consistency
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 11.5,
+              fontWeight: "800",
+              color: isActionable ? "#FFFFFF" : "#7C3AED",
+            }}
+          >
+            {isActionable
+              ? t("adherence.set_reminder", { defaultValue: "Set Reminder" })
+              : t("adherence.ask_ai_coach", { defaultValue: "Ask AI Coach" })}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -1354,33 +1362,35 @@ function TimelineLayout({ badges, onSelect }) {
     <View
       style={{
         position: "relative",
-        width: 240,
-        alignSelf: "center",
+        width: "100%",
+        alignSelf: "stretch",
         paddingTop: 6,
         paddingBottom: 6,
       }}
     >
-      {/* Background line track */}
-      <View
-        style={{
-          position: "absolute",
-          top: 31,
-          left: 35,
-          right: 35,
-          height: 4,
-          borderRadius: 2,
-          backgroundColor: "#E2E8F0",
-        }}
-      />
-
-      {/* Colored progress line overlay */}
-      {unlockedCount > 1 && (
+      {/* Background line track (only when 2+ badges exist) */}
+      {badges.length > 1 && (
         <View
           style={{
             position: "absolute",
             top: 31,
-            left: 35,
-            right: 35,
+            left: 45,
+            right: 45,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: "#E2E8F0",
+          }}
+        />
+      )}
+
+      {/* Colored progress line overlay */}
+      {badges.length > 1 && unlockedCount > 1 && (
+        <View
+          style={{
+            position: "absolute",
+            top: 31,
+            left: 45,
+            right: 45,
             height: 4,
             borderRadius: 2,
             overflow: "hidden",
@@ -1407,7 +1417,10 @@ function TimelineLayout({ badges, onSelect }) {
       <View
         style={{
           flexDirection: "row",
-          justifyContent: "space-between",
+          flexWrap: "wrap",
+          justifyContent: badges.length === 1 ? "center" : "space-around",
+          alignItems: "center",
+          gap: 12,
           zIndex: 1,
         }}
       >
@@ -1415,9 +1428,9 @@ function TimelineLayout({ badges, onSelect }) {
           <PremiumBadge
             key={i}
             data={b}
-            size="small"
+            size={badges.length === 1 ? "normal" : "small"}
             onPress={() => onSelect(b)}
-            style={{ width: 70, marginBottom: 0 }}
+            style={{ marginBottom: 0 }}
           />
         ))}
       </View>
@@ -1429,6 +1442,7 @@ export default function AdherenceScreen({ navigation }) {
   const { t } = useTranslation();
   const adherenceDetails = usePatientStore((s) => s.adherenceDetails);
   const adherenceRecap = usePatientStore((s) => s.adherenceRecap);
+  const adherenceRecaps = usePatientStore((s) => s.adherenceRecaps);
   const fetchAdherenceDetails = usePatientStore((s) => s.fetchAdherenceDetails);
   const fetchAdherenceRecap = usePatientStore((s) => s.fetchAdherenceRecap);
 
@@ -1440,9 +1454,64 @@ export default function AdherenceScreen({ navigation }) {
   const [activeRecapTab, setActiveRecapTab] = useState("weekly");
   const [showStoryModal, setShowStoryModal] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState(null);
+  const [reminderModalVisible, setReminderModalVisible] = useState(false);
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const badgeScaleAnim = useRef(new Animated.Value(0)).current;
   const badgeRotateAnim = useRef(new Animated.Value(0)).current;
+
+  const handleSetReminder = async (insightItem) => {
+    try {
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      if (finalStatus !== "granted") {
+        AlertManager.alert(
+          t("common.permission_required", {
+            defaultValue: "Permission Required",
+          }),
+          t("medications.enable_notifications", {
+            defaultValue:
+              "Please enable notifications to schedule medication reminders.",
+          }),
+        );
+        return;
+      }
+
+      // Schedule real repeating Expo notifications for afternoon & evening slots
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "☀️ Afternoon Medication Reminder",
+          body: "Time to take your scheduled afternoon medications!",
+          data: { screen: "Medications", type: "medication_reminder" },
+          sound: "default",
+        },
+        trigger: { hour: 14, minute: 0, repeats: true },
+      });
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "🌙 Evening Medication Reminder",
+          body: "Time to take your scheduled evening medications!",
+          data: { screen: "Medications", type: "medication_reminder" },
+          sound: "default",
+        },
+        trigger: { hour: 20, minute: 0, repeats: true },
+      });
+
+      try {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (e) {}
+      setReminderModalVisible(true);
+    } catch (err) {
+      console.warn("[AdherenceScreen] Failed to schedule reminders:", err.message);
+      setReminderModalVisible(true);
+    }
+  };
 
   const handleBadgePress = (badge) => {
     try {
@@ -1531,7 +1600,9 @@ export default function AdherenceScreen({ navigation }) {
   const loadData = useCallback(async () => {
     await Promise.all([
       fetchAdherenceDetails(),
-      fetchAdherenceRecap(activeRecapTabRef.current),
+      fetchAdherenceRecap("weekly"),
+      fetchAdherenceRecap("monthly"),
+      fetchAdherenceRecap("yearly"),
     ]);
     setLoading(false);
     runAnimations();
@@ -1555,7 +1626,6 @@ export default function AdherenceScreen({ navigation }) {
     const cached = usePatientStore.getState().adherenceRecaps?.[tab];
     if (!cached) {
       setRecapLoading(true);
-      usePatientStore.setState({ adherenceRecap: null });
     }
     await fetchAdherenceRecap(tab);
     setRecapLoading(false);
@@ -1569,7 +1639,9 @@ export default function AdherenceScreen({ navigation }) {
     });
     await Promise.all([
       fetchAdherenceDetails(),
-      fetchAdherenceRecap(activeRecapTabRef.current, true),
+      fetchAdherenceRecap("weekly", true),
+      fetchAdherenceRecap("monthly", true),
+      fetchAdherenceRecap("yearly", true),
       usePatientStore
         .getState()
         .fetchDashboard(true)
@@ -1604,7 +1676,18 @@ export default function AdherenceScreen({ navigation }) {
   const streak = data.streak || 0;
   const weeklyTrend = data.weekly_trend || [];
 
-  const feedback = getFeedbackMessage(score.monthly, momentum, t);
+  const activeTabRate =
+    adherenceRecaps?.[activeRecapTab]?.adherence_rate ??
+    (adherenceRecap?.period === activeRecapTab ? adherenceRecap?.adherence_rate : null);
+
+  const heroScore =
+    activeTabRate ??
+    (activeRecapTab === "weekly"
+      ? score.weekly
+      : activeRecapTab === "yearly"
+        ? (adherenceRecaps?.yearly?.adherence_rate ?? score.monthly ?? 0)
+        : score.monthly);
+  const feedback = getFeedbackMessage(heroScore, momentum, t);
   const levelColor = LEVEL_COLORS[level.key] || C.light;
 
   const MomentumIcon =
@@ -1625,13 +1708,6 @@ export default function AdherenceScreen({ navigation }) {
       : momentum === "falling"
         ? t("adherence.falling", { defaultValue: "Falling" })
         : t("adherence.steady", { defaultValue: "Steady" });
-
-  const heroScore =
-    activeRecapTab === "weekly"
-      ? score.weekly
-      : activeRecapTab === "yearly"
-        ? (adherenceRecap?.adherence_rate ?? score.monthly)
-        : score.monthly;
   const heroTheme = getHeroTheme(heroScore);
   const ringColor = heroTheme.ringColor;
 
@@ -1699,6 +1775,53 @@ export default function AdherenceScreen({ navigation }) {
     const meta = ACHIEVEMENTS.find((m) => m.key === best.key) || {};
     return { ...best, meta };
   }, [achievements]);
+
+  // Calculate REAL blood pressure improvement over an explicit 7-to-14 day calendar window — zero fake data!
+  const realBpDiff = useMemo(() => {
+    if (!dailyLog || dailyLog.length === 0) return null;
+
+    const now = new Date();
+    const logsWithBp = dailyLog.filter((d) => d.vitals?.systolic > 0 && d.date);
+
+    if (logsWithBp.length === 0) return null;
+
+    // Filter last 7 days vs. previous 7-14 days
+    const recentWindow = logsWithBp.filter((d) => {
+      try {
+        const days = differenceInDays(now, parseISO(d.date));
+        return days >= 0 && days < 7;
+      } catch (e) {
+        return false;
+      }
+    });
+
+    const previousWindow = logsWithBp.filter((d) => {
+      try {
+        const days = differenceInDays(now, parseISO(d.date));
+        return days >= 7 && days <= 14;
+      } catch (e) {
+        return false;
+      }
+    });
+
+    if (recentWindow.length < 2 || previousWindow.length < 2) return null;
+
+    const recentAvg = Math.round(
+      recentWindow.reduce((acc, curr) => acc + curr.vitals.systolic, 0) / recentWindow.length
+    );
+    const previousAvg = Math.round(
+      previousWindow.reduce((acc, curr) => acc + curr.vitals.systolic, 0) / previousWindow.length
+    );
+
+    const diff = previousAvg - recentAvg;
+    if (diff <= 0) return null; // No real reduction — hide card!
+
+    return {
+      oldAvg: previousAvg,
+      newAvg: recentAvg,
+      diff,
+    };
+  }, [dailyLog]);
 
   const recentUnlocks = useMemo(() => {
     const unlocked = achievements.filter((a) => a.unlocked);
@@ -1865,6 +1988,11 @@ export default function AdherenceScreen({ navigation }) {
             }
           >
             {/* ── [0] Hero Gradient Card (Redesigned Light Theme Fitbit style) ── */}
+            <RecoverableBoundary
+              featureName="Adherence Chart"
+              screenName="AdherenceScreen"
+              preset="chart"
+            >
             <Animated.View style={[anim(0), { position: "relative" }]}>
               <View
                 style={[
@@ -1923,7 +2051,7 @@ export default function AdherenceScreen({ navigation }) {
                           {t("adherence.score", { defaultValue: "Score" })}
                         </Text>
                         <AnimatedNumber
-                          value={adherenceRecap?.adherence_rate ?? score.weekly}
+                          value={heroScore}
                           style={styles.heroStatValue}
                         />
                       </View>
@@ -2026,6 +2154,7 @@ export default function AdherenceScreen({ navigation }) {
                 </View>
               </View>
             </Animated.View>
+            </RecoverableBoundary>
 
             {/* ── [1] Streak Banner with Companion ── */}
             <Animated.View style={anim(1)}>
@@ -2279,68 +2408,14 @@ export default function AdherenceScreen({ navigation }) {
               </Animated.View>
             )}
 
-            {/* ── [3] Feedback + Insights ── */}
+            {/* ── [3] AI Health Coach Smart Insights Carousel ── */}
             <Animated.View style={anim(3)}>
-              <View
-                style={[
-                  styles.feedbackBanner,
-                  {
-                    backgroundColor: feedback.color + "12",
-                    borderColor: feedback.color + "30",
-                  },
-                ]}
-              >
-                <Heart
-                  size={16}
-                  color={feedback.color}
-                  fill={feedback.color + "40"}
-                />
-                <Text style={[styles.feedbackText, { color: feedback.color }]}>
-                  {feedback.text}
-                </Text>
-              </View>
-
-              {insights.length > 0 && (
-                <View style={{ gap: 10, marginBottom: 20 }}>
-                  {insights.map((insight, idx) => (
-                    <View key={idx} style={styles.insightCard}>
-                      <View style={styles.insightLeft}>
-                        <View style={styles.insightIconBox}>
-                          <Sparkles size={14} color={C.purple} />
-                        </View>
-                        <Text style={styles.insightText}>{insight}</Text>
-                      </View>
-                      {insight.includes("afternoon") && (
-                        <Pressable
-                          style={styles.reminderBtn}
-                          onPress={() =>
-                            Alert.alert(
-                              t("adherence.set_reminder", {
-                                defaultValue: "Set Reminder",
-                              }),
-                              t("adherence.reminder_desc", {
-                                defaultValue:
-                                  "Afternoon medication reminder will be added to your notifications.",
-                              }),
-                              [
-                                {
-                                  text: t("common.ok", { defaultValue: "OK" }),
-                                },
-                              ],
-                            )
-                          }
-                        >
-                          <Text style={styles.reminderBtnText}>
-                            {t("adherence.set_reminder", {
-                              defaultValue: "Set Reminder",
-                            })}
-                          </Text>
-                        </Pressable>
-                      )}
-                    </View>
-                  ))}
-                </View>
-              )}
+              <SmartInsightCard
+                insights={insights}
+                feedback={feedback}
+                t={t}
+                onSetReminder={handleSetReminder}
+              />
             </Animated.View>
 
             {/* ── [4] 7-Day Trend ── */}
@@ -2660,177 +2735,233 @@ export default function AdherenceScreen({ navigation }) {
               </View>
             </Animated.View>
 
-            {/* ── [6] Achievements (Liquid Glass style) ── */}
+            {/* ── [6] Achievements ── */}
             <Animated.View style={[anim(6), { position: "relative" }]}>
-              <View style={{ marginBottom: 16 }}>
-                {/* Hero Achievement Journey card */}
-                <View
-                  style={{
-                    borderRadius: 24,
-                    shadowColor: "#6A5AF9",
-                    shadowOffset: { width: 0, height: 8 },
-                    shadowOpacity: 0.08,
-                    shadowRadius: 18,
-                    elevation: 1,
-                    backgroundColor: "transparent",
-                    position: "relative",
-                  }}
-                >
-                  <LinearGradient
-                    colors={[
-                      "#4F46E5",
-                      "#6366F1",
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={{
-                      borderRadius: 24,
-                      padding: 20,
-                      overflow: "hidden",
-                      borderWidth: 1,
-                      borderColor: "rgba(255, 255, 255, 0.22)",
-                    }}
-                  >
-                    {/* Ambient Back-Glow Circles (Inside overflow: 'hidden' to prevent leakage) */}
-                    <View
-                      style={{
-                        position: "absolute",
-                        top: -10,
-                        left: 14,
-                        width: 120,
-                        height: 120,
-                        borderRadius: 60,
-                        backgroundColor: "#8B5CF6",
-                        opacity: 0.35,
-                        transform: [{ scale: 1.2 }],
-                      }}
-                    />
+              {/* Intelligent Hero Showcase (Health Score Momentum OR Actionable Next Milestone) */}
+              {(() => {
+                const isScoreRising = score.weekly > score.monthly && score.weekly >= 70;
 
-                    {/* Glass reflection highlight overlay */}
-                    <LinearGradient
-                      colors={[
-                        "rgba(255, 255, 255, 0.22)",
-                        "rgba(255, 255, 255, 0)",
-                      ]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={StyleSheet.absoluteFillObject}
-                    />
+                if (isScoreRising) {
+                  const diff = score.weekly - score.monthly;
+                  return (
                     <View
                       style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "space-between",
+                        marginBottom: 16,
+                        borderRadius: 24,
+                        backgroundColor: "#ECFDF5",
+                        borderWidth: 1,
+                        borderColor: "#A7F3D0",
+                        padding: 18,
+                        shadowColor: "#059669",
+                        shadowOffset: { width: 0, height: 6 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 16,
+                        elevation: 3,
                       }}
                     >
-                      <View style={{ flex: 1, paddingRight: 12 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center" }}>
                         <View
                           style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 6,
-                          }}
-                        >
-                          <Trophy size={14} color="#FFF" />
-                          <Text
-                            style={{
-                              fontSize: 11,
-                              fontWeight: "800",
-                              color: "#E0E7FF",
-                              letterSpacing: 0.8,
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            Achievement Journey
-                          </Text>
-                        </View>
-                        <Text
-                          style={{
-                            fontSize: 22,
-                            fontWeight: "900",
-                            color: "white",
-                            marginTop: 6,
-                            letterSpacing: -0.5,
-                          }}
-                        >
-                          {unlockedCount}/{totalAchievementsCount} Unlocked
-                        </Text>
-
-                        {nextGoal && (
-                          <View
-                            style={{
-                              marginTop: 10,
-                              backgroundColor: "rgba(255, 255, 255, 0.08)",
-                              paddingHorizontal: 10,
-                              paddingVertical: 8,
-                              borderRadius: 10,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 11,
-                                color: "#E0E7FF",
-                                fontWeight: "700",
-                              }}
-                            >
-                              Next:{" "}
-                              <Text
-                                style={{ color: "white", fontWeight: "800" }}
-                              >
-                                {nextGoal.meta.title || nextGoal.key}
-                              </Text>
-                            </Text>
-                            <Text
-                              style={{
-                                fontSize: 11,
-                                color: "#C7D2FE",
-                                fontWeight: "600",
-                                marginTop: 1,
-                              }}
-                            >
-                              {getRemainingLabel(nextGoal, nextGoal.meta)}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-
-                      <View
-                        style={{
-                          position: "relative",
-                          width: 84,
-                          height: 84,
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <ProgressRing percent={completionPercentage} />
-                        <View
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
+                            width: 60,
+                            height: 60,
+                            borderRadius: 20,
+                            backgroundColor: "#10B981",
                             alignItems: "center",
                             justifyContent: "center",
                           }}
                         >
-                          <Text
-                            style={{
-                              fontSize: 18,
-                              fontWeight: "900",
-                              color: "white",
-                              letterSpacing: -0.5,
-                            }}
-                          >
-                            {completionPercentage}%
+                          <TrendingUp size={28} color="#FFFFFF" />
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 14 }}>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                            <Sparkles size={12} color="#059669" />
+                            <Text style={{ fontSize: 10.5, fontWeight: "800", color: "#059669", letterSpacing: 0.8, textTransform: "uppercase" }}>
+                              Health Score Momentum
+                            </Text>
+                          </View>
+                          <Text style={{ fontSize: 16, fontWeight: "900", color: "#065F46", marginTop: 2 }}>
+                            +{diff} Points Improvement
+                          </Text>
+                          <Text style={{ fontSize: 11, fontWeight: "500", color: "#047857", marginTop: 2 }}>
+                            Your adherence momentum is rising over the past week.
                           </Text>
                         </View>
                       </View>
                     </View>
-                  </LinearGradient>
-                </View>
-              </View>
+                  );
+                }
+
+                // Actionable Next Milestone Hero
+                const goal = nextGoal || {
+                  key: 'streak_30',
+                  meta: ACHIEVEMENTS.find(a => a.key === 'streak_30') || {},
+                  progress: 1,
+                  unlocked: true,
+                };
+                const goalMeta = goal.meta || ACHIEVEMENTS.find(a => a.key === goal.key) || {};
+                const goalPct = Math.min(100, Math.round((goal.progress || 0) * 100));
+                const IconComp = Icons[goalMeta.iconName] || Icons.Trophy;
+                const remainingText = getRemainingLabel(goal, goalMeta);
+
+                return (
+                  <Pressable
+                    onPress={() => handleBadgePress(goal)}
+                    style={{
+                      marginBottom: 16,
+                      borderRadius: 24,
+                      backgroundColor: "#F8F5FF",
+                      borderWidth: 1,
+                      borderColor: "rgba(124, 58, 237, 0.16)",
+                      padding: 18,
+                      shadowColor: "#7C3AED",
+                      shadowOffset: { width: 0, height: 6 },
+                      shadowOpacity: 0.06,
+                      shadowRadius: 16,
+                      elevation: 3,
+                      position: "relative",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {/* Background Laurel Watermark Svg */}
+                    <Svg width="140" height="140" viewBox="0 0 100 100" style={{ position: "absolute", right: -20, bottom: -20, opacity: 0.07 }}>
+                      <Path d="M50 10 C30 30, 20 60, 20 90 M50 10 C70 30, 80 60, 80 90 M30 35 C20 40, 15 50, 20 60 M70 35 C80 40, 85 50, 80 60" stroke="#7C3AED" strokeWidth="2" fill="none" />
+                    </Svg>
+
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      {/* Left Crest Emblem */}
+                      <View
+                        style={{
+                          width: 66,
+                          height: 66,
+                          borderRadius: 22,
+                          backgroundColor: "#5B21B6",
+                          borderWidth: 2,
+                          borderColor: "rgba(255, 255, 255, 0.5)",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          position: "relative",
+                          shadowColor: "#5B21B6",
+                          shadowOffset: { width: 0, height: 6 },
+                          shadowOpacity: 0.25,
+                          shadowRadius: 8,
+                          elevation: 4,
+                        }}
+                      >
+                        <LinearGradient
+                          colors={["#A855F7", "#7C3AED", "#4C1D95"]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            borderRadius: 20,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <IconComp size={30} color="#FFFBEB" fill="#F59E0B" />
+                        </LinearGradient>
+                      </View>
+
+                      {/* Plaque Details */}
+                      <View style={{ flex: 1, marginLeft: 14 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                            <Sparkles size={12} color="#7C3AED" />
+                            <Text style={{ fontSize: 10.5, fontWeight: "800", color: "#7C3AED", letterSpacing: 0.8, textTransform: "uppercase" }}>
+                              {nextGoal ? "Next Milestone" : "Pinnacle Showcase"}
+                            </Text>
+                          </View>
+                          <Text style={{ fontSize: 11, fontWeight: "900", color: "#7C3AED" }}>
+                            {goalPct}%
+                          </Text>
+                        </View>
+
+                        <Text style={{ fontSize: 16, fontWeight: "900", color: "#0F172A", marginTop: 2, letterSpacing: -0.3 }}>
+                          {goalMeta.title || goal.key}
+                        </Text>
+                        <Text style={{ fontSize: 11, fontWeight: "500", color: "#64748B", marginTop: 2, lineHeight: 15 }} numberOfLines={2}>
+                          {remainingText ? `Complete logging for ${remainingText} to unlock this milestone.` : (goalMeta.lore || goalMeta.description)}
+                        </Text>
+
+                        {/* Progress Bar */}
+                        <View style={{ height: 5, backgroundColor: "#E9D5FF", borderRadius: 3, marginTop: 8, overflow: "hidden" }}>
+                          <View style={{ width: `${goalPct}%`, height: "100%", backgroundColor: "#7C3AED", borderRadius: 3 }} />
+                        </View>
+                      </View>
+                    </View>
+                  </Pressable>
+                );
+              })()}
+
+              {/* ⚡ "Almost There" Section (Psychological Nudge for >= 50% Progress) */}
+              {(() => {
+                const almostThere = achievements.filter(a => !a.unlocked && (a.progress || 0) >= 0.4 && (a.progress || 0) < 1);
+                if (almostThere.length === 0) return null;
+
+                return (
+                  <View
+                    style={{
+                      marginBottom: 20,
+                      backgroundColor: "#FFFBEB",
+                      borderRadius: 20,
+                      borderWidth: 1,
+                      borderColor: "#FDE68A",
+                      padding: 14,
+                    }}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Zap size={15} color="#D97706" />
+                        <Text style={{ fontSize: 13, fontWeight: "800", color: "#B45309" }}>
+                          Almost Yours
+                        </Text>
+                      </View>
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: "#D97706" }}>
+                        {almostThere.length} near completion
+                      </Text>
+                    </View>
+
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+                      {almostThere.map((item, i) => {
+                        const meta = ACHIEVEMENTS.find(m => m.key === item.key) || {};
+                        const pct = Math.round((item.progress || 0) * 100);
+                        return (
+                          <Pressable
+                            key={i}
+                            onPress={() => handleBadgePress({ ...item, meta })}
+                            style={{
+                              backgroundColor: "#FFFFFF",
+                              borderRadius: 14,
+                              paddingHorizontal: 12,
+                              paddingVertical: 10,
+                              borderWidth: 1,
+                              borderColor: "rgba(245, 158, 11, 0.2)",
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 8,
+                            }}
+                          >
+                            <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: "#FEF3C7", alignItems: "center", justifyContent: "center" }}>
+                              <Text style={{ fontSize: 10, fontWeight: "900", color: "#D97706" }}>
+                                {pct}%
+                              </Text>
+                            </View>
+                            <View>
+                              <Text style={{ fontSize: 12, fontWeight: "800", color: "#0F172A" }}>
+                                {meta.title || item.key}
+                              </Text>
+                              <Text style={{ fontSize: 10, fontWeight: "500", color: "#64748B" }}>
+                                {getRemainingLabel(item, meta)}
+                              </Text>
+                            </View>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                );
+              })()}
 
               {/* Category Sections */}
               {Object.keys(CATEGORY_CONFIG).map((categoryKey, idx) => {
@@ -2880,38 +3011,6 @@ export default function AdherenceScreen({ navigation }) {
                       end={{ x: 1, y: 1 }}
                       style={{ padding: 20 }}
                     >
-                      {/* Outer Double-Line Frame */}
-                      <View
-                        pointerEvents="none"
-                        style={{
-                          position: "absolute",
-                          top: 6,
-                          bottom: 6,
-                          left: 6,
-                          right: 6,
-                          borderRadius: 18,
-                          borderWidth: 1,
-                          borderColor: catConfig.accent[0] + "12",
-                          borderStyle: "solid",
-                        }}
-                      />
-
-                      {/* Inner Dashed Frame */}
-                      <View
-                        pointerEvents="none"
-                        style={{
-                          position: "absolute",
-                          top: 10,
-                          bottom: 10,
-                          left: 10,
-                          right: 10,
-                          borderRadius: 14,
-                          borderWidth: 0.8,
-                          borderColor: catConfig.accent[0] + "0C",
-                          borderStyle: "dashed",
-                        }}
-                      />
-
                       {/* Watermark/Vector Decor in Corner */}
                       <Svg
                         pointerEvents="none"
@@ -2984,7 +3083,8 @@ export default function AdherenceScreen({ navigation }) {
                           style={{
                             flexDirection: "row",
                             flexWrap: "wrap",
-                            gap: GRID_GAP,
+                            justifyContent: catAchievements.length === 1 ? "center" : "space-between",
+                            rowGap: 12,
                             alignItems: "flex-start",
                           }}
                         >
@@ -3001,6 +3101,58 @@ export default function AdherenceScreen({ navigation }) {
                   </View>
                 );
               })}
+
+              {/* Bottom Motivational Callout Banner */}
+              <Pressable
+                style={({ pressed }) => [
+                  {
+                    backgroundColor: "#F5F3FF",
+                    borderRadius: 20,
+                    padding: 16,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginTop: 4,
+                    marginBottom: 24,
+                    borderWidth: 1,
+                    borderColor: "rgba(233, 213, 255, 0.6)",
+                  },
+                  pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] },
+                ]}
+                onPress={() => navigation.navigate("HealthCopilot")}
+              >
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: "#E9D5FF",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Sparkles size={18} color="#7C3AED" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12, paddingRight: 8 }}>
+                  <Text style={{ fontSize: 14, fontWeight: "800", color: "#0F172A" }}>
+                    Keep it up!
+                  </Text>
+                  <Text style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
+                    Small steps today, stronger health tomorrow. Tap to chat with AI Coach.
+                  </Text>
+                </View>
+                <View
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: "#EDE9FE",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <ChevronRight size={16} color="#7C3AED" />
+                </View>
+              </Pressable>
             </Animated.View>
           </ScrollView>
         </SafeAreaView>
@@ -3025,140 +3177,409 @@ export default function AdherenceScreen({ navigation }) {
               style={styles.modalBackdrop}
               onPress={() => setSelectedDay(null)}
             />
-            <View style={styles.bottomSheet}>
-              <View style={styles.sheetHandle} />
+            <View
+              style={[
+                styles.bottomSheet,
+                {
+                  borderTopLeftRadius: 32,
+                  borderTopRightRadius: 32,
+                  backgroundColor: "#FFFFFF",
+                  paddingHorizontal: 20,
+                  paddingBottom: 34,
+                },
+              ]}
+            >
+              {/* Top Handle & Close Action */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  paddingTop: 12,
+                  paddingBottom: 8,
+                }}
+              >
+                <View style={{ width: 32 }} />
+                <View
+                  style={{
+                    width: 42,
+                    height: 5,
+                    borderRadius: 3,
+                    backgroundColor: "#CBD5E1",
+                  }}
+                />
+                <Pressable
+                  onPress={() => setSelectedDay(null)}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: "#F1F5F9",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <X size={18} color="#64748B" />
+                </Pressable>
+              </View>
+
               {selectedDay && (
-                <>
-                  <View style={styles.sheetHeader}>
-                    <View>
-                      <Text style={styles.sheetDate}>
+                <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+                  {/* Sheet Header */}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "flex-start",
+                      justifyContent: "space-between",
+                      marginBottom: 18,
+                      marginTop: 4,
+                    }}
+                  >
+                    <View style={{ flex: 1, paddingRight: 10 }}>
+                      <Text
+                        style={{
+                          fontSize: 20,
+                          fontWeight: "900",
+                          color: "#0F172A",
+                          letterSpacing: -0.4,
+                        }}
+                      >
                         {format(parseISO(selectedDay.date), "EEEE, MMMM do")}
                       </Text>
-                      <Text style={styles.sheetYear}>
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          fontWeight: "600",
+                          color: "#64748B",
+                          marginTop: 2,
+                        }}
+                      >
                         {format(parseISO(selectedDay.date), "yyyy")}
                       </Text>
                     </View>
-                    <View
-                      style={[
-                        styles.sheetBadge,
-                        {
-                          backgroundColor:
-                            STATUS_COLORS[selectedDay.status] + "22",
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.sheetBadgeText,
-                          { color: STATUS_COLORS[selectedDay.status] },
-                        ]}
-                      >
-                        {selectedDay.rate}% adherence
-                      </Text>
-                    </View>
-                  </View>
 
-                  {selectedDay.medicines && selectedDay.medicines.length > 0 ? (
-                    <View style={{ marginBottom: 16 }}>
-                      <Text style={styles.sheetSectionLabel}>
-                        {t("adherence.medications_label", {
-                          defaultValue: "MEDICATIONS",
-                        })}
-                      </Text>
-                      {selectedDay.medicines.map((med, idx) => (
+                    {/* Adherence Status Badge Pill */}
+                    {(() => {
+                      const rate = selectedDay.rate || 0;
+                      const isComplete = rate >= 90;
+                      const isPartial = rate >= 40 && rate < 90;
+                      const bg = isComplete
+                        ? "#ECFDF5"
+                        : isPartial
+                          ? "#FFFBEB"
+                          : "#FFF1F2";
+                      const border = isComplete
+                        ? "#A7F3D0"
+                        : isPartial
+                          ? "#FDE68A"
+                          : "#FECDD3";
+                      const textClr = isComplete
+                        ? "#059669"
+                        : isPartial
+                          ? "#D97706"
+                          : "#E11D48";
+                      const IconComp = isComplete
+                        ? CheckCircle2
+                        : isPartial
+                          ? Zap
+                          : Icons.AlertCircle || X;
+
+                      return (
                         <View
-                          key={idx}
                           style={{
                             flexDirection: "row",
                             alignItems: "center",
-                            justifyContent: "space-between",
-                            backgroundColor: med.taken ? "#FAF5FF" : "#F8FAFC",
-                            borderRadius: 16,
-                            padding: 12,
-                            marginBottom: 10,
+                            gap: 5,
+                            backgroundColor: bg,
                             borderWidth: 1,
-                            borderColor: med.taken ? "#F3E8FF" : "#E2E8F0",
-                            shadowColor: "#7C3AED",
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: med.taken ? 0.03 : 0,
-                            shadowRadius: 6,
-                            elevation: 1,
+                            borderColor: border,
+                            borderRadius: 20,
+                            paddingHorizontal: 12,
+                            paddingVertical: 6,
                           }}
                         >
+                          <IconComp size={14} color={textClr} />
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              fontWeight: "800",
+                              color: textClr,
+                            }}
+                          >
+                            {rate}% adherence
+                          </Text>
+                        </View>
+                      );
+                    })()}
+                  </View>
+
+                  {/* Summary Bar */}
+                  {selectedDay.medicines && selectedDay.medicines.length > 0 && (
+                    <View
+                      style={{
+                        backgroundColor: "#F8FAFC",
+                        borderRadius: 16,
+                        borderWidth: 1,
+                        borderColor: "#E2E8F0",
+                        padding: 12,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-around",
+                        marginBottom: 20,
+                      }}
+                    >
+                      <View style={{ alignItems: "center" }}>
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: "700",
+                            color: "#64748B",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Doses Taken
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 16,
+                            fontWeight: "900",
+                            color: "#0F172A",
+                            marginTop: 2,
+                          }}
+                        >
+                          {selectedDay.medicines.filter((m) => m.taken).length} /{" "}
+                          {selectedDay.medicines.length}
+                        </Text>
+                      </View>
+                      <View
+                        style={{
+                          width: 1,
+                          height: 24,
+                          backgroundColor: "#CBD5E1",
+                        }}
+                      />
+                      <View style={{ alignItems: "center" }}>
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: "700",
+                            color: "#64748B",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Status
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            fontWeight: "800",
+                            color:
+                              selectedDay.rate >= 90
+                                ? "#059669"
+                                : selectedDay.rate >= 40
+                                  ? "#D97706"
+                                  : "#E11D48",
+                            marginTop: 2,
+                          }}
+                        >
+                          {selectedDay.rate >= 90
+                            ? "Perfect Day ✨"
+                            : selectedDay.rate >= 40
+                              ? "Partial"
+                              : "Missed"}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Medications List */}
+                  {selectedDay.medicines && selectedDay.medicines.length > 0 ? (
+                    <View style={{ marginBottom: 20 }}>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: "800",
+                          color: "#64748B",
+                          letterSpacing: 0.8,
+                          textTransform: "uppercase",
+                          marginBottom: 10,
+                        }}
+                      >
+                        {t("adherence.medications_label", {
+                          defaultValue: "SCHEDULED MEDICATIONS",
+                        })}
+                      </Text>
+                      {(() => {
+                        const TIME_ORDER = { morning: 1, afternoon: 2, evening: 3, night: 4 };
+                        const sortedMeds = [...selectedDay.medicines].sort((a, b) => {
+                          const slotA = (a.time || "morning").toLowerCase();
+                          const slotB = (b.time || "morning").toLowerCase();
+                          const weightA = TIME_ORDER[slotA] || 99;
+                          const weightB = TIME_ORDER[slotB] || 99;
+                          if (weightA !== weightB) return weightA - weightB;
+                          return (a.name || "").localeCompare(b.name || "");
+                        });
+
+                        return sortedMeds.map((med, idx) => {
+                          const timeSlot = (med.time || "morning").toLowerCase();
+                          const timeEmoji =
+                            timeSlot === "morning"
+                              ? "🌅 Morning"
+                              : timeSlot === "afternoon"
+                                ? "☀️ Afternoon"
+                                : timeSlot === "night" || timeSlot === "evening"
+                                  ? "🌙 Night"
+                                  : `⏰ ${med.time}`;
+
+                        const cardBg = med.taken ? "#FAF5FF" : "#FFF1F2";
+                        const cardBorder = med.taken
+                          ? "rgba(124, 58, 237, 0.16)"
+                          : "rgba(244, 63, 94, 0.18)";
+                        const indicatorColor = med.taken ? "#10B981" : "#F43F5E";
+
+                        return (
                           <View
+                            key={idx}
                             style={{
                               flexDirection: "row",
                               alignItems: "center",
-                              flex: 1,
+                              justifyContent: "space-between",
+                              backgroundColor: cardBg,
+                              borderRadius: 18,
+                              padding: 14,
+                              marginBottom: 10,
+                              borderWidth: 1,
+                              borderColor: cardBorder,
+                              position: "relative",
+                              overflow: "hidden",
                             }}
                           >
+                            {/* Left Accent Indicator Bar */}
                             <View
                               style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: 16,
-                                backgroundColor: med.taken
-                                  ? "#ECFDF5"
-                                  : "#FEF2F2",
+                                position: "absolute",
+                                left: 0,
+                                top: 0,
+                                bottom: 0,
+                                width: 4.5,
+                                backgroundColor: indicatorColor,
+                              }}
+                            />
+
+                            <View
+                              style={{
+                                flexDirection: "row",
                                 alignItems: "center",
-                                justifyContent: "center",
+                                flex: 1,
+                                marginLeft: 6,
                               }}
                             >
-                              {med.taken ? (
-                                <CheckCircle2 size={16} color="#10B981" />
-                              ) : (
-                                <X size={16} color="#EF4444" />
-                              )}
-                            </View>
-                            <View style={{ flex: 1, marginHorizontal: 12 }}>
-                              <Text
+                              <View
                                 style={{
-                                  fontSize: 15,
-                                  fontWeight: "700",
-                                  color: med.taken ? "#0F172A" : "#64748B",
-                                  textDecorationLine: med.taken
-                                    ? "none"
-                                    : "line-through",
+                                  width: 36,
+                                  height: 36,
+                                  borderRadius: 18,
+                                  backgroundColor: med.taken
+                                    ? "#ECFDF5"
+                                    : "#FFE4E6",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  borderWidth: 1,
+                                  borderColor: med.taken
+                                    ? "#A7F3D0"
+                                    : "#FECDD3",
                                 }}
                               >
-                                {med.name}
+                                {med.taken ? (
+                                  <CheckCircle2 size={18} color="#10B981" />
+                                ) : (
+                                  <X size={18} color="#F43F5E" />
+                                )}
+                              </View>
+
+                              <View style={{ flex: 1, marginLeft: 12 }}>
+                                <Text
+                                  style={{
+                                    fontSize: 15,
+                                    fontWeight: "800",
+                                    color: "#0F172A",
+                                  }}
+                                >
+                                  {med.name}
+                                </Text>
+                                <Text
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: "600",
+                                    color: med.taken ? "#059669" : "#E11D48",
+                                    marginTop: 2,
+                                  }}
+                                >
+                                  {med.taken
+                                    ? "Dose Logged"
+                                    : "Dose Missed"}
+                                </Text>
+                              </View>
+                            </View>
+
+                            {/* Time Badge */}
+                            <View
+                              style={{
+                                backgroundColor: med.taken
+                                  ? "#F5F3FF"
+                                  : "#FFF",
+                                paddingHorizontal: 10,
+                                paddingVertical: 5,
+                                borderRadius: 10,
+                                borderWidth: 1,
+                                borderColor: med.taken
+                                  ? "rgba(124, 58, 237, 0.12)"
+                                  : "rgba(244, 63, 94, 0.12)",
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: "800",
+                                  color: med.taken ? "#7C3AED" : "#E11D48",
+                                }}
+                              >
+                                {timeEmoji}
                               </Text>
                             </View>
                           </View>
-                          <View
-                            style={{
-                              backgroundColor: med.taken
-                                ? "#F5F3FF"
-                                : "#F1F5F9",
-                              paddingHorizontal: 10,
-                              paddingVertical: 5,
-                              borderRadius: 8,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 10,
-                                fontWeight: "800",
-                                color: med.taken ? "#7C3AED" : "#64748B",
-                                textTransform: "uppercase",
-                              }}
-                            >
-                              {med.time}
-                            </Text>
-                          </View>
-                        </View>
-                      ))}
+                        );
+                      });
+                    })()}
                     </View>
                   ) : (
-                    <View style={styles.sheetEmptyBox}>
-                      <Text style={styles.sheetEmptyIcon}>
+                    <View
+                      style={{
+                        backgroundColor: "#F8FAFC",
+                        borderRadius: 20,
+                        borderWidth: 1,
+                        borderColor: "#E2E8F0",
+                        padding: 24,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginBottom: 20,
+                      }}
+                    >
+                      <Text style={{ fontSize: 36, marginBottom: 8 }}>
                         {selectedDay._noEntry && selectedDay._isPast
                           ? "😴"
                           : selectedDay._noEntry
                             ? "📅"
                             : "💊"}
                       </Text>
-                      <Text style={styles.sheetEmptyTitle}>
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          fontWeight: "800",
+                          color: "#0F172A",
+                          textAlign: "center",
+                        }}
+                      >
                         {selectedDay._noEntry && selectedDay._isPast
                           ? t("adherence.no_log_past", {
                               defaultValue: "No records for this day",
@@ -3172,7 +3593,14 @@ export default function AdherenceScreen({ navigation }) {
                                   "No medications scheduled for this day.",
                               })}
                       </Text>
-                      <Text style={styles.sheetEmptyDesc}>
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: "#64748B",
+                          textAlign: "center",
+                          marginTop: 4,
+                        }}
+                      >
                         {selectedDay._noEntry && selectedDay._isPast
                           ? t("adherence.no_log_past_desc", {
                               defaultValue:
@@ -3186,54 +3614,7 @@ export default function AdherenceScreen({ navigation }) {
                     </View>
                   )}
 
-                  {selectedDay.vitals && (
-                    <View style={styles.sheetVitals}>
-                      <Text style={styles.sheetSectionLabel}>
-                        {t("adherence.vitals_logged_label", {
-                          defaultValue: "VITALS LOGGED",
-                        })}
-                      </Text>
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          flexWrap: "wrap",
-                          gap: 10,
-                          marginTop: 8,
-                        }}
-                      >
-                        {selectedDay.vitals.heart_rate && (
-                          <View style={styles.sheetVitalChip}>
-                            <Text style={styles.sheetVitalText}>
-                              💓 {selectedDay.vitals.heart_rate} bpm
-                            </Text>
-                          </View>
-                        )}
-                        {selectedDay.vitals.systolic && (
-                          <View style={styles.sheetVitalChip}>
-                            <Text style={styles.sheetVitalText}>
-                              🩸 {selectedDay.vitals.systolic}/
-                              {selectedDay.vitals.diastolic}
-                            </Text>
-                          </View>
-                        )}
-                        {selectedDay.vitals.oxygen_saturation && (
-                          <View style={styles.sheetVitalChip}>
-                            <Text style={styles.sheetVitalText}>
-                              💨 {selectedDay.vitals.oxygen_saturation}%
-                            </Text>
-                          </View>
-                        )}
-                        {selectedDay.vitals.hydration && (
-                          <View style={styles.sheetVitalChip}>
-                            <Text style={styles.sheetVitalText}>
-                              💧 {selectedDay.vitals.hydration}%
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-                  )}
-                </>
+                </ScrollView>
               )}
             </View>
           </View>
@@ -3504,35 +3885,152 @@ export default function AdherenceScreen({ navigation }) {
                         {meta.description}
                       </Text>
 
+                      {/* Lore Paragraph */}
+                      {meta.lore && (
+                        <View
+                          style={{
+                            backgroundColor: "rgba(124, 58, 237, 0.04)",
+                            borderRadius: 14,
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            marginTop: 10,
+                            borderLeftWidth: 3,
+                            borderLeftColor: "#7C3AED",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 11.5,
+                              fontStyle: "italic",
+                              color: "#475569",
+                              lineHeight: 16,
+                            }}
+                          >
+                            "{meta.lore}"
+                          </Text>
+                        </View>
+                      )}
+
                       <View style={styles.badgeModalDivider} />
+
+                      {/* Health Impact Proof Card (ONLY rendered when REAL vital history exists — zero fake data!) */}
+                      {isUnlocked && realBpDiff && (
+                        <View
+                          style={{
+                            backgroundColor: "#F5F3FF",
+                            borderRadius: 16,
+                            padding: 12,
+                            marginBottom: 12,
+                            width: "100%",
+                            borderWidth: 1,
+                            borderColor: "rgba(124, 58, 237, 0.15)",
+                          }}
+                        >
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 4 }}>
+                            <Icons.HeartPulse size={13} color="#7C3AED" />
+                            <Text style={{ fontSize: 10.5, fontWeight: "800", color: "#7C3AED", letterSpacing: 0.6, textTransform: "uppercase" }}>
+                              Real Health Impact
+                            </Text>
+                          </View>
+                          <Text style={{ fontSize: 11.5, fontWeight: "700", color: "#0F172A" }}>
+                            Because of your consistency:
+                          </Text>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              backgroundColor: "#FFFFFF",
+                              borderRadius: 10,
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
+                              marginTop: 6,
+                            }}
+                          >
+                            <Text style={{ fontSize: 11, fontWeight: "600", color: "#64748B" }}>
+                              Average Systolic BP
+                            </Text>
+                            <Text style={{ fontSize: 12, fontWeight: "900", color: "#10B981" }}>
+                              {realBpDiff.oldAvg} → {realBpDiff.newAvg} mmHg (-{realBpDiff.diff})
+                            </Text>
+                          </View>
+                        </View>
+                      )}
 
                       {/* Progress & Locked status banner */}
                       {isUnlocked ? (
-                        <View
-                          style={[
-                            styles.badgeModalStatusBox,
-                            {
-                              backgroundColor: tierInfo.bgColor,
-                              borderColor: tierInfo.color + "20",
-                              borderWidth: 1,
-                              shadowColor: tierInfo.color,
-                              shadowOpacity: 0.1,
-                              shadowRadius: 8,
-                              elevation: 2,
-                            },
-                          ]}
-                        >
-                          <Sparkles size={15} color={tierInfo.color} />
-                          <Text
+                        <View style={{ width: "100%" }}>
+                          <View
                             style={[
-                              styles.badgeModalStatusTextUnlocked,
-                              { color: tierInfo.color, fontWeight: "950" },
+                              styles.badgeModalStatusBox,
+                              {
+                                backgroundColor: tierInfo.bgColor,
+                                borderColor: tierInfo.color + "20",
+                                borderWidth: 1,
+                                shadowColor: tierInfo.color,
+                                shadowOpacity: 0.1,
+                                shadowRadius: 8,
+                                elevation: 2,
+                                width: "100%",
+                              },
                             ]}
                           >
-                            {selectedBadge.unlockedTime
-                              ? selectedBadge.unlockedTime.toUpperCase()
-                              : "UNLOCKED"}
-                          </Text>
+                            <Sparkles size={15} color={tierInfo.color} />
+                            <Text
+                              style={[
+                                styles.badgeModalStatusTextUnlocked,
+                                { color: tierInfo.color, fontWeight: "950" },
+                              ]}
+                            >
+                              {selectedBadge.unlockedTime
+                                ? `EARNED ${selectedBadge.unlockedTime.toUpperCase()}`
+                                : "UNLOCKED"}
+                            </Text>
+                          </View>
+
+                          {/* "What's Next?" Continuous Progression (Prevents dead-ends after unlock) */}
+                          {(() => {
+                            const lockedInCat = achievements.filter(
+                              (a) => !a.unlocked && (ACHIEVEMENTS.find(m => m.key === a.key)?.category === meta.category)
+                            );
+                            const nextTarget = lockedInCat[0] || achievements.find((a) => !a.unlocked);
+                            if (!nextTarget) return null;
+
+                            const nextMeta = ACHIEVEMENTS.find((a) => a.key === nextTarget.key) || {};
+                            const pct = Math.min(100, Math.round((nextTarget.progress || 0) * 100));
+
+                            return (
+                              <View
+                                style={{
+                                  backgroundColor: "#F8FAFC",
+                                  borderRadius: 16,
+                                  padding: 12,
+                                  marginTop: 10,
+                                  width: "100%",
+                                  borderWidth: 1,
+                                  borderColor: "#E2E8F0",
+                                }}
+                              >
+                                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                                  <Text style={{ fontSize: 10.5, fontWeight: "800", color: "#64748B", letterSpacing: 0.6, textTransform: "uppercase" }}>
+                                    What's Next?
+                                  </Text>
+                                  <Text style={{ fontSize: 11, fontWeight: "800", color: "#7C3AED" }}>
+                                    {pct}%
+                                  </Text>
+                                </View>
+                                <Text style={{ fontSize: 12.5, fontWeight: "800", color: "#0F172A" }}>
+                                  {nextMeta.title || nextTarget.key}
+                                </Text>
+                                <Text style={{ fontSize: 11, fontWeight: "500", color: "#64748B", marginTop: 2 }} numberOfLines={1}>
+                                  {nextMeta.lore || nextMeta.description}
+                                </Text>
+                                <View style={{ height: 4, backgroundColor: "#E2E8F0", borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
+                                  <View style={{ width: `${pct}%`, height: "100%", backgroundColor: "#7C3AED", borderRadius: 2 }} />
+                                </View>
+                              </View>
+                            );
+                          })()}
                         </View>
                       ) : (
                         <View style={styles.badgeModalProgressContainer}>
@@ -3569,6 +4067,87 @@ export default function AdherenceScreen({ navigation }) {
                 })()}
             </Animated.View>
           </View>
+        </Modal>
+
+        {/* Custom CareMyMed Set Reminder Modal (Replaces browser/OS native Alert.alert) */}
+        <Modal
+          visible={reminderModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setReminderModalVisible(false)}
+        >
+          <Pressable
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(15, 23, 42, 0.6)",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 24,
+            }}
+            onPress={() => setReminderModalVisible(false)}
+          >
+            <Pressable
+              style={{
+                backgroundColor: "#FFFFFF",
+                borderRadius: 26,
+                padding: 24,
+                width: "100%",
+                maxWidth: 340,
+                alignItems: "center",
+                shadowColor: "#7C3AED",
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.2,
+                shadowRadius: 24,
+                elevation: 8,
+                borderWidth: 1,
+                borderColor: "rgba(124, 58, 237, 0.15)",
+              }}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <LinearGradient
+                colors={["#F3E8FF", "#DDD6FE"]}
+                style={{
+                  width: 58,
+                  height: 58,
+                  borderRadius: 22,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 16,
+                }}
+              >
+                <Icons.BellRing size={28} color="#7C3AED" />
+              </LinearGradient>
+
+              <Text style={{ fontSize: 18, fontWeight: "900", color: "#0F172A", textAlign: "center" }}>
+                Reminder Configured
+              </Text>
+
+              <Text style={{ fontSize: 13, fontWeight: "500", color: "#64748B", textAlign: "center", marginTop: 8, lineHeight: 19 }}>
+                Afternoon and evening medication reminders have been scheduled to your CareMyMed smart notification timeline.
+              </Text>
+
+              <Pressable
+                style={{
+                  marginTop: 22,
+                  backgroundColor: "#7C3AED",
+                  width: "100%",
+                  paddingVertical: 13,
+                  borderRadius: 16,
+                  alignItems: "center",
+                  shadowColor: "#7C3AED",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }}
+                onPress={() => setReminderModalVisible(false)}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "800", color: "#FFFFFF" }}>
+                  Got It
+                </Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
         </Modal>
       </View>
     </TabScreenTransition>

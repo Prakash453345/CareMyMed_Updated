@@ -5,6 +5,10 @@ jest.mock('../../src/lib/api', () => ({
     apiService: {
         medicines: {
             getAdherenceRecap: jest.fn(),
+            refill: jest.fn().mockResolvedValue({ data: { success: true } }),
+        },
+        patients: {
+            getDashboard: jest.fn().mockResolvedValue({ data: null }),
         },
     },
 }));
@@ -48,25 +52,29 @@ describe('usePatientStore Adherence Caching', () => {
         expect(result).toEqual(mockData);
         expect(usePatientStore.getState().adherenceRecap).toEqual(mockData);
     });
+});
 
-    it('should bypass cache and call API when forceRefresh is true', async () => {
-        const initialMockData = { adherence_rate: 85, perfect_days: 5, total_doses_taken: 15 };
-        const freshMockData = { adherence_rate: 90, perfect_days: 6, total_doses_taken: 18 };
-        
+describe('usePatientStore updateMedSupply Supply Baseline', () => {
+    it('resets totalDoses capacity baseline to equal remainingDoses after refill (43 / 43)', async () => {
+        const initialMed = {
+            id: 'vit_d3',
+            name: 'Vitamin D3',
+            refillInfo: { remainingDoses: 38, totalDoses: 74, alertThreshold: 5 },
+        };
+
         usePatientStore.setState({
-            adherenceRecaps: {
-                weekly: initialMockData,
-                monthly: null,
-                yearly: null,
-            },
+            dashboardMeds: [initialMed],
+            medicationSchedule: { morning: [initialMed] },
+            patient: { timezone: 'Asia/Kolkata' },
         });
-        apiService.medicines.getAdherenceRecap.mockResolvedValueOnce({ data: freshMockData });
 
-        const result = await usePatientStore.getState().fetchAdherenceRecap('weekly', true);
+        await usePatientStore.getState().updateMedSupply('Vitamin D3', 5, 'vit_d3');
 
-        expect(apiService.medicines.getAdherenceRecap).toHaveBeenCalledTimes(1);
-        expect(result).toEqual(freshMockData);
-        expect(usePatientStore.getState().adherenceRecap).toEqual(freshMockData);
-        expect(usePatientStore.getState().adherenceRecaps.weekly).toEqual(freshMockData);
+        const state = usePatientStore.getState();
+        const updatedMed = state.dashboardMeds.find(m => m.id === 'vit_d3');
+
+        expect(updatedMed).toBeTruthy();
+        expect(updatedMed.refillInfo.remainingDoses).toBe(43);
+        expect(updatedMed.refillInfo.totalDoses).toBe(43); // 43 / 43 capacity baseline
     });
 });

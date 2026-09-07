@@ -18,6 +18,50 @@ jest.mock('expo-notifications', () => ({
   addPushTokenListener: jest.fn().mockReturnValue({ remove: jest.fn() }),
 }));
 
+// @sentry/react-native
+jest.mock('@sentry/react-native', () => ({
+  captureException: jest.fn(),
+  captureMessage: jest.fn(),
+  withScope: jest.fn(cb => cb({ setTag: jest.fn(), setExtra: jest.fn() })),
+}));
+
+// expo-av
+jest.mock('expo-av', () => ({
+  Audio: {
+    requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+    setAudioModeAsync: jest.fn().mockResolvedValue(null),
+    Recording: {
+      createAsync: jest.fn().mockResolvedValue({
+        recording: {
+          getStatusAsync: jest.fn().mockResolvedValue({ isRecording: true }),
+          getURI: jest.fn().mockReturnValue('file://test.m4a'),
+          stopAndUnloadAsync: jest.fn().mockResolvedValue(),
+        },
+      }),
+    },
+  },
+}));
+
+
+
+// react-native-worklets
+jest.mock('react-native-worklets', () => ({
+  createWorklet: jest.fn(fn => fn),
+  createSerializable: jest.fn(fn => fn),
+  isWorkletFunction: jest.fn(() => true),
+  runOnJS: jest.fn(fn => fn),
+  runOnUI: jest.fn(fn => fn),
+  registerWorkletStackData: jest.fn(),
+  serializableMappingCache: new Map(),
+  RuntimeKind: { ReactNative: 1, UI: 2 },
+  Worklets: {
+    createWorklet: jest.fn(fn => fn),
+    createSerializable: jest.fn(fn => fn),
+    runOnJS: jest.fn(fn => fn),
+    runOnUI: jest.fn(fn => fn),
+  },
+}));
+
 // react-native-reanimated
 jest.mock('react-native-reanimated', () => {
   const Reanimated = require('react-native-reanimated/mock');
@@ -87,24 +131,22 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 
-// @shopify/react-native-skia
-jest.mock('@shopify/react-native-skia', () => ({
-  Canvas: ({ children }) => children,
-  Circle: () => null,
-  Blur: () => null,
-  RadialGradient: () => null,
-  vec: (x, y) => ({ x, y }),
-}));
 
 // @gorhom/bottom-sheet
 jest.mock('@gorhom/bottom-sheet', () => {
   const react = require('react');
   const { View } = require('react-native');
+  const MockView = react.forwardRef(({ children, ...props }, ref) => {
+    react.useImperativeHandle(ref, () => ({
+      present: jest.fn(),
+      dismiss: jest.fn(),
+    }));
+    return react.createElement(View, { ...props }, children);
+  });
   return {
     __esModule: true,
-    default: react.forwardRef(({ children, ...props }, ref) => {
-      return react.createElement(View, { ref, ...props }, children);
-    }),
+    default: MockView,
+    BottomSheetModal: MockView,
     BottomSheetScrollView: View,
     BottomSheetBackdrop: () => null,
     BottomSheetModalProvider: ({ children }) => children,

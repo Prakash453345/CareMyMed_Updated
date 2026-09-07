@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, TextInput, ActivityIndicator } from 'react-native';
 import { apiService } from '../../lib/api';
 import { colors, spacing, radius, shadows, layout } from '../../theme';
-import { ShieldCheck, UserPlus, ChevronRight, LogOut, Heart, Lock, ArrowRight, Sliders } from 'lucide-react-native';
+import { ShieldCheck, UserPlus, ChevronRight, LogOut, Heart, Lock, ArrowRight, SlidersHorizontal } from 'lucide-react-native';
 import AlertManager from '../../utils/AlertManager';
 import usePatientStore from '../../store/usePatientStore';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -68,6 +68,7 @@ export default function CompanionHomeScreen() {
     const [linking, setLinking] = useState(false);
     
     const setCompanionSelectedPatientId = usePatientStore(s => s.setCompanionSelectedPatientId);
+    const setCompanionSelectedPatientName = usePatientStore(s => s.setCompanionSelectedPatientName);
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
     const { signOut } = useAuth();
@@ -117,8 +118,33 @@ export default function CompanionHomeScreen() {
     };
 
     const handleSelectPatient = (patient) => {
-        setCompanionSelectedPatientId(patient.id);
-        navigation.navigate('CompanionTabs');
+        try {
+            let targetId = null;
+            if (typeof patient === 'string') {
+                targetId = patient;
+            } else if (patient && typeof patient === 'object') {
+                targetId = (typeof patient.id === 'string' ? patient.id : null) ||
+                           (typeof patient._id === 'string' ? patient._id : null) ||
+                           (typeof patient.patient_id === 'string' ? patient.patient_id : null) ||
+                           (patient.patient_id && typeof patient.patient_id === 'object' ? (patient.patient_id._id || patient.patient_id.id) : null) ||
+                           (patient.id && typeof patient.id === 'object' ? (patient.id._id || patient.id.id) : null);
+            }
+            const rawName = patient?.name || patient?.patient_id?.name || '';
+            const normalizedName = typeof rawName === 'string' ? rawName.trim() : '';
+
+            if (targetId) {
+                setCompanionSelectedPatientId(targetId);
+                if (normalizedName) {
+                    setCompanionSelectedPatientName(normalizedName);
+                }
+                navigation.navigate('CompanionTabs', {
+                    screen: 'CompanionDashboard',
+                    params: { patientId: targetId, patientName: normalizedName }
+                });
+            }
+        } catch (err) {
+            console.warn('Failed to select companion patient:', err);
+        }
     };
 
     if (loading) {
@@ -133,7 +159,7 @@ export default function CompanionHomeScreen() {
         <View style={styles.container}>
             {/* Premium Linear Gradient Background */}
             <LinearGradient
-                colors={['#F8FAFC', '#EEF2FF']}
+                colors={['#FAFAF9', '#F5F5F4']}
                 style={StyleSheet.absoluteFill}
             />
             <View style={[styles.header, { paddingTop: Math.max(50, insets.top + 16) }]}>
@@ -240,7 +266,7 @@ export default function CompanionHomeScreen() {
                         style={({ pressed }) => [styles.manageBtn, pressed && { opacity: 0.7 }]}
                         onPress={() => navigation.navigate('CareCircle')}
                     >
-                        <Sliders size={14} color="#6366F1" />
+                        <SlidersHorizontal size={14} color="#6366F1" />
                         <Text style={styles.manageBtnText}>Manage</Text>
                     </Pressable>
                 </View>
@@ -253,8 +279,10 @@ export default function CompanionHomeScreen() {
                     </View>
                 ) : (
                     <View style={styles.patientsList}>
-                        {[...data.linked_patients].sort((a, b) => a.name.localeCompare(b.name)).map((p) => {
-                            const initials = p.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                        {[...data.linked_patients].sort((a, b) => (a?.name || '').localeCompare(b?.name || '')).map((p) => {
+                            const safeName = (p?.name || 'Patient').trim();
+                            const initials = safeName.split(' ').map(n => n[0]).filter(Boolean).join('').toUpperCase().substring(0, 2);
+                            const patientKey = p?.id || p?._id || p?.patient_id || Math.random().toString();
                             const isLowConfidence = p.visibility_label === 'Low';
                             
                             // Dynamic colors matching Whole-Health Grid Board color tokens
@@ -263,7 +291,7 @@ export default function CompanionHomeScreen() {
 
                             return (
                                 <Pressable
-                                    key={p.id}
+                                    key={patientKey}
                                     style={({ pressed }) => [styles.patientCard, pressed && { opacity: 0.9 }]}
                                     onPress={() => handleSelectPatient(p)}
                                 >
@@ -272,23 +300,6 @@ export default function CompanionHomeScreen() {
                                         <View style={styles.avatarInner}>
                                             <Text style={styles.avatarText}>{initials}</Text>
                                         </View>
-                                        
-                                        {p.health_score !== undefined && (
-                                            <View style={[
-                                                styles.scoreBadge,
-                                                isLowConfidence ? styles.scoreBadgeLowVisibility : styles.scoreBadgeNormal,
-                                                { backgroundColor: badgeBgColor }
-                                            ]}>
-                                                {isLowConfidence ? (
-                                                    <>
-                                                        <Text style={styles.scoreTextLow}>{p.health_score}</Text>
-                                                        <Text style={styles.scoreBadgeEstimatedLabel}>Estimated</Text>
-                                                    </>
-                                                ) : (
-                                                    <Text style={styles.scoreText}>{p.health_score}</Text>
-                                                )}
-                                            </View>
-                                        )}
                                     </ProgressCircle>
 
                                     {/* Patient Info Block */}
@@ -544,7 +555,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
         padding: 16,
-        borderRadius: 24,
+        borderRadius: radius.xl,
         borderWidth: 1,
         borderColor: '#F1F5F9',
         shadowColor: '#0F172A',
@@ -584,10 +595,10 @@ const styles = StyleSheet.create({
     scoreBadgeLowVisibility: {
         bottom: -4,
         right: -8,
-        paddingHorizontal: 6,
-        paddingVertical: 3,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
         borderRadius: 8,
-        minWidth: 44,
+        minWidth: 48,
     },
     scoreText: {
         color: '#FFFFFF',
@@ -596,32 +607,30 @@ const styles = StyleSheet.create({
     },
     scoreTextLow: {
         color: '#FFFFFF',
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 'bold',
-        lineHeight: 11,
     },
     scoreBadgeEstimatedLabel: {
         color: '#FFFFFF',
-        fontSize: 6.5,
-        lineHeight: 8,
+        fontSize: 7,
         fontWeight: '800',
         textTransform: 'uppercase',
-        marginTop: 1,
+        marginTop: 2,
     },
     patientInfo: {
         flex: 1,
-        gap: 4,
+        gap: 3,
     },
     patientName: {
         fontSize: 16,
         ...FONT.bold,
         color: '#0F172A',
+        marginBottom: 2,
     },
     healthScoreRow: {
         flexDirection: 'row',
-        alignItems: 'baseline',
-        gap: 6,
-        marginTop: 2,
+        alignItems: 'center',
+        gap: 8,
     },
     scoreHeaderRow: {
         flexDirection: 'row',
@@ -634,13 +643,13 @@ const styles = StyleSheet.create({
         color: '#64748B',
     },
     scoreValue: {
-        fontSize: 20,
-        ...FONT.heavy,
-        lineHeight: 22,
+        fontSize: 18,
+        ...FONT.bold,
     },
     statusBadgeRow: {
         flexDirection: 'row',
-        marginTop: 4,
+        alignItems: 'center',
+        marginTop: 5,
     },
     badgeLowConfidence: {
         backgroundColor: '#FFFBEB',

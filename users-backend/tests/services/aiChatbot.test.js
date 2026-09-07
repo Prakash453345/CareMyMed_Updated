@@ -209,7 +209,7 @@ describe('AI Latency Telemetry & Fallback Model Routing', () => {
       expect(AIChatLog.create).toHaveBeenCalledWith(
         expect.objectContaining({
           provider: 'groq',
-          model: 'llama-3.3-70b-versatile',
+          model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
           is_fallback: false,
           prompt_tokens: 15,
           completion_tokens: 25,

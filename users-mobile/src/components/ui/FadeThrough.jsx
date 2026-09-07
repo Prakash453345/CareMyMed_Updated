@@ -1,71 +1,34 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withTiming,
-    runOnJS,
-} from 'react-native-reanimated';
-import { reanimatedMotion } from '../../theme/reanimatedMotion';
+import { View, Animated } from 'react-native';
 
-export default function FadeThrough({ children, duration = reanimatedMotion.durations.normal, style }) {
+export default function FadeThrough({ children, transitionKey, duration = 200, style }) {
     const [currentChild, setCurrentChild] = useState(children);
-    const [prevChild, setPrevChild] = useState(null);
-    const [isTransitioning, setIsTransitioning] = useState(false);
-
-    const opacity = useSharedValue(1);
-    const scale = useSharedValue(1);
-
-    const prevChildRef = useRef(children);
+    const opacityAnim = useRef(new Animated.Value(1)).current;
+    const prevKeyRef = useRef(transitionKey);
 
     useEffect(() => {
-        if (children !== prevChildRef.current) {
-            setPrevChild(prevChildRef.current);
-            setIsTransitioning(true);
-            prevChildRef.current = children;
-
-            // Step 1: Fade out the current/previous child
-            opacity.value = withTiming(0, { duration: duration / 2 }, () => {
-                runOnJS(() => {
-                    // Step 2: Swap the content once faded out
-                    setCurrentChild(children);
-                    setPrevChild(null);
-
-                    // Step 3: Fade in the new content
-                    scale.value = 0.98;
-                    opacity.value = withTiming(1, { duration: duration / 2 }, () => {
-                        runOnJS(setIsTransitioning)(false);
-                    });
-                    scale.value = withTiming(1, { duration: duration / 2 });
-                })();
+        if (transitionKey !== prevKeyRef.current) {
+            prevKeyRef.current = transitionKey;
+            Animated.timing(opacityAnim, {
+                toValue: 0,
+                duration: duration / 2,
+                useNativeDriver: true,
+            }).start(() => {
+                setCurrentChild(children);
+                Animated.timing(opacityAnim, {
+                    toValue: 1,
+                    duration: duration / 2,
+                    useNativeDriver: true,
+                }).start();
             });
+        } else {
+            setCurrentChild(children);
         }
-    }, [children, duration, opacity, scale]);
-
-    const animatedStyle = useAnimatedStyle(() => {
-        return {
-            opacity: opacity.value,
-            transform: [{ scale: scale.value }],
-        };
-    });
+    }, [transitionKey, children, duration, opacityAnim]);
 
     return (
-        <View style={[styles.container, style]}>
-            {isTransitioning && prevChild ? (
-                <Animated.View style={animatedStyle}>
-                    {prevChild}
-                </Animated.View>
-            ) : (
-                <Animated.View style={animatedStyle}>
-                    {currentChild}
-                </Animated.View>
-            )}
-        </View>
+        <Animated.View style={[{ opacity: opacityAnim }, style]}>
+            {currentChild}
+        </Animated.View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        overflow: 'hidden',
-    },
-});

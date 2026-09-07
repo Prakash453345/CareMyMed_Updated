@@ -6,16 +6,52 @@ import { Platform } from 'react-native';
 import { getRandomTemplate, personalize } from './notificationTemplates';
 
 import AlertManager from './AlertManager';
+import { navigationRef } from '../lib/navigationRef';
+
 /**
  * Configure how notifications appear when the app is in the foreground.
+ * Includes context-aware suppression to silence duplicate alerts (e.g. chat messages
+ * when the user is already on the Chat screen).
  */
 Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-    }),
+    handleNotification: async (notification) => {
+        const type = notification.request.content.data?.type;
+
+        // Retrieve current active screen name safely
+        let currentScreen = null;
+        try {
+            if (navigationRef.current && navigationRef.current.isReady && navigationRef.current.isReady()) {
+                const currentRoute = navigationRef.current.getCurrentRoute();
+                currentScreen = currentRoute?.name;
+            }
+        } catch (e) {
+            console.warn('[notifications] Failed to read current navigation route name:', e.message);
+        }
+
+        // Strict suppression allowlist logic:
+        // Mute and hide chat_response notifications only if user is already inside a chat screen.
+        if (type === 'chat_response') {
+            if (currentScreen === 'Chatbot' || currentScreen === 'ChatHistory' || currentScreen === 'HealthCopilot') {
+                console.log('[notifications] Suppressing foreground chat notification (audio + visual muted)');
+                return {
+                    shouldShowAlert: false,
+                    shouldShowBanner: false,
+                    shouldShowList: false,
+                    shouldPlaySound: false,
+                    shouldSetBadge: false,
+                };
+            }
+        }
+
+        // All non-suppressed/schedule-critical notifications must alert the user fully.
+        return {
+            shouldShowAlert: true,
+            shouldShowBanner: true,
+            shouldShowList: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+        };
+    },
 });
 
 /**
@@ -91,7 +127,7 @@ export async function registerForPushNotificationsAsync() {
         const projectId =
             Constants.expoConfig?.extra?.eas?.projectId ??
             Constants.easConfig?.projectId ??
-            '3eeed402-2786-427b-b122-e73d681dcc56'; // fallback from app.json
+            '55eb530a-473e-4d2a-ada3-b95294730ba2'; // fallback from app.json
 
         console.log('Using projectId for push token:', projectId);
 
@@ -189,47 +225,50 @@ export async function syncAllSchedules(medicines = [], prefs = {}, subscriptionD
         const { status } = await Notifications.getPermissionsAsync();
         if (status !== 'granted') return;
 
-        // 1. Cancel + reschedule logic (prevent any duplicates, stale alarms)
-        await Notifications.cancelAllScheduledNotificationsAsync();
+        // Query current scheduled notifications to avoid nuclear cancellation
+        // and eliminate JNI lock contention / ANR deadlocks with active alarms.
+        const scheduled = await Notifications.getAllScheduledNotificationsAsync();
         
         // --- 2. Vitals Reminder (Daily exactly at 10 AM) ---
         if (!vitalsLoggedToday) {
-            await Notifications.scheduleNotificationAsync({
-                content: {
-                    title: '❤️ Daily Vitals Reminder',
-                    body: getRandomTemplate('vitals', 'reminders') || 'Time to log your daily vitals!',
-                    data: { screen: 'PatientHome', type: 'vitals_reminder' },
-                    sound: 'default',
-                },
-                // Native repeating exact alarm
-                trigger: { hour: 10, minute: 0, repeats: true },
-            });
-            console.log('✅ Daily repeating Vitals reminder synced');
+            const hasVitalsReminder = scheduled.some(n => n.content?.data?.type === 'vitals_reminder');
+            if (!hasVitalsReminder) {
+                await Notifications.scheduleNotificationAsync({
+                    content: {
+                        title: '❤️ Daily Vitals Reminder',
+                        body: getRandomTemplate('vitals', 'reminders') || 'Time to log your daily vitals!',
+                        data: { screen: 'PatientHome', type: 'vitals_reminder' },
+                        sound: 'default',
+                    },
+                    trigger: { hour: 10, minute: 0, repeats: true },
+                });
+                console.log('✅ Daily repeating Vitals reminder synced');
+            }
         }
 
         // --- 3. Medication Reminders (DEPRECATED LOCAL SYNC) ---
         // Medication reminders are now handled by the backend FCM scheduler
-        // to ensure sync across devices and reliable delivery even if app is killed.
         console.log('ℹ️ Local medication scheduling skipped (Backend-driven mode active)');
 
         // --- 4. Subscription Alert (One-off) ---
         if (subscriptionDaysLeft !== null && subscriptionDaysLeft >= 0 && subscriptionDaysLeft <= 7) {
-            const triggerDate = new Date();
-            triggerDate.setHours(9, 30, 0, 0); 
-            // If it's already past 9:30 AM today, schedule it for 5 seconds from now
-            // so we don't accidentally schedule it in the past (which fires instantly anyway, but 5s is cleaner)
-            const resolvedTrigger = triggerDate > new Date() ? triggerDate : { seconds: 5 };
-            
-            await Notifications.scheduleNotificationAsync({
-                content: {
-                    title: '⚠️ Subscription Expiring Soon',
-                    body: `Your premium subscription expires in ${subscriptionDaysLeft} day${subscriptionDaysLeft !== 1 ? 's' : ''}. Renew to maintain uninterrupted care.`,
-                    data: { screen: 'Profile', type: 'subscription_alert' },
-                    sound: 'default',
-                },
-                trigger: resolvedTrigger,
-            });
-            console.log('✅ Subscription warning synced');
+            const hasSubAlert = scheduled.some(n => n.content?.data?.type === 'subscription_alert');
+            if (!hasSubAlert) {
+                const triggerDate = new Date();
+                triggerDate.setHours(9, 30, 0, 0); 
+                const resolvedTrigger = triggerDate > new Date() ? triggerDate : { seconds: 5 };
+                
+                await Notifications.scheduleNotificationAsync({
+                    content: {
+                        title: '⚠️ Subscription Expiring Soon',
+                        body: `Your premium subscription expires in ${subscriptionDaysLeft} day${subscriptionDaysLeft !== 1 ? 's' : ''}. Renew to maintain uninterrupted care.`,
+                        data: { screen: 'Profile', type: 'subscription_alert' },
+                        sound: 'default',
+                    },
+                    trigger: resolvedTrigger,
+                });
+                console.log('✅ Subscription warning synced');
+            }
         }
 
     } catch (error) {

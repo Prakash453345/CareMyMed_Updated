@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -52,6 +52,7 @@ import {
   ChevronDown,
   Upload,
   Siren,
+  HelpCircle,
   ChevronRight,
   TrendingUp,
   TrendingDown,
@@ -66,6 +67,14 @@ import {
   Info,
   Clock,
   MapPin,
+  Shield,
+  Heart,
+  Scale,
+  Wine,
+  User,
+  Sprout,
+  MessageSquare,
+  MinusCircle,
 } from "lucide-react-native";
 import { StatusBar } from "react-native";
 import Svg, {
@@ -77,16 +86,27 @@ import Svg, {
   Rect,
 } from "react-native-svg";
 import * as Haptics from "expo-haptics";
+import { HapticPatterns } from "../../utils/haptics";
 import { apiService } from "../../lib/api";
 import usePatientStore from "../../store/usePatientStore";
-import GuidedTour from "../../components/ui/GuidedTour";
-import { TourService } from "../../lib/TourService";
+import SectionContainer from "../../components/ui/SectionContainer";
+import SectionErrorCard from "../../components/ui/SectionErrorCard";
+import { useSectionQuery } from "../../hooks/useSectionQuery";
+
+const cmToFtIn = (cm) => {
+  if (!cm || isNaN(cm)) return "0 ft 0 in";
+  const totalInches = Math.round(Number(cm) / 2.54);
+  const feet = Math.floor(totalInches / 12);
+  const inches = totalInches % 12;
+  return `${feet} ft ${inches} in`;
+};
 import {
   initializeHealthPlatform,
   requestHealthPermissions,
   fetchDailyVitalsSummary,
   isHealthSupported,
 } from "../../lib/healthIntegration";
+import CustomCalendarPicker from "../../components/ui/CustomCalendarPicker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import {
   COUNTRY_CODES,
@@ -169,32 +189,37 @@ const CONDITION_STATUS = {
   resolved: { bg: "#FAF5FF", text: "#5B21B6" },
 };
 
-const ChipSelector = ({ options, selected, onSelect, vertical = false }) => (
-  <ScrollView
-    horizontal={!vertical}
-    showsHorizontalScrollIndicator={false}
-    contentContainerStyle={vertical ? s.chipVerticalWrap : s.chipSelectorWrap}
-  >
-    {options.map((opt) => {
-      const isSelected = selected === opt.value;
-      return (
-        <Pressable
-          key={opt.value}
-          style={[
-            s.selectChip,
-            isSelected && s.selectChipActive,
-            vertical && { width: "100%", marginBottom: 10 },
-          ]}
-          onPress={() => onSelect(opt.value)}
-        >
-          <Text style={[s.selectChipTxt, isSelected && s.selectChipTxtActive]}>
-            {opt.label}
-          </Text>
-        </Pressable>
-      );
-    })}
-  </ScrollView>
-);
+const ChipSelector = ({ options, selected, onSelect, vertical = false }) => {
+  const safeOptions = Array.isArray(options) ? options : [];
+  return (
+    <ScrollView
+      horizontal={!vertical}
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={vertical ? s.chipVerticalWrap : s.chipSelectorWrap}
+    >
+      {safeOptions.map((opt) => {
+        const isSelected = selected === opt.value;
+        return (
+          <Pressable
+            key={opt.value}
+            style={[
+              s.selectChip,
+              { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+              isSelected && s.selectChipActive,
+              vertical && { width: "100%", marginBottom: 10 },
+            ]}
+            onPress={() => onSelect(opt.value)}
+          >
+            {opt.icon && opt.icon(isSelected)}
+            <Text style={[s.selectChipTxt, isSelected && s.selectChipTxtActive]}>
+              {opt.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+};
 
 const formatDate = (dateInput, formatStr) => {
   if (!dateInput) return "";
@@ -288,15 +313,10 @@ const getConsistencyStyle = (score) => {
   return { label: "Limited Tracking", color: "#64748B" };
 };
 
-const cmToFtIn = (cm) => {
-  if (!cm) return "";
-  const realInches = cm / 2.54;
-  const ft = Math.floor(realInches / 12);
-  const inch = Math.round(realInches % 12);
-  if (inch === 12) {
-    return `${ft + 1} ft 0 in`;
-  }
-  return `${ft} ft ${inch} in`;
+const safeParseVitalsNum = (val, fallback) => {
+  if (val == null) return fallback;
+  const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/[^0-9.]/g, ''));
+  return (!isNaN(num) && num > 0) ? Math.round(num) : fallback;
 };
 
 const TactileWheelPicker = ({
@@ -304,44 +324,67 @@ const TactileWheelPicker = ({
   selectedValue,
   onValueChange,
   itemHeight = 44,
+  activeColor = "#7C3AED",
 }) => {
   const flatListRef = useRef(null);
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  const safeData = Array.isArray(data) ? data : [];
 
   const paddedData = useMemo(() => {
     return [
       { isPlaceholder: true, key: "p1" },
       { isPlaceholder: true, key: "p2" },
-      ...data.map((item, idx) => ({ ...item, key: String(idx) })),
+      ...safeData.map((item, idx) => ({ ...item, key: String(idx) })),
       { isPlaceholder: true, key: "p3" },
       { isPlaceholder: true, key: "p4" },
     ];
-  }, [data]);
+  }, [safeData]);
 
-  const onMomentumScrollEnd = (event) => {
-    const y = event.nativeEvent.contentOffset.y;
-    const index = Math.round(y / itemHeight);
-    if (index >= 0 && index < data.length) {
-      const newValue = data[index].value;
-      if (newValue !== selectedValue) {
-        onValueChange(newValue);
-        Haptics.selectionAsync().catch(() => {});
+  const isUserScrollingRef = useRef(false);
+
+  const handleScrollEnd = (event) => {
+    try {
+      const y = event.nativeEvent?.contentOffset?.y || 0;
+      const dataIndex = Math.max(
+        0,
+        Math.min(safeData.length - 1, Math.round(y / itemHeight))
+      );
+      if (dataIndex >= 0 && dataIndex < safeData.length) {
+        const item = safeData[dataIndex];
+        if (item && item.value !== undefined && String(item.value) !== String(selectedValue)) {
+          isUserScrollingRef.current = true;
+          onValueChange(item.value);
+          try {
+            Haptics.selectionAsync().catch(() => {});
+          } catch (e) {}
+        }
       }
+    } catch (e) {
+      console.warn('[TactileWheelPicker] Scroll end error:', e);
     }
   };
 
   useEffect(() => {
-    const index = data.findIndex((item) => item.value === selectedValue);
+    if (isUserScrollingRef.current) {
+      isUserScrollingRef.current = false;
+      return;
+    }
+    const index = safeData.findIndex((item) => String(item.value) === String(selectedValue));
     if (index !== -1) {
       const timer = setTimeout(() => {
-        flatListRef.current?.scrollToOffset({
-          offset: index * itemHeight,
-          animated: false,
-        });
+        try {
+          flatListRef.current?.scrollToOffset?.({
+            offset: index * itemHeight,
+            animated: false,
+          });
+        } catch (e) {
+          console.warn('[TactileWheelPicker] scrollToOffset error:', e);
+        }
       }, 60);
       return () => clearTimeout(timer);
     }
-  }, [selectedValue, data]);
+  }, [selectedValue, safeData, itemHeight]);
 
   const renderItem = ({ item, index }) => {
     if (item.isPlaceholder) {
@@ -358,7 +401,7 @@ const TactileWheelPicker = ({
         itemScrollY + itemHeight,
         itemScrollY + itemHeight * 2,
       ],
-      outputRange: [0.8, 0.9, 1.12, 0.9, 0.8],
+      outputRange: [0.75, 0.88, 1.15, 0.88, 0.75],
       extrapolate: "clamp",
     });
 
@@ -370,7 +413,7 @@ const TactileWheelPicker = ({
         itemScrollY + itemHeight,
         itemScrollY + itemHeight * 2,
       ],
-      outputRange: [0.35, 0.55, 1.0, 0.55, 0.35],
+      outputRange: [0.25, 0.45, 1.0, 0.45, 0.25],
       extrapolate: "clamp",
     });
 
@@ -386,7 +429,7 @@ const TactileWheelPicker = ({
       extrapolate: "clamp",
     });
 
-    const isSelected = item.value === selectedValue;
+    const isSelected = String(item.value) === String(selectedValue);
 
     return (
       <Animated.View
@@ -402,7 +445,7 @@ const TactileWheelPicker = ({
           style={{
             fontSize: 20,
             ...FONT.bold,
-            color: isSelected ? "#7C3AED" : "#64748B",
+            color: isSelected ? activeColor : "#94A3B8",
           }}
         >
           {item.label}
@@ -410,6 +453,8 @@ const TactileWheelPicker = ({
       </Animated.View>
     );
   };
+
+  const isEmerald = activeColor === "#10B981";
 
   return (
     <View
@@ -423,13 +468,13 @@ const TactileWheelPicker = ({
         style={{
           position: "absolute",
           top: itemHeight * 2,
-          left: 10,
-          right: 10,
+          left: 6,
+          right: 6,
           height: itemHeight,
-          backgroundColor: "rgba(124, 58, 237, 0.06)",
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: "rgba(124, 58, 237, 0.15)",
+          backgroundColor: isEmerald ? "rgba(16, 185, 129, 0.08)" : "rgba(124, 58, 237, 0.08)",
+          borderRadius: 14,
+          borderWidth: 1.5,
+          borderColor: isEmerald ? "rgba(16, 185, 129, 0.25)" : "rgba(124, 58, 237, 0.25)",
           pointerEvents: "none",
         }}
       />
@@ -443,11 +488,14 @@ const TactileWheelPicker = ({
         snapToInterval={itemHeight}
         decelerationRate="fast"
         scrollEventThrottle={16}
+        nestedScrollEnabled={true}
+        scrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true },
         )}
-        onMomentumScrollEnd={onMomentumScrollEnd}
+        onMomentumScrollEnd={handleScrollEnd}
         getItemLayout={(data, index) => ({
           length: itemHeight,
           offset: itemHeight * index,
@@ -455,6 +503,335 @@ const TactileWheelPicker = ({
         })}
       />
     </View>
+  );
+};
+
+const HeightWeightPickerModal = ({
+  visible,
+  onClose,
+  initialTab = "height",
+  heightCm,
+  weightKg,
+  onSave,
+  isSaving = false,
+}) => {
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const [localHeight, setLocalHeight] = useState(heightCm);
+  const [localWeight, setLocalWeight] = useState(weightKg);
+  const [heightUnit, setHeightUnit] = useState("cm");
+  const [weightUnit, setWeightUnit] = useState("kg");
+
+  useEffect(() => {
+    if (visible) {
+      setActiveTab(initialTab);
+      setLocalHeight(heightCm);
+      setLocalWeight(weightKg);
+    }
+  }, [visible, initialTab, heightCm, weightKg]);
+
+  const heightCmData = useMemo(() => {
+    return Array.from({ length: 151 }, (_, i) => {
+      const val = 90 + i;
+      return { label: `${val}`, value: val };
+    });
+  }, []);
+
+  const feetData = useMemo(() => {
+    return Array.from({ length: 6 }, (_, i) => {
+      const val = 3 + i;
+      return { label: `${val} ft`, value: val };
+    });
+  }, []);
+
+  const inchesData = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      return { label: `${i} in`, value: i };
+    });
+  }, []);
+
+  const weightKgData = useMemo(() => {
+    return Array.from({ length: 191 }, (_, i) => {
+      const val = 30 + i;
+      return { label: `${val}`, value: val };
+    });
+  }, []);
+
+  const weightLbsData = useMemo(() => {
+    return Array.from({ length: 421 }, (_, i) => {
+      const val = 66 + i;
+      return { label: `${val}`, value: val };
+    });
+  }, []);
+
+  const parsedCm = Math.max(90, Math.min(240, safeParseVitalsNum(localHeight, 170)));
+  const parsedKg = Math.max(30, Math.min(220, safeParseVitalsNum(localWeight, 70)));
+
+  const totalInches = parsedCm / 2.54;
+  const currentFeet = Math.max(3, Math.min(8, Math.floor(totalInches / 12)));
+  const currentInches = Math.max(0, Math.min(11, Math.round(totalInches % 12)));
+  const currentLbs = Math.round(parsedKg / 0.45359237);
+
+  const handleFeetChange = (newFt) => {
+    const newCm = Math.round((newFt * 12 + currentInches) * 2.54);
+    setLocalHeight(String(newCm));
+  };
+
+  const handleInchesChange = (newIn) => {
+    const newCm = Math.round((currentFeet * 12 + newIn) * 2.54);
+    setLocalHeight(String(newCm));
+  };
+
+  const handleTabSwitch = (tab) => {
+    try { Haptics.selectionAsync().catch(() => {}); } catch (e) {}
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setActiveTab(tab);
+  };
+
+  const handleSavePress = () => {
+    if (onSave) {
+      onSave({
+        height_cm: String(parsedCm),
+        weight_kg: String(parsedKg),
+      });
+    }
+  };
+
+  if (!visible) return null;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(15, 23, 42, 0.65)",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: 20,
+        }}
+      >
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+        />
+
+        <View
+          style={{
+            width: "100%",
+            maxWidth: 380,
+            backgroundColor: "#FFFFFF",
+            borderRadius: 28,
+            padding: 24,
+            gap: 18,
+            shadowColor: "#0F172A",
+            shadowOffset: { width: 0, height: 12 },
+            shadowOpacity: 0.18,
+            shadowRadius: 24,
+            elevation: 16,
+          }}
+        >
+          {/* Header */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              {activeTab === "height" ? (
+                <Activity size={20} color="#7C3AED" />
+              ) : (
+                <Scale size={20} color="#10B981" />
+              )}
+              <Text style={{ fontSize: 18, ...FONT.bold, color: "#0F172A" }}>
+                {activeTab === "height" ? "Adjust Height" : "Adjust Weight"}
+              </Text>
+            </View>
+            <Pressable onPress={onClose} hitSlop={10} style={{ padding: 4, borderRadius: 20, backgroundColor: "#F1F5F9" }}>
+              <X size={18} color="#64748B" />
+            </Pressable>
+          </View>
+
+          {/* Segmented Tab Switcher */}
+          <View
+            style={{
+              flexDirection: "row",
+              backgroundColor: "#F1F5F9",
+              borderRadius: 14,
+              padding: 3,
+              gap: 4,
+            }}
+          >
+            <Pressable
+              style={{
+                flex: 1,
+                alignItems: "center",
+                paddingVertical: 8,
+                borderRadius: 10,
+                backgroundColor: activeTab === "height" ? "#7C3AED" : "transparent",
+              }}
+              onPress={() => handleTabSwitch("height")}
+            >
+              <Text style={{ fontSize: 13, ...FONT.bold, color: activeTab === "height" ? "#FFFFFF" : "#64748B" }}>
+                Height
+              </Text>
+            </Pressable>
+            <Pressable
+              style={{
+                flex: 1,
+                alignItems: "center",
+                paddingVertical: 8,
+                borderRadius: 10,
+                backgroundColor: activeTab === "weight" ? "#10B981" : "transparent",
+              }}
+              onPress={() => handleTabSwitch("weight")}
+            >
+              <Text style={{ fontSize: 13, ...FONT.bold, color: activeTab === "weight" ? "#FFFFFF" : "#64748B" }}>
+                Weight
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Readout and Unit Toggle */}
+          {activeTab === "height" ? (
+            <View style={{ alignItems: "center", gap: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                {heightUnit === "cm" ? (
+                  <Text style={{ fontSize: 32, ...FONT.bold, color: "#7C3AED" }}>
+                    {parsedCm} <Text style={{ fontSize: 16, color: "#64748B" }}>CM</Text>
+                  </Text>
+                ) : (
+                  <Text style={{ fontSize: 32, ...FONT.bold, color: "#7C3AED" }}>
+                    {currentFeet} <Text style={{ fontSize: 16, color: "#64748B" }}>FT</Text> {currentInches} <Text style={{ fontSize: 16, color: "#64748B" }}>IN</Text>
+                  </Text>
+                )}
+
+                <View style={s.unitToggleWrap}>
+                  <Pressable
+                    style={[s.unitTogglePill, heightUnit === "cm" && s.unitTogglePillActive]}
+                    onPress={() => setHeightUnit("cm")}
+                  >
+                    <Text style={[s.unitToggleText, heightUnit === "cm" && s.unitToggleTextActive]}>CM</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[s.unitTogglePill, heightUnit === "ft_in" && s.unitTogglePillActive]}
+                    onPress={() => setHeightUnit("ft_in")}
+                  >
+                    <Text style={[s.unitToggleText, heightUnit === "ft_in" && s.unitToggleTextActive]}>FT+IN</Text>
+                  </Pressable>
+                </View>
+              </View>
+              <Text style={{ fontSize: 12, ...FONT.medium, color: "#64748B" }}>
+                {heightUnit === "cm" ? `≈ ${currentFeet} ft ${currentInches} in` : `≈ ${parsedCm} cm`}
+              </Text>
+            </View>
+          ) : (
+            <View style={{ alignItems: "center", gap: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                {weightUnit === "kg" ? (
+                  <Text style={{ fontSize: 32, ...FONT.bold, color: "#10B981" }}>
+                    {parsedKg} <Text style={{ fontSize: 16, color: "#64748B" }}>KG</Text>
+                  </Text>
+                ) : (
+                  <Text style={{ fontSize: 32, ...FONT.bold, color: "#10B981" }}>
+                    {currentLbs} <Text style={{ fontSize: 16, color: "#64748B" }}>LBS</Text>
+                  </Text>
+                )}
+
+                <View style={s.unitToggleWrap}>
+                  <Pressable
+                    style={[s.unitTogglePill, weightUnit === "kg" && { backgroundColor: "#10B981" }]}
+                    onPress={() => setWeightUnit("kg")}
+                  >
+                    <Text style={[s.unitToggleText, weightUnit === "kg" && { color: "#FFFFFF" }]}>KG</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[s.unitTogglePill, weightUnit === "lbs" && { backgroundColor: "#10B981" }]}
+                    onPress={() => setWeightUnit("lbs")}
+                  >
+                    <Text style={[s.unitToggleText, weightUnit === "lbs" && { color: "#FFFFFF" }]}>LBS</Text>
+                  </Pressable>
+                </View>
+              </View>
+              <Text style={{ fontSize: 12, ...FONT.medium, color: "#64748B" }}>
+                {weightUnit === "kg" ? `≈ ${currentLbs} lbs` : `≈ ${parsedKg} kg`}
+              </Text>
+            </View>
+          )}
+
+          {/* Centered Wheel Picker */}
+          <View style={{ marginVertical: 4 }}>
+            {activeTab === "height" ? (
+              heightUnit === "cm" ? (
+                <TactileWheelPicker
+                  data={heightCmData}
+                  selectedValue={parsedCm}
+                  onValueChange={(val) => setLocalHeight(String(val))}
+                  itemHeight={44}
+                  activeColor="#7C3AED"
+                />
+              ) : (
+                <View style={{ flexDirection: "row", gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <TactileWheelPicker
+                      data={feetData}
+                      selectedValue={currentFeet}
+                      onValueChange={handleFeetChange}
+                      itemHeight={44}
+                      activeColor="#7C3AED"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <TactileWheelPicker
+                      data={inchesData}
+                      selectedValue={currentInches}
+                      onValueChange={handleInchesChange}
+                      itemHeight={44}
+                      activeColor="#7C3AED"
+                    />
+                  </View>
+                </View>
+              )
+            ) : weightUnit === "kg" ? (
+              <TactileWheelPicker
+                data={weightKgData}
+                selectedValue={parsedKg}
+                onValueChange={(val) => setLocalWeight(String(val))}
+                itemHeight={44}
+                activeColor="#10B981"
+              />
+            ) : (
+              <TactileWheelPicker
+                data={weightLbsData}
+                selectedValue={currentLbs}
+                onValueChange={(newLbs) => {
+                  const kg = Math.round(newLbs * 0.45359237 * 10) / 10;
+                  setLocalWeight(String(kg));
+                }}
+                itemHeight={44}
+                activeColor="#10B981"
+              />
+            )}
+          </View>
+
+          {/* Actions */}
+          <Pressable
+            onPress={handleSavePress}
+            disabled={isSaving}
+            style={({ pressed }) => [
+              {
+                backgroundColor: activeTab === "height" ? "#7C3AED" : "#10B981",
+                borderRadius: 14,
+                paddingVertical: 14,
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: pressed || isSaving ? 0.85 : 1,
+              },
+            ]}
+          >
+            {isSaving ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={{ fontSize: 15, ...FONT.bold, color: "#FFFFFF" }}>Save Changes</Text>
+            )}
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
   );
 };
 
@@ -482,160 +859,39 @@ export default function HealthProfileScreen({ navigation }) {
   const [historyLoading, setHistoryLoading] = useState(false);
   const isFreePlan = (p) => p?.freePlan || p?.subscription?.plan === "free";
 
-  const [showProfileTour, setShowProfileTour] = useState(false);
-  const profileTourTriggeredRef = useRef(false);
-  const scrollViewRef = useRef(null);
-  const profileSetupCardRef = useRef(null);
-  const headerRef = useRef(null);
-  const healthScoreCardRef = useRef(null);
-  const alertsCardRef = useRef(null);
-  const medicalRecordsCardRef = useRef(null);
+  const [vitalsModalVisible, setVitalsModalVisible] = useState(false);
+  const [vitalsModalTab, setVitalsModalTab] = useState("height");
+  const [isSavingVitals, setIsSavingVitals] = useState(false);
 
-  const getProfileTourSteps = () => {
-    return [
-      {
-        title: t("health_profile.guide_title", {
-          defaultValue: "👋 One last step!",
-        }),
-        desc: t("health_profile.guide_desc", {
-          defaultValue:
-            "Add your medical conditions, allergies, and contact details so we can personalize reminders and health insights for you.",
-        }),
-        icon: Activity,
-        iconColor: "#7C3AED",
-        ref: headerRef,
-        scrollOffset: 0,
-        visible: true,
-      },
-      {
-        title: t("health_profile.guide_score_title", {
-          defaultValue: "❤️ Health Score",
-        }),
-        desc: t("health_profile.guide_score_desc", {
-          defaultValue:
-            "This computes your daily health grade based on active conditions, vitals, and habits. Tap it to see personalized coaching, warnings, and charts.",
-        }),
-        icon: HeartPulse,
-        iconColor: "#EF4444",
-        ref: healthScoreCardRef,
-        scrollOffset: 0,
-        visible: true,
-      },
-      {
-        title: t("health_profile.guide_complete_title", {
-          defaultValue: "⚡ Profile Completion",
-        }),
-        desc: t("health_profile.guide_complete_desc", {
-          defaultValue:
-            "Track how close you are to finishing your profile. Keeping completeness above 50% unlocks advanced biological wellness analysis.",
-        }),
-        icon: ShieldCheck,
-        iconColor: "#10B981",
-        ref: profileSetupCardRef,
-        scrollOffset: 0,
-        visible: true,
-      },
-      {
-        title: t("health_profile.guide_alerts_title", {
-          defaultValue: "⚠️ Emergency Alerts",
-        }),
-        desc: t("health_profile.guide_alerts_desc", {
-          defaultValue:
-            "All severe allergies and active conditions are grouped here. In an emergency, this ensures your caller or SOS contact is instantly aware.",
-        }),
-        icon: AlertTriangle,
-        iconColor: "#F59E0B",
-        ref: alertsCardRef,
-        scrollOffset: 0,
-        visible: true,
-      },
-      {
-        title: t("health_profile.guide_records_title", {
-          defaultValue: "🩺 Medical Vault",
-        }),
-        desc: t("health_profile.guide_records_desc", {
-          defaultValue:
-            "Add active medications, vaccination records, appointments, and primary doctor details here to keep your records unified and secure.",
-        }),
-        icon: FileText,
-        iconColor: "#8B5CF6",
-        ref: medicalRecordsCardRef,
-        scrollOffset: 250,
-        visible: true,
-      },
-    ];
+  const openVitalsModal = (tab = "height") => {
+    try {
+      Haptics.selectionAsync().catch(() => {});
+    } catch (e) {}
+    setVitalsModalTab(tab);
+    setVitalsModalVisible(true);
   };
 
-  useEffect(() => {
-    // Guard: only trigger once per mount to prevent re-showing after dismiss
-    if (!loading && profile && !profileTourTriggeredRef.current) {
-      profileTourTriggeredRef.current = true;
-      const initProfileTour = async () => {
-        const profileHeuristic = async () => {
-          const conds = Array.isArray(profile.conditions)
-            ? profile.conditions
-            : [];
-          const allgs = Array.isArray(profile.allergies)
-            ? profile.allergies
-            : [];
-          const contacts = Array.isArray(profile.trusted_contacts)
-            ? profile.trusted_contacts
-            : [];
-          const hist = Array.isArray(profile.medical_history)
-            ? profile.medical_history
-            : [];
-          const meds = Array.isArray(profile.medications)
-            ? profile.medications
-            : [];
-          const vaxs = Array.isArray(profile.vaccinations)
-            ? profile.vaccinations
-            : [];
-          const lifestyle = profile.lifestyle || {};
-          const gp = profile.gp || {};
-
-          let score = 0,
-            total = 10;
-          if (profile.blood_type && profile.blood_type !== "unknown") score++;
-          if (conds.length > 0) score++;
-          if (allgs.length > 0) score++;
-          if (hist.length > 0) score++;
-          if (meds.length > 0) score++;
-          if (vaxs.length > 0) score++;
-          if (lifestyle.height_cm && lifestyle.weight_kg) score++;
-          if (contacts.length > 0) score++;
-          if (gp.name) score++;
-          if (
-            lifestyle.smoking_status &&
-            lifestyle.smoking_status !== "unknown"
-          )
-            score++;
-
-          const pct = Math.round((score / total) * 100);
-
-          const hasMissingCore =
-            pct < 70 ||
-            conds.length === 0 ||
-            allgs.length === 0 ||
-            contacts.length === 0;
-
-          const isExistingAccount =
-            profile.created_at &&
-            new Date(profile.created_at) < new Date("2026-06-27T00:00:00Z");
-
-          return !!(!hasMissingCore || isExistingAccount);
-        };
-
-        await TourService.evaluateMigration("health_profile", profileHeuristic);
-        const seen = await TourService.isTourSeen("health_profile");
-        if (!seen) {
-          setTimeout(() => {
-            setShowProfileTour(true);
-          }, 800);
-        }
+  const handleSaveVitalsModal = async ({ height_cm, weight_kg }) => {
+    try {
+      setIsSavingVitals(true);
+      const payload = {
+        ...profile?.lifestyle,
+        height_cm: Number(height_cm) || profile?.lifestyle?.height_cm,
+        weight_kg: Number(weight_kg) || profile?.lifestyle?.weight_kg,
       };
-      initProfileTour();
+      await apiService.patients.updateLifestyle(payload);
+      triggerHapticSuccess();
+      await loadProfile();
+      setVitalsModalVisible(false);
+    } catch (err) {
+      console.warn("Failed to save vitals:", err);
+      AlertManager.alert("Error", "Failed to update height/weight.");
+    } finally {
+      setIsSavingVitals(false);
     }
-  }, [loading, profile]);
+  };
+
+  const scrollViewRef = useRef(null);
 
   // Haptic helpers
   const triggerHapticSelection = async () => {
@@ -808,18 +1064,16 @@ export default function HealthProfileScreen({ navigation }) {
   const [vitalsTempWeightKg, setVitalsTempWeightKg] = useState(70);
 
   const openHeightPicker = () => {
-    const currentHeight = formState.height_cm
-      ? Number(formState.height_cm)
-      : 170;
+    const parsed = parseFloat(formState.height_cm);
+    const currentHeight = !isNaN(parsed) && parsed > 0 ? parsed : 170;
     setVitalsTempHeightCm(currentHeight);
     setVitalsPickerType("height");
     setVitalsPickerVisible(true);
   };
 
   const openWeightPicker = () => {
-    const currentWeight = formState.weight_kg
-      ? Number(formState.weight_kg)
-      : 70;
+    const parsed = parseFloat(formState.weight_kg);
+    const currentWeight = !isNaN(parsed) && parsed > 0 ? parsed : 70;
     setVitalsTempWeightKg(currentWeight);
     setVitalsPickerType("weight");
     setVitalsPickerVisible(true);
@@ -912,6 +1166,10 @@ export default function HealthProfileScreen({ navigation }) {
   );
 
   const openModal = (type, item = null) => {
+    if (type === "vitals") {
+      openVitalsModal("height");
+      return;
+    }
     setEditingType(type);
     if (item) {
       if (type === "gp" && item.gp_phone) {
@@ -944,18 +1202,20 @@ export default function HealthProfileScreen({ navigation }) {
           smoking_status: profile?.lifestyle?.smoking_status || "",
           alcohol_use: profile?.lifestyle?.alcohol_use || "",
         });
-      else if (type === "activity")
+      else if (type === "activity") {
+        const aids = profile?.lifestyle?.mobility_aids;
         setFormState({
           exercise_frequency: profile?.lifestyle?.exercise_frequency || "",
           mobility_level: profile?.lifestyle?.mobility_level || "full",
-          mobility_aids: profile?.lifestyle?.mobility_aids?.join(", ") || "",
+          mobility_aids: Array.isArray(aids) ? aids.join(", ") : (typeof aids === "string" ? aids : ""),
         });
-      else if (type === "identity")
+      } else if (type === "identity") {
+        const di = profile?.lifestyle?.dietary_restrictions;
         setFormState({
           blood_type: profile?.blood_type || "unknown",
-          dietary_restrictions:
-            profile?.lifestyle?.dietary_restrictions?.join(", ") || "",
+          dietary_restrictions: Array.isArray(di) ? di.join(", ") : (typeof di === "string" ? di : ""),
         });
+      }
       else if (type === "contact")
         setFormState({
           name: "",
@@ -1028,6 +1288,94 @@ export default function HealthProfileScreen({ navigation }) {
       setShowDatePicker(false);
       setShowTimePicker(false);
     });
+  };
+
+  const inputLeftIcon = (IconComponent, color = "#8B5CF6", bg = "#FAF5FF") => (
+    <View style={{
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: bg,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 10,
+    }}>
+      <IconComponent size={15} color={color} strokeWidth={2.5} />
+    </View>
+  );
+
+  const getModalTitle = (type) => {
+    const isEdit = !!formState._id;
+    const actionStr = isEdit ? "Update" : "Add";
+    
+    if (type === "gp") return t("health_profile.primary_physician", { defaultValue: "Doctor Details" });
+    if (type === "vitals") return "Height & Weight";
+    if (type === "habits") return "Lifestyle Habits";
+    if (type === "activity") return "Mobility & Exercise";
+    
+    const keyMap = {
+      condition: "Condition",
+      allergy: "Allergy",
+      medication: "Medication",
+      vaccination: "Vaccination",
+      history: "Medical History",
+      appointment: "Appointment",
+      contact: "Emergency Contact",
+      identity: "Medical Identity"
+    };
+    return `${actionStr} ${keyMap[type] || type}`;
+  };
+
+  const getModalSubtitle = (type) => {
+    const subtitleMap = {
+      condition: "Track your chronic conditions or illnesses",
+      allergy: "Keep your allergy information up to date",
+      medication: "Set your dosage and schedules",
+      vaccination: "Log immunizations and record dates",
+      history: "Track past surgeries and diagnoses",
+      appointment: "Plan doctor checkups and timings",
+      gp: "Doctor contact details for emergency reference",
+      vitals: "Track height and weight measurements",
+      habits: "Record alcohol or smoking details",
+      activity: "Update fitness levels and mobility aids",
+      identity: "Blood group and dietary restrictions",
+      contact: "Primary person for emergency notifications"
+    };
+    return subtitleMap[type] || "";
+  };
+
+  const getModalIcon = (type) => {
+    const iconSize = 20;
+    const iconColor = "#8B5CF6";
+    
+    switch (type) {
+      case "allergy":
+        return <Shield size={iconSize} color={iconColor} strokeWidth={2.5} />;
+      case "condition":
+        return <Activity size={iconSize} color="#EF4444" strokeWidth={2.5} />;
+      case "medication":
+        return <Pill size={iconSize} color="#3B82F6" strokeWidth={2.5} />;
+      case "vaccination":
+        return <Syringe size={iconSize} color="#10B981" strokeWidth={2.5} />;
+      case "history":
+        return <FileText size={iconSize} color="#F59E0B" strokeWidth={2.5} />;
+      case "appointment":
+        return <Calendar size={iconSize} color="#6366F1" strokeWidth={2.5} />;
+      case "gp":
+        return <Heart size={iconSize} color="#EC4899" strokeWidth={2.5} />;
+      case "vitals":
+        return <Scale size={iconSize} color="#06B6D4" strokeWidth={2.5} />;
+      case "habits":
+        return <Wine size={iconSize} color="#8B5CF6" strokeWidth={2.5} />;
+      case "activity":
+        return <TrendingUp size={iconSize} color="#10B981" strokeWidth={2.5} />;
+      case "identity":
+        return <User size={iconSize} color="#4F46E5" strokeWidth={2.5} />;
+      case "contact":
+        return <Phone size={iconSize} color="#10B981" strokeWidth={2.5} />;
+      default:
+        return null;
+    }
   };
 
   const getCollectionName = (type) => {
@@ -1301,9 +1649,9 @@ export default function HealthProfileScreen({ navigation }) {
     }
 
     if (editingType === "vitals") {
-      const h = Number(formState.height_cm);
-      const w = Number(formState.weight_kg);
-      if (formState.height_cm && (h < 50 || h > 300)) {
+      const h = parseFloat(formState.height_cm);
+      const w = parseFloat(formState.weight_kg);
+      if (formState.height_cm && (isNaN(h) || h < 50 || h > 300)) {
         return Platform.OS === "web"
           ? window.alert(
               t("health.height_range", {
@@ -1317,7 +1665,7 @@ export default function HealthProfileScreen({ navigation }) {
               }),
             );
       }
-      if (formState.weight_kg && (w < 10 || w > 500)) {
+      if (formState.weight_kg && (isNaN(w) || w < 10 || w > 500)) {
         return Platform.OS === "web"
           ? window.alert(
               t("health.weight_range", {
@@ -1331,7 +1679,7 @@ export default function HealthProfileScreen({ navigation }) {
               }),
             );
       }
-      if (h && w) {
+      if (!isNaN(h) && !isNaN(w) && h > 0 && w > 0) {
         const bmi = w / Math.pow(h / 100, 2);
         if (bmi < 10 || bmi > 60) {
           return AlertManager.alert(
@@ -1347,10 +1695,10 @@ export default function HealthProfileScreen({ navigation }) {
 
     if (!formState._id) {
       const checkDuplicate = (list, key) =>
-        list.some(
+        (Array.isArray(list) ? list : []).some(
           (item) =>
-            item[key]?.toLowerCase().trim() ===
-            formState[key]?.toLowerCase().trim(),
+            item?.[key]?.toLowerCase().trim() ===
+            formState?.[key]?.toLowerCase().trim(),
         );
       if (editingType === "condition" && checkDuplicate(conditions, "name")) {
         return Platform.OS === "web"
@@ -1417,10 +1765,10 @@ export default function HealthProfileScreen({ navigation }) {
       }
       if (
         editingType === "history" &&
-        medical_history.some(
+        (Array.isArray(medical_history) ? medical_history : []).some(
           (item) =>
-            item.event?.toLowerCase().trim() ===
-            formState.event?.toLowerCase().trim(),
+            item?.event?.toLowerCase().trim() ===
+            formState?.event?.toLowerCase().trim(),
         )
       ) {
         return Platform.OS === "web"
@@ -1873,12 +2221,21 @@ export default function HealthProfileScreen({ navigation }) {
   );
 
   const severityOptions = [
-    { label: t("health.mild", { defaultValue: "Mild" }), value: "mild" },
+    { 
+      label: t("health.mild", { defaultValue: "Mild" }), 
+      value: "mild",
+      icon: (selected) => <Sprout size={16} color={selected ? "#0F766E" : "#10B981"} strokeWidth={2.5} />
+    },
     {
       label: t("health.moderate", { defaultValue: "Moderate" }),
       value: "moderate",
+      icon: (selected) => <MinusCircle size={16} color={selected ? "#5B21B6" : "#8B5CF6"} strokeWidth={2.5} />
     },
-    { label: t("health.severe", { defaultValue: "Severe" }), value: "severe" },
+    { 
+      label: t("health.severe", { defaultValue: "Severe" }), 
+      value: "severe",
+      icon: (selected) => <AlertTriangle size={16} color={selected ? "#991B1B" : "#EF4444"} strokeWidth={2.5} />
+    },
   ];
   const statusOptions = [
     { label: t("health.active", { defaultValue: "Active" }), value: "active" },
@@ -2052,7 +2409,7 @@ export default function HealthProfileScreen({ navigation }) {
         </View>
 
         {/* ── Simple Header (like care team) ── */}
-        <View ref={headerRef} collapsable={false} style={s.header}>
+        <View collapsable={false} style={s.header}>
           <View style={s.headerRow}>
             <View style={{ flex: 1 }}>
               <Text style={s.headerEyebrow}>
@@ -2060,9 +2417,11 @@ export default function HealthProfileScreen({ navigation }) {
                   defaultValue: "HEALTH VAULT",
                 })}
               </Text>
-              <Text style={s.headerTitle}>
-                {t("health_profile.my_records", { defaultValue: "My Records" })}
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text style={s.headerTitle}>
+                  {t("health_profile.my_records", { defaultValue: "My Records" })}
+                </Text>
+              </View>
               <Text
                 style={{
                   fontSize: 13,
@@ -2102,12 +2461,8 @@ export default function HealthProfileScreen({ navigation }) {
         >
           {/* ── PROFILE COMPLETENESS BANNER (above health score) ── */}
           <Animated.View style={anim(0)}>
-            <View
-              ref={profileSetupCardRef}
-              collapsable={false}
-              style={{ width: "100%" }}
-            >
-              <View style={s.completeBanner}>
+            <View style={{ width: "100%" }}>
+              <View collapsable={false} style={s.completeBanner}>
                 <Pressable
                   onPress={() => {
                     LayoutAnimation.configureNext(
@@ -2125,7 +2480,7 @@ export default function HealthProfileScreen({ navigation }) {
                       alignItems: "center",
                     }}
                   >
-                    <Text style={s.completeBannerTitle}>
+                    <Text collapsable={false} style={s.completeBannerTitle}>
                       {t("health_profile.profile_completeness", {
                         defaultValue: "Profile Completeness",
                       })}
@@ -2309,7 +2664,7 @@ export default function HealthProfileScreen({ navigation }) {
           </Animated.View>
 
           {/* ── COMPACT HEALTH SCORE CARD (tappable) ── */}
-          <Animated.View style={[anim(0), { marginTop: 0 }]}>
+          <Animated.View collapsable={false} style={[anim(0), { marginTop: 0 }]}>
             <Pressable
               style={({ pressed }) => [{ opacity: pressed ? 0.96 : 1 }]}
               onPress={() => {
@@ -2338,7 +2693,6 @@ export default function HealthProfileScreen({ navigation }) {
               }}
             >
               <View
-                ref={healthScoreCardRef}
                 collapsable={false}
                 style={s.dashboardCard}
               >
@@ -2424,7 +2778,7 @@ export default function HealthProfileScreen({ navigation }) {
                         <Text
                           style={[
                             s.dashScoreSub,
-                            { color: "#94A3B8", fontSize: 12, marginLeft: 6 },
+                            { color: "#94A3B8", fontSize: 12, marginLeft: 6, flexShrink: 1 },
                           ]}
                         >
                           Complete profile to unlock
@@ -2490,7 +2844,7 @@ export default function HealthProfileScreen({ navigation }) {
                     </Pressable>
                   </View>
                   <View style={s.dashCenter}>
-                    <View style={s.ringWrap}>
+                    <View collapsable={false} style={s.ringWrap}>
                       <Svg width={88} height={88} viewBox="0 0 88 88">
                         <SvgCircle
                           cx="44"
@@ -2587,7 +2941,7 @@ export default function HealthProfileScreen({ navigation }) {
 
           {/* ── ALERTS CARD ── */}
           <Animated.View style={anim(1)}>
-            <View ref={alertsCardRef} collapsable={false} style={s.alertsCard}>
+            <View collapsable={false} style={s.alertsCard}>
               <Pressable
                 style={({ pressed }) => [
                   s.alertHeader,
@@ -2627,7 +2981,7 @@ export default function HealthProfileScreen({ navigation }) {
                   <AlertTriangle size={18} color="#EF4444" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.alertTitle}>
+                  <Text collapsable={false} style={s.alertTitle}>
                     {t("health_profile.health_alerts", {
                       defaultValue: "Health Alerts",
                     })}
@@ -2706,13 +3060,16 @@ export default function HealthProfileScreen({ navigation }) {
               </Pressable>
               <Pressable
                 style={s.bentoCard}
-                onPress={() => openModal("vitals")}
+                onPress={() => openVitalsModal("height")}
               >
                 <View style={[s.bentoCircle, { backgroundColor: "#FAF5FF" }]}>
                   <Activity size={18} color="#8B5CF6" />
                 </View>
                 <Text style={s.bentoVal}>
-                  {lifestyle.height_cm ? `${lifestyle.height_cm} cm` : "—"}
+                  {lifestyle.height_cm ? (() => {
+                    const parsed = parseFloat(lifestyle.height_cm);
+                    return !isNaN(parsed) && parsed > 0 ? `${parsed} cm` : String(lifestyle.height_cm);
+                  })() : "—"}
                 </Text>
                 <Text style={s.bentoLbl}>
                   {t("health_profile.height", {
@@ -2722,13 +3079,16 @@ export default function HealthProfileScreen({ navigation }) {
               </Pressable>
               <Pressable
                 style={s.bentoCard}
-                onPress={() => openModal("vitals")}
+                onPress={() => openVitalsModal("weight")}
               >
                 <View style={[s.bentoCircle, { backgroundColor: "#D1FAE5" }]}>
-                  <Activity size={18} color="#10B981" />
+                  <Scale size={18} color="#10B981" />
                 </View>
                 <Text style={s.bentoVal}>
-                  {lifestyle.weight_kg ? `${lifestyle.weight_kg} kg` : "—"}
+                  {lifestyle.weight_kg ? (() => {
+                    const parsed = parseFloat(lifestyle.weight_kg);
+                    return !isNaN(parsed) && parsed > 0 ? `${parsed} kg` : String(lifestyle.weight_kg);
+                  })() : "—"}
                 </Text>
                 <Text style={s.bentoLbl}>
                   {t("health_profile.weight", {
@@ -2740,21 +3100,17 @@ export default function HealthProfileScreen({ navigation }) {
           </Animated.View>
 
           {/* ── STACKED CARDS ── */}
-          <View
-            ref={medicalRecordsCardRef}
-            collapsable={false}
-            style={{ gap: 16 }}
-          >
+          <View style={{ gap: 16 }}>
             {/* Current Conditions */}
             <Animated.View style={anim(2)}>
-              <View style={s.gridCard}>
+              <View collapsable={false} style={s.gridCard}>
                 <View style={s.gridHeader}>
                   <View
                     style={[s.gridIconWrap, { backgroundColor: "#FEE2E2" }]}
                   >
                     <HeartPulse size={16} color="#EF4444" />
                   </View>
-                  <Text style={s.gridTitle}>
+                  <Text collapsable={false} style={s.gridTitle}>
                     {t("health_profile.current_conditions", {
                       defaultValue: "Current Conditions",
                     })}
@@ -3510,13 +3866,17 @@ export default function HealthProfileScreen({ navigation }) {
         {/* ── Dynamic Form Modal ── */}
         <PremiumFormModal
           visible={modalVisible}
-          title={`${formState._id ? t("common.edit", { defaultValue: "Edit" }) : t("common.update", { defaultValue: "Update" })} ${editingType === "gp" ? t("health_profile.primary_physician", { defaultValue: "Doctor Details" }) : ["vitals", "habits", "activity"].includes(editingType) ? t("health_profile.lifestyle", { defaultValue: "Lifestyle" }) : t(`health_profile.${editingType}`, { defaultValue: editingType })}`}
+          title={getModalTitle(editingType)}
+          subtitle={getModalSubtitle(editingType)}
+          icon={getModalIcon(editingType)}
           onClose={closeModal}
           onSave={handleSave}
           saveText={t("health_profile.save_profile_data", {
             defaultValue: "Save Changes",
           })}
           saving={isSaving}
+          centered={false}
+          scrollEnabled={true}
           headerRight={
             formState._id &&
             [
@@ -3550,6 +3910,7 @@ export default function HealthProfileScreen({ navigation }) {
                   placeholder={t("health_profile.condition_placeholder", {
                     defaultValue: "e.g. Type 2 Diabetes",
                   })}
+                  leftAccessory={inputLeftIcon(Activity, "#EF4444")}
                 />
               </View>
               <View style={s.formGroup}>
@@ -3582,7 +3943,36 @@ export default function HealthProfileScreen({ navigation }) {
                   placeholder={t("health_profile.notes_placeholder", {
                     defaultValue: "Write any personal notes here...",
                   })}
+                  leftAccessory={inputLeftIcon(MessageSquare, "#EF4444")}
                 />
+              </View>
+
+              {/* Tip Card */}
+              <View style={{
+                flexDirection: 'row',
+                backgroundColor: '#FAF5FF',
+                borderRadius: 20,
+                padding: 16,
+                alignItems: 'center',
+                gap: 12,
+                marginTop: 8,
+              }}>
+                <View style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: '#E8DFFA',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Sparkles size={16} color="#8B5CF6" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B' }}>Tip</Text>
+                  <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2, lineHeight: 16 }}>
+                    Be as specific as possible to help us keep you safe.
+                  </Text>
+                </View>
               </View>
             </>
           )}
@@ -3598,6 +3988,7 @@ export default function HealthProfileScreen({ navigation }) {
                   placeholder={t("health_profile.allergy_placeholder", {
                     defaultValue: "e.g. Peanuts, Penicillin",
                   })}
+                  leftAccessory={inputLeftIcon(Sprout)}
                 />
               </View>
               <View style={s.formGroup}>
@@ -3623,57 +4014,38 @@ export default function HealthProfileScreen({ navigation }) {
                   }
                   placeholder={t("health_profile.reaction_placeholder", {
                     defaultValue:
-                      "Describe the physical reaction (e.g., Hives, Anaphylaxis)",
+                      "Describe the physical reaction (e.g., Hives, Anaphylaxis, Breathing difficulty)",
                   })}
+                  leftAccessory={inputLeftIcon(MessageSquare)}
                 />
               </View>
-            </>
-          )}
-          {editingType === "vitals" && (
-            <>
-              <View style={s.formGroup}>
-                <Pressable onPress={openHeightPicker}>
-                  <View pointerEvents="none">
-                    <SmartInput
-                      label={t("health_profile.height", {
-                        defaultValue: "Height",
-                      })}
-                      value={
-                        formState.height_cm
-                          ? `${formState.height_cm} cm (${cmToFtIn(formState.height_cm)})`
-                          : ""
-                      }
-                      placeholder={t("health_profile.select_height", {
-                        defaultValue: "Select height",
-                      })}
-                      rightAccessory={
-                        <ChevronDown size={18} color="#94A3B8" />
-                      }
-                    />
-                  </View>
-                </Pressable>
-              </View>
-              <View style={s.formGroup}>
-                <Pressable onPress={openWeightPicker}>
-                  <View pointerEvents="none">
-                    <SmartInput
-                      label={t("health_profile.weight", {
-                        defaultValue: "Weight",
-                      })}
-                      value={
-                        formState.weight_kg
-                          ? `${formState.weight_kg} kg (${Math.round(formState.weight_kg / 0.45359237)} lbs)`
-                          : ""
-                      }
-                      placeholder={t("health_profile.select_weight", {
-                        defaultValue: "Select weight",
-                      })}
-                      rightAccessory={
-                        <ChevronDown size={18} color="#94A3B8" />
-                      }
-                    />
-                  </View>
-                </Pressable>
+
+              {/* Tip Card */}
+              <View style={{
+                flexDirection: 'row',
+                backgroundColor: '#FAF5FF',
+                borderRadius: 20,
+                padding: 16,
+                alignItems: 'center',
+                gap: 12,
+                marginTop: 8,
+              }}>
+                <View style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: '#E8DFFA',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Sparkles size={16} color="#8B5CF6" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B' }}>Tip</Text>
+                  <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2, lineHeight: 16 }}>
+                    Be as specific as possible to help us keep you safe.
+                  </Text>
+                </View>
               </View>
             </>
           )}
@@ -4153,36 +4525,29 @@ export default function HealthProfileScreen({ navigation }) {
                   })}
                 />
               </View>
-              <View style={s.formGroup}>
-                <Text style={s.formLabel}>
-                  {t("common.date", { defaultValue: "Date *" })}
-                </Text>
-                <Pressable
-                  style={[s.input, { justifyContent: "center" }]}
-                  onPress={() => {
-                    setDatePickerField("date");
-                    setShowDatePicker(true);
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: formState.date
-                        ? colors.textPrimary
-                        : colors.textMuted,
-                      fontSize: 15,
-                    }}
-                  >
-                    {formState.date
+              <Pressable
+                onPress={() => {
+                  setDatePickerField("date");
+                  setShowDatePicker(true);
+                }}
+              >
+                <SmartInput
+                  label={t("common.date", { defaultValue: "Date *" })}
+                  value={
+                    formState.date
                       ? new Date(formState.date).toLocaleDateString(
                           t("common.locale_date", { defaultValue: "en-US" }),
                           { year: "numeric", month: "short", day: "numeric" },
                         )
-                      : t("common.select_date", {
-                          defaultValue: "Select date",
-                        })}
-                  </Text>
-                </Pressable>
-              </View>
+                      : ""
+                  }
+                  placeholder={t("common.select_date", {
+                    defaultValue: "Select date",
+                  })}
+                  editable={false}
+                  pointerEvents="none"
+                />
+              </Pressable>
               <View style={s.formGroup}>
                 <SmartInput
                   label={t("health_profile.detailed_notes", {
@@ -4214,38 +4579,31 @@ export default function HealthProfileScreen({ navigation }) {
                   })}
                 />
               </View>
-              <View style={s.formGroup}>
-                <Text style={s.formLabel}>
-                  {t("health_profile.date_given", {
+              <Pressable
+                onPress={() => {
+                  setDatePickerField("date_given");
+                  setShowDatePicker(true);
+                }}
+              >
+                <SmartInput
+                  label={t("health_profile.date_given", {
                     defaultValue: "Date Given *",
                   })}
-                </Text>
-                <Pressable
-                  style={[s.input, { justifyContent: "center" }]}
-                  onPress={() => {
-                    setDatePickerField("date_given");
-                    setShowDatePicker(true);
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: formState.date_given
-                        ? colors.textPrimary
-                        : colors.textMuted,
-                      fontSize: 15,
-                    }}
-                  >
-                    {formState.date_given
+                  value={
+                    formState.date_given
                       ? new Date(formState.date_given).toLocaleDateString(
                           t("common.locale_date", { defaultValue: "en-US" }),
                           { year: "numeric", month: "short", day: "numeric" },
                         )
-                      : t("common.select_date", {
-                          defaultValue: "Select date",
-                        })}
-                  </Text>
-                </Pressable>
-              </View>
+                      : ""
+                  }
+                  placeholder={t("common.select_date", {
+                    defaultValue: "Select date",
+                  })}
+                  editable={false}
+                  pointerEvents="none"
+                />
+              </Pressable>
             </>
           )}
           {editingType === "appointment" && (
@@ -4520,86 +4878,26 @@ export default function HealthProfileScreen({ navigation }) {
           </View>
         </Modal>
 
-        {/* Native Date Picker */}
-        {showDatePicker && (
-          <View
-            style={
-              Platform.OS === "ios"
-                ? {
-                    position: "absolute",
-                    bottom: 0,
-                    width: "100%",
-                    backgroundColor: "#FFF",
-                    borderTopLeftRadius: 20,
-                    borderTopRightRadius: 20,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: -4 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 10,
-                    elevation: 10,
-                    zIndex: 9999,
-                    paddingBottom: 20,
-                  }
-                : {}
+        {/* Custom Calendar Date Picker */}
+        <CustomCalendarPicker
+          visible={showDatePicker}
+          onClose={() => setShowDatePicker(false)}
+          initialDate={formState[datePickerField] ? new Date(formState[datePickerField]) : new Date()}
+          maximumDate={editingType === "appointment" ? undefined : new Date()}
+          title={editingType === "appointment" ? "Appointment Date" : "Select Date"}
+          onSelectDate={(selectedDate) => {
+            if (selectedDate) {
+              if (editingType === "appointment") {
+                const current = formState[datePickerField] ? new Date(formState[datePickerField]) : new Date();
+                selectedDate.setHours(current.getHours(), current.getMinutes(), 0, 0);
+              }
+              setFormState((prev) => ({
+                ...prev,
+                [datePickerField]: selectedDate.toISOString(),
+              }));
             }
-          >
-            {Platform.OS === "ios" && (
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "flex-end",
-                  padding: 16,
-                  borderBottomWidth: 1,
-                  borderBottomColor: "#F1F5F9",
-                }}
-              >
-                <Pressable onPress={() => setShowDatePicker(false)}>
-                  <Text
-                    style={{
-                      color: colors.primary,
-                      fontWeight: "bold",
-                      fontSize: 16,
-                    }}
-                  >
-                    Done
-                  </Text>
-                </Pressable>
-              </View>
-            )}
-            <DateTimePicker
-              value={
-                formState[datePickerField]
-                  ? new Date(formState[datePickerField])
-                  : new Date()
-              }
-              mode="date"
-              display={Platform.OS === "ios" ? "spinner" : "default"}
-              maximumDate={
-                editingType === "appointment" ? undefined : new Date()
-              }
-              onChange={(event, selectedDate) => {
-                if (Platform.OS === "android") setShowDatePicker(false);
-                if (event.type !== "dismissed" && selectedDate) {
-                  if (editingType === "appointment") {
-                    const current = formState[datePickerField]
-                      ? new Date(formState[datePickerField])
-                      : new Date();
-                    selectedDate.setHours(
-                      current.getHours(),
-                      current.getMinutes(),
-                      0,
-                      0,
-                    );
-                  }
-                  setFormState((prev) => ({
-                    ...prev,
-                    [datePickerField]: selectedDate.toISOString(),
-                  }));
-                }
-              }}
-            />
-          </View>
-        )}
+          }}
+        />
 
         {/* Native Time Picker */}
         {showTimePicker && (
@@ -6453,14 +6751,6 @@ export default function HealthProfileScreen({ navigation }) {
           })()}
         </Modal>
 
-        <GuidedTour
-          visible={showProfileTour}
-          steps={getProfileTourSteps()}
-          scrollRef={scrollViewRef}
-          tourKey="health_profile"
-          onClose={() => setShowProfileTour(false)}
-        />
-
         {/* ── VITALS PICKER MODAL (WHEEL) ── */}
         <Modal
           visible={vitalsPickerVisible}
@@ -6953,6 +7243,18 @@ export default function HealthProfileScreen({ navigation }) {
             </View>
           </View>
         </Modal>
+
+        {/* ── STREAMLINED DIRECT HEIGHT & WEIGHT MODAL ── */}
+        <HeightWeightPickerModal
+          visible={vitalsModalVisible}
+          onClose={() => setVitalsModalVisible(false)}
+          initialTab={vitalsModalTab}
+          heightCm={lifestyle.height_cm || 170}
+          weightKg={lifestyle.weight_kg || 70}
+          onSave={handleSaveVitalsModal}
+          isSaving={isSavingVitals}
+        />
+
       </View>
     </TabScreenTransition>
   );
@@ -6974,6 +7276,15 @@ const s = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+  helpBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F3E8FF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 8,
   },
   headerEyebrow: {
     fontSize: 13,
@@ -8398,5 +8709,77 @@ const s = StyleSheet.create({
   },
   pickerToggleTextActive: {
     color: "#7C3AED",
+  },
+  fitMetricCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  fitHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  fitCardLabel: {
+    fontSize: 12,
+    ...FONT.bold,
+    color: "#64748B",
+    letterSpacing: 0.8,
+  },
+  unitToggleWrap: {
+    flexDirection: "row",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 12,
+    padding: 3,
+  },
+  unitTogglePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 9,
+  },
+  unitTogglePillActive: {
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  unitToggleText: {
+    fontSize: 11,
+    ...FONT.bold,
+    color: "#64748B",
+  },
+  unitToggleTextActive: {
+    color: "#7C3AED",
+  },
+  fitReadoutRow: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 4,
+  },
+  fitValueBig: {
+    fontSize: 32,
+    ...FONT.heavy,
+    color: "#7C3AED",
+  },
+  fitUnitSmall: {
+    fontSize: 14,
+    ...FONT.bold,
+    color: "#94A3B8",
+  },
+  fitSubConversion: {
+    fontSize: 12.5,
+    ...FONT.semibold,
+    color: "#8B5CF6",
+    marginTop: 2,
   },
 });
